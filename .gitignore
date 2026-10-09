@@ -51,3 +51,13 @@ po/*~
 
 # renv sandbox needed for renv version 0.16.0
 renv/sandbox # OPTIONAL
+
+# Local-only development material (RNA-seq convention)
+instructor-notes/
+coaching/
+maintenance/prompts/
+local-test/
+negishi-run/generated/
+negishi-run/staged-data/
+negishi-run/*.tar.gz
+!negishi-run/docs/
