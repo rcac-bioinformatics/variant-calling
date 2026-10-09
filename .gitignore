@@ -61,3 +61,4 @@ negishi-run/generated/
 negishi-run/staged-data/
 negishi-run/*.tar.gz
 !negishi-run/docs/
+maintenance/
