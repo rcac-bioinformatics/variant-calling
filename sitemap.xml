@@ -34,7 +34,13 @@
     <loc>https://rcac-bioinformatics.github.io/variant-calling/LICENSE.html</loc>
   </url>
   <url>
+    <loc>https://rcac-bioinformatics.github.io/variant-calling/aio.html</loc>
+  </url>
+  <url>
     <loc>https://rcac-bioinformatics.github.io/variant-calling/citation.html</loc>
+  </url>
+  <url>
+    <loc>https://rcac-bioinformatics.github.io/variant-calling/images.html</loc>
   </url>
   <url>
     <loc>https://rcac-bioinformatics.github.io/variant-calling/index.html</loc>
@@ -73,16 +79,34 @@
     <loc>https://rcac-bioinformatics.github.io/variant-calling/instructor/LICENSE.html</loc>
   </url>
   <url>
+    <loc>https://rcac-bioinformatics.github.io/variant-calling/instructor/aio.html</loc>
+  </url>
+  <url>
     <loc>https://rcac-bioinformatics.github.io/variant-calling/instructor/citation.html</loc>
   </url>
   <url>
+    <loc>https://rcac-bioinformatics.github.io/variant-calling/instructor/images.html</loc>
+  </url>
+  <url>
     <loc>https://rcac-bioinformatics.github.io/variant-calling/instructor/index.html</loc>
+  </url>
+  <url>
+    <loc>https://rcac-bioinformatics.github.io/variant-calling/instructor/instructor-notes.html</loc>
+  </url>
+  <url>
+    <loc>https://rcac-bioinformatics.github.io/variant-calling/instructor/key-points.html</loc>
   </url>
   <url>
     <loc>https://rcac-bioinformatics.github.io/variant-calling/instructor/profiles.html</loc>
   </url>
   <url>
     <loc>https://rcac-bioinformatics.github.io/variant-calling/instructor/reference.html</loc>
+  </url>
+  <url>
+    <loc>https://rcac-bioinformatics.github.io/variant-calling/instructor-notes.html</loc>
+  </url>
+  <url>
+    <loc>https://rcac-bioinformatics.github.io/variant-calling/key-points.html</loc>
   </url>
   <url>
     <loc>https://rcac-bioinformatics.github.io/variant-calling/profiles.html</loc>
