@@ -247,7 +247,7 @@ Design rules:
 - Each live job should finish within about 15 minutes on standby when nodes are free. P2 measures this.
 - Teach the matching concepts while jobs run: SAM/BAM anatomy during alignment; VCF anatomy during calling, using a small staged example VCF so the query challenges do not wait for the learner's own calls. Concatenation and normalization of the learner's calls close Episode 5A, with the completed-results VCF as fallback. Lunch is a buffer, not part of the plan.
 - Pacing option recorded in your RNA-seq log: submit the alignment array from the staged script at the end of the Episode 2-3 block, so it runs over the break, and let Episode 4 dissect the script while it runs.
-- The survey slot covers the post-workshop survey required by your Goal 1b.
+- The survey slot covers the post-workshop survey.
 
 5.5-hour version (ends at 4:00): Episode 1 to 25 minutes; Episodes 2 and 3 to 30; Episode 7 to 30 (demo only); wrap-up to 20, with the survey on the way out.
 
