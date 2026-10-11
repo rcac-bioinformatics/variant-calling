@@ -1,0 +1,67 @@
+# Lesson anchors, frozen 2026-10-10 (gate G3). Run ref-final-2026-10-11 on Negishi (records varcall-p3-records-ref-final-2026-10-11-20261010-2016),
+# call set q0; identical to run ref-2026-10-10 (all 57 values and 5 sentinels). Staged copies per negishi-run/staged_manifest.tsv and staged_ref_manifest.tsv.
+# Modules: bwa/0.7.17 samtools/1.22.1 bcftools/1.24 htslib/1.24 mosdepth/0.3.3 hap.py/0.3.9 (vcfeval) snpeff/5.3.0a (GRCh38.mane.1.2.ensembl) snpsift/5.2.
+# Tolerance "exact": two runs and two alignment thread counts gave identical values. A missing anchor or any change means an upstream break.
+metric	value	tolerance	source
+HG002 raw_total_sequences	18924900	exact	results/qc_alignment/HG002.stats.txt
+HG002 reads_mapped	18888498	exact	results/qc_alignment/HG002.stats.txt
+HG002 reads_properly_paired	18759278	exact	results/qc_alignment/HG002.stats.txt
+HG002 reads_duplicated	1975897	exact	results/qc_alignment/HG002.stats.txt
+HG002 reads_MQ0	983436	exact	results/qc_alignment/HG002.stats.txt
+HG002 mean_depth_chr20	39.08	exact	results/qc_alignment/HG002.mosdepth.summary.txt
+HG003 raw_total_sequences	18960080	exact	results/qc_alignment/HG003.stats.txt
+HG003 reads_mapped	18916365	exact	results/qc_alignment/HG003.stats.txt
+HG003 reads_properly_paired	18785612	exact	results/qc_alignment/HG003.stats.txt
+HG003 reads_duplicated	2082305	exact	results/qc_alignment/HG003.stats.txt
+HG003 reads_MQ0	1000296	exact	results/qc_alignment/HG003.stats.txt
+HG003 mean_depth_chr20	38.90	exact	results/qc_alignment/HG003.mosdepth.summary.txt
+HG004 raw_total_sequences	18694236	exact	results/qc_alignment/HG004.stats.txt
+HG004 reads_mapped	18660854	exact	results/qc_alignment/HG004.stats.txt
+HG004 reads_properly_paired	18553326	exact	results/qc_alignment/HG004.stats.txt
+HG004 reads_duplicated	2053967	exact	results/qc_alignment/HG004.stats.txt
+HG004 reads_MQ0	901915	exact	results/qc_alignment/HG004.stats.txt
+HG004 mean_depth_chr20	38.42	exact	results/qc_alignment/HG004.mosdepth.summary.txt
+trio_norm records	185914	exact	results/vcf/trio.norm.stats.txt
+trio_norm SNVs	155291	exact	results/vcf/trio.norm.stats.txt
+trio_norm indels	30623	exact	results/vcf/trio.norm.stats.txt
+trio_norm tstv	1.81	exact	results/vcf/trio.norm.stats.txt
+trio_filtered records	158151	exact	results/vcf/trio.filtered.stats.txt
+trio_filtered SNVs	129329	exact	results/vcf/trio.filtered.stats.txt
+trio_filtered indels	28822	exact	results/vcf/trio.filtered.stats.txt
+trio_filtered tstv	2.01	exact	results/vcf/trio.filtered.stats.txt
+HG002 PASS tstv bench_HG002_v4.2.1_in	2.300	exact	records/q0/metrics_pass/tstv_regions.tsv
+HG002 PASS tstv bench_HG002_v4.2.1_out	1.440	exact	records/q0/metrics_pass/tstv_regions.tsv
+HG002 v5.0q INDEL recall	0.779233	exact	results/eval/HG002.v5.0q.filtered.summary.csv
+HG002 v5.0q INDEL precision	0.930483	exact	results/eval/HG002.v5.0q.filtered.summary.csv
+HG002 v5.0q SNP recall	0.980607	exact	results/eval/HG002.v5.0q.filtered.summary.csv
+HG002 v5.0q SNP precision	0.988729	exact	results/eval/HG002.v5.0q.filtered.summary.csv
+HG002 v4.2.1 INDEL recall	0.906272	exact	results/eval/HG002.v4.2.1.filtered.summary.csv
+HG002 v4.2.1 INDEL precision	0.972655	exact	results/eval/HG002.v4.2.1.filtered.summary.csv
+HG002 v4.2.1 SNP recall	0.99072	exact	results/eval/HG002.v4.2.1.filtered.summary.csv
+HG002 v4.2.1 SNP precision	0.991409	exact	results/eval/HG002.v4.2.1.filtered.summary.csv
+HG003 v4.2.1 INDEL recall	0.90939	exact	results/eval/HG003.v4.2.1.filtered.summary.csv
+HG003 v4.2.1 INDEL precision	0.972466	exact	results/eval/HG003.v4.2.1.filtered.summary.csv
+HG003 v4.2.1 SNP recall	0.991805	exact	results/eval/HG003.v4.2.1.filtered.summary.csv
+HG003 v4.2.1 SNP precision	0.990585	exact	results/eval/HG003.v4.2.1.filtered.summary.csv
+HG004 v4.2.1 INDEL recall	0.914636	exact	results/eval/HG004.v4.2.1.filtered.summary.csv
+HG004 v4.2.1 INDEL precision	0.975693	exact	results/eval/HG004.v4.2.1.filtered.summary.csv
+HG004 v4.2.1 SNP recall	0.991501	exact	results/eval/HG004.v4.2.1.filtered.summary.csv
+HG004 v4.2.1 SNP precision	0.992727	exact	results/eval/HG004.v4.2.1.filtered.summary.csv
+mendelian2 nmerr	449	exact	results/trio/mendelian2.txt
+mendelian2 ngood	144536	exact	results/trio/mendelian2.txt
+funnel pass	158151	exact	results/trio/funnel.tsv
+funnel denovo_1_genotype	312	exact	results/trio/funnel.tsv
+funnel denovo_2_evidence	81	exact	results/trio/funnel.tsv
+funnel denovo_3_regions	41	exact	results/trio/funnel.tsv
+funnel denovo_4_impact	0	exact	results/trio/funnel.tsv
+funnel denovo_5_rare	0	exact	results/trio/funnel.tsv
+funnel recessive_1_genotype	5282	exact	results/trio/funnel.tsv
+funnel recessive_2_evidence	5282	exact	results/trio/funnel.tsv
+funnel recessive_3_regions	4632	exact	results/trio/funnel.tsv
+funnel recessive_4_impact	8	exact	results/trio/funnel.tsv
+funnel recessive_5_rare	0	exact	results/trio/funnel.tsv
+sentinel het_snv chr20:88108 T>C	FILTER PASS, HG002 GT 0/1, truth 0/1	exact	results/vcf/trio.filtered.vcf.gz
+sentinel homalt_snv chr20:85259 G>A	FILTER PASS, HG002 GT 1/1, truth 1/1	exact	results/vcf/trio.filtered.vcf.gz
+sentinel indel chr20:86859 T>TTGGTATCTAG	FILTER PASS, HG002 GT 1/1, truth 1/1	exact	results/vcf/trio.filtered.vcf.gz
+sentinel trio_inconsistent chr20:338577 A>ATG	FILTER PASS, HG002 GT 0/1, truth 0/1	exact	results/vcf/trio.filtered.vcf.gz
+sentinel artifact chr20:29070822 T>G	FILTER HighDP;LowMQ, HG002 GT 1/1, truth not in any truth set	exact	results/vcf/trio.filtered.vcf.gz

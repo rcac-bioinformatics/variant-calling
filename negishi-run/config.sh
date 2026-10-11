@@ -4,9 +4,10 @@
 #   KIT_ACCOUNT=myaccount BCFTOOLS_MODULE=bcftools/1.24 bash negishi-run/00_preflight.sh
 # No secrets, and no memory requests: Negishi gives about 1.9 GB per core, so memory is sized by cores.
 
-# ---- SLURM. Every submit refuses to run while KIT_ACCOUNT is empty. The P2 pilot used rcac
-# (QoS normal and standby, standby limit 4 h); the workshop account is TBD (feasibility memo).
-KIT_ACCOUNT=${KIT_ACCOUNT:-}
+# ---- SLURM. Account rcac for now (2026-10-09); a workshop-specific account replaces it later.
+# It lives only here, in the #SBATCH headers of pipeline/learner-scripts/*.sh and in the
+# sinteractive lines of pipeline/learner-scripts/interactive/*.sh (00_preflight.sh checks all agree).
+KIT_ACCOUNT=${KIT_ACCOUNT:-rcac}
 KIT_PARTITION=${KIT_PARTITION:-cpu}
 KIT_QOS=${KIT_QOS:-standby}
 
@@ -14,15 +15,14 @@ KIT_QOS=${KIT_QOS:-standby}
 # Never under /depot/workshop/data: staging belongs to phase 3.
 PREP_DIR=${PREP_DIR:-${SCRATCH:-}/varcall-prep}
 
-# ---- Pinned modules (loaded after `module load biocontainers`). Override bcftools and htslib
-# with the 1.24 versions if they have been deployed. Verified 2026-10-09: every pinned version
-# loads and is the Negishi default; hap.py/0.3.9 reports v0.3.8-17; bcftools 1.24 and htslib 1.24
-# are not installed. The bcftools/1.17 wrapper (singularity run) drops embedded double quotes
-# from filter expressions: a module fix is pending (feasibility memo, decision 3).
+# ---- Pinned modules (loaded after `module load biocontainers`), G2 decision 2026-10-09.
+# P2 (2026-10-09) verified everything except bcftools/htslib 1.24, which were deployed for
+# phase 3 together with `singularity exec` wrappers (the 1.17 wrapper used `singularity run`
+# and dropped embedded double quotes). 00_preflight.sh checks quoting for every module.
 BWA_MODULE=${BWA_MODULE:-bwa/0.7.17}
 SAMTOOLS_MODULE=${SAMTOOLS_MODULE:-samtools/1.22.1}
-BCFTOOLS_MODULE=${BCFTOOLS_MODULE:-bcftools/1.17}
-HTSLIB_MODULE=${HTSLIB_MODULE:-htslib/1.17}
+BCFTOOLS_MODULE=${BCFTOOLS_MODULE:-bcftools/1.24}
+HTSLIB_MODULE=${HTSLIB_MODULE:-htslib/1.24}
 MOSDEPTH_MODULE=${MOSDEPTH_MODULE:-mosdepth/0.3.3}
 HAPPY_MODULE=${HAPPY_MODULE:-hap.py/0.3.9}
 SNPEFF_MODULE=${SNPEFF_MODULE:-snpeff/5.3.0a}
@@ -30,8 +30,8 @@ SNPSIFT_MODULE=${SNPSIFT_MODULE:-snpsift/5.2}
 FASTQC_MODULE=${FASTQC_MODULE:-fastqc/0.12.1}
 MULTIQC_MODULE=${MULTIQC_MODULE:-multiqc/1.23}
 IGV_MODULE=${IGV_MODULE:-igv/2.19.1}
-# Other bcftools versions to compare on one calling chunk (only those installed are used).
-BCFTOOLS_COMPARE_MODULES=${BCFTOOLS_COMPARE_MODULES:-bcftools/1.13 bcftools/1.24}
+# Phase 2 only: other bcftools versions p-call-vcmp compared on one chunk.
+BCFTOOLS_COMPARE_MODULES=${BCFTOOLS_COMPARE_MODULES:-bcftools/1.13 bcftools/1.17}
 # 1 = start every kit job with `module --force purge`. Preflight 2026-10-09: not needed, no
 # startup difference (kept at 1 for a clean environment)
 KIT_PURGE=${KIT_PURGE:-1}
@@ -73,3 +73,26 @@ GNOMAD_REQUIRED_GROUP=${GNOMAD_REQUIRED_GROUP:-asj}
 # ---- Service endpoints that are not files (files are listed in data-prep/sources.tsv)
 GCS_BASE=${GCS_BASE:-https://storage.googleapis.com}
 GCS_JSON_API=${GCS_JSON_API:-$GCS_BASE/storage/v1/b}
+
+# ---- Phase 3: staging and the reference run
+# Staged copies on Depot (D8). Learners rsync STAGED; STAGED_REF is read in place through the
+# symlinks in their ref/; STAGED_RESULTS is created only by regen_results.sh --finalize (Part D).
+STAGED=${STAGED:-/depot/workshop/data/varcall-workshop}
+STAGED_REF=${STAGED_REF:-/depot/workshop/data/varcall-workshop_ref}
+STAGED_RESULTS=${STAGED_RESULTS:-/depot/workshop/data/varcall-workshop_results}
+STAGED_PERM=${STAGED_PERM:-group}          # who must read the staged copies: group or other
+STAGED_GROUP=${STAGED_GROUP:-workshop}     # Depot group of /depot/workshop/data (P2 preflight)
+# Staged content is assembled here first (scratch), then copied to Depot by restage.sh.
+STAGE_BUILD=${STAGE_BUILD:-$PREP_DIR/stage}
+# Reference runs: $KIT_SCRATCH_BASE/runs/<RUN_ID>/ (each call set gets its own learner copy).
+KIT_SCRATCH_BASE=${KIT_SCRATCH_BASE:-${SCRATCH:-}/varcall-kit}
+# Call sets of the reference run. G3 (2026-10-10) chose q0, mpileup defaults, now written into
+# call.sh; the q0 vs q20 (-q 20 -Q 20) comparison is in maintenance/plan/reference-run.md.
+REF_CALL_SETS=${REF_CALL_SETS:-q0}
+# Teaching VCF region for resources/example/ (G3; restage.sh --example grows it to the nearest
+# multiallelic site if it has none)
+EXAMPLE_REGION=${EXAMPLE_REGION:-chr20:60000-90000}
+SNPEFF_DB=${SNPEFF_DB:-GRCh38.mane.1.2.ensembl}
+# Learner-facing name of the reference in ref/ (symlinks to the NCBI-named files on Depot)
+REF_NAME=${REF_NAME:-GRCh38_no_alt}
+DET_CORES=${DET_CORES:-32}                 # determinism check: realign one sample at this core count

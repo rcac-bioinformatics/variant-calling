@@ -52,16 +52,21 @@ kit_row() {  # status check detail
   fi
 }
 
-# Every derived number goes through kit_metric and carries the label "pilot".
+# Every derived number goes through kit_metric and carries KIT_LABEL: "pilot" in phase 2,
+# "reference run, not frozen" in phase 3 (pipeline/lib.sh sets it).
+KIT_LABEL=${KIT_LABEL:-pilot}
 kit_metric() {  # step sample metric value [unit]
   [ "$DRY" = 1 ] && return 0
   local f=$RECORDS/metrics.tsv
   [ -f "$f" ] || printf 'step\tsample\tmetric\tvalue\tunit\tlabel\tdate\n' > "$f"
-  printf '%s\t%s\t%s\t%s\t%s\tpilot\t%s\n' "$1" "$2" "$3" "$4" "${5:-}" "$(kit_ts)" >> "$f"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "${5:-}" "$KIT_LABEL" "$(kit_ts)" >> "$f"
 }
 
 # Header line for derived-record files
-kit_pilot_header() { printf '# pilot %s: feasibility only, not a lesson anchor\n' "$(date +%F)"; }
+kit_pilot_header() {
+  if [ "$KIT_LABEL" = pilot ]; then printf '# pilot %s: feasibility only, not a lesson anchor\n' "$(date +%F)"
+  else printf '# %s, %s\n' "$KIT_LABEL" "$(date +%F)"; fi
+}
 
 kit_prov() {  # id url local_path bytes md5 md5_check
   [ "$DRY" = 1 ] && return 0
@@ -94,6 +99,67 @@ kit_module_init() {
 }
 # Lmod is not written for `set -u`; relax it around every module call.
 kit_module() { local rc=0; set +u; module "$@" || rc=$?; set -u; return $rc; }
+# The container command a module's wrapper uses for TOOL: everything from singularity/apptainer
+# up to the image path, with the wrapper's own options and binds. Kit code runs other programs
+# from the same image through it (rtg inside the hap.py image). Reads a wrapper function, or an
+# exported wrapper script. Prints nothing if neither names an image.
+kit_wrapper_prefix() {  # tool (its module loaded)
+  local f
+  { type "$1" 2>/dev/null; f=$(command -v "$1" 2>/dev/null || true); if [ -f "$f" ]; then cat "$f"; fi; } \
+    | grep -m1 -oE '[^ ;{(]*(singularity|apptainer) +(exec|run) +[^;]*\.sif' || true
+}
+# The rtg that hap.py itself calls for vcfeval (its --engine-vcfeval-path default), else a search.
+kit_happy_rtg() {  # prefix from kit_wrapper_prefix hap.py
+  local pre=$1 r
+  r=$(hap.py --help 2>&1 | tr '\n' ' ' | grep -oE 'default is [^ ]*rtg[^ ]*' | head -1 | awk '{ print $3 }' | tr -d '".,')
+  if [ -z "$r" ]; then
+    # shellcheck disable=SC2086,SC2016  # pre is a command prefix; $ expanded inside the container
+    r=$($pre sh -c 'command -v rtg || find / -xdev -name rtg -type f -perm -u+x 2>/dev/null | head -1' 2>/dev/null | tail -1)
+  fi
+  printf '%s\n' "$r"
+}
+
+# rtg format through the hap.py container, trying the ways rtg can be started until one works:
+#   1 the rtg launcher as hap.py calls it (no RTG_MEM), 2 the launcher with RTG_MEM, 3 java -jar
+#   RTG.jar with the java that the launcher's rtg.cfg names, 4 java -jar RTG.jar with java from PATH.
+# Writes diagnostics (PATH, java, rtg.cfg) and every attempt to LOG; prints the attempt that worked.
+kit_rtg_format() {  # prefix rtg out_sdf fasta mem log
+  local pre=$1 rtg=$2 out=$3 fa=$4 mem=$5 log=$6 dir jv n
+  dir=$(dirname "$rtg")
+  {
+    echo "== diagnostics (inside the container)"
+    # shellcheck disable=SC2086,SC2016  # pre is a command prefix; $ expanded inside the container
+    $pre sh -c 'echo "PATH=$PATH"; echo "java on PATH: $(command -v java || echo none)"; java -version 2>&1 | head -2' 2>&1
+    # shellcheck disable=SC2086
+    $pre sh -c "ls -l '$dir' | head -20; echo '-- rtg.cfg:'; grep -v '^#' '$dir/rtg.cfg' 2>/dev/null | grep -v '^\$'" 2>&1
+  } > "$log"
+  # shellcheck disable=SC2086,SC2016
+  jv=$($pre sh -c ". '$dir/rtg.cfg' 2>/dev/null; echo \"\${RTG_JAVA:-}\"" 2>/dev/null | tail -1)
+  [ -e "$out" ] && { echo "$out exists" >> "$log"; return 1; }
+  # each attempt writes to its own scratch directory; only a complete SDF is moved to OUT
+  local tmp; tmp=${TMPDIR:-$PREP_DIR/tmp}/rtg.$$; mkdir -p "$tmp"
+  try() {  # label command... (the command writes to $tmp/try$n)
+    printf '\n== attempt %s: %s\n' "$n" "$1" >> "$log"; shift
+    if "$@" >> "$log" 2>&1 && [ -d "$tmp/try$n" ]; then mv "$tmp/try$n" "$out"; echo "$n"; return 0; fi
+    return 1
+  }
+  n=1
+  # shellcheck disable=SC2086
+  try "launcher, no RTG_MEM" env -u RTG_MEM $pre "$rtg" format -o "$tmp/try$n" "$fa" && return 0
+  n=2
+  # shellcheck disable=SC2086
+  try "launcher, RTG_MEM=$mem" env RTG_MEM="$mem" $pre "$rtg" format -o "$tmp/try$n" "$fa" && return 0
+  n=3
+  if [ -n "$jv" ]; then
+    # shellcheck disable=SC2086
+    try "$jv -jar RTG.jar (rtg.cfg)" $pre "$jv" -Xmx"$mem" -jar "$dir/RTG.jar" format -o "$tmp/try$n" "$fa" && return 0
+  fi
+  n=4
+  # shellcheck disable=SC2086
+  try "java -jar RTG.jar (PATH)" $pre java -Xmx"$mem" -jar "$dir/RTG.jar" format -o "$tmp/try$n" "$fa" && return 0
+  return 1
+}
+
 # Fresh environment plus the given modules (KIT_PURGE=0 skips the purge)
 kit_load() {
   [ "$DRY" = 1 ] && { printf '  + module load biocontainers %s\n' "$*" >&2; return 0; }
@@ -176,14 +242,15 @@ kit_dep() {  # step...
 
 # Submit a job script. Account, partition and QoS come from config; resources stay in the
 # script header (cores may be overridden). No memory request is ever added.
-# Usage: kit_submit step script [--dep "step1 step2"] [--cores N] [--array SPEC] [--export K=V,...]
+# Usage: kit_submit step script [--dep "step1 step2"] [--cores N] [--time T] [--array SPEC] [--export K=V,...]
 kit_submit() {
   local step=$1 script=$2; shift 2
-  local deps="" cores="" array="" extra_export="" dep="" jid
+  local deps="" cores="" wall="" array="" extra_export="" dep="" jid
   while [ $# -gt 0 ]; do
     case $1 in
       --dep) deps=$2; shift 2;;
       --cores) cores=$2; shift 2;;
+      --time) wall=$2; shift 2;;
       --array) array=$2; shift 2;;
       --export) extra_export=",$2"; shift 2;;
       *) kit_die "kit_submit: unknown option $1";;
@@ -201,6 +268,7 @@ kit_submit() {
   local args=(--parsable --kill-on-invalid-dep=yes "--account=$acct" "--partition=$KIT_PARTITION" "--qos=$KIT_QOS"
               "--export=ALL,KIT_DIR=$KIT_DIR,REPO_DIR=$REPO_DIR,PREP_DIR=$PREP_DIR,KIT_PURGE=$KIT_PURGE,CALL_SET=$CALL_SET$extra_export")
   [ -n "$cores" ] && args+=("--cpus-per-task=$cores")
+  [ -n "$wall" ] && args+=("--time=$wall")
   if [ -n "$array" ]; then args+=("--array=$array" "--output=$LOGS/%x.%A_%a.out" "--error=$LOGS/%x.%A_%a.out")
   else args+=("--output=$LOGS/%x.%j.out" "--error=$LOGS/%x.%j.out"); fi
   [ -n "$dep" ] && args+=("--dependency=$dep")

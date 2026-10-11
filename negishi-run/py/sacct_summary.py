@@ -2,9 +2,11 @@
 """Summarize records/sacct.tsv: queue wait, elapsed, CPU efficiency and MaxRSS per job step.
 
 Usage: python3 sacct_summary.py records/sacct.tsv > records/sacct_summary.tsv
-Runs on Python 3.6 (the Negishi system python). Every row is labeled "pilot".
+Runs on Python 3.6 (the Negishi system python). Every row carries the label in KIT_LABEL
+("pilot" when unset; the phase-3 reference run exports "reference run, not frozen").
 """
 import csv
+import os
 import sys
 from datetime import datetime
 
@@ -66,7 +68,7 @@ def main(path):
         rss = r["_rss"]
         out.writerow([jid, r.get("JobName", ""), r.get("State", ""), n,
                       "" if wait is None else int(wait), "" if el is None else int(el),
-                      "" if eff is None else "%.2f" % eff, "" if rss is None else "%.2f" % rss, "pilot"])
+                      "" if eff is None else "%.2f" % eff, "" if rss is None else "%.2f" % rss, os.environ.get("KIT_LABEL", "pilot")])
 
 
 if __name__ == "__main__":

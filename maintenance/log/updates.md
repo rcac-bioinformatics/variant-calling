@@ -16,8 +16,10 @@ Recorded from the Prompt 01 decisions block. Details and alternatives are in `ma
 | D6 | Six hours means instruction excluding breaks and lunch; the day runs 9:00-4:30 | approved | 2026-10-09 |
 | D7 | Conventions: follow rnaseq-analysis (numbered files and titles, display fences never executed at build, run kit, `.claude/CLAUDE.md`, maintenance log), plus public instructor notes structured like singlecell-rnaseq | approved | 2026-10-09 |
 | D8 | Logistics: repo `rcac-bioinformatics/variant-calling`; SLURM account TBD; Depot `/depot/workshop/data/varcall-workshop` and `/depot/workshop/data/varcall-workshop_results`; working directory `$SCRATCH/varcall-workshop`, with `$SCRATCH` as the only scratch variable; delivery date TBD; co-instructor TBD | approved | 2026-10-09 |
+| G2 | Gate G2 (from Prompt 03): whole chr20 at native depth (about 40x); account `rcac-rnaseq` (one value in `config.sh` and the learner script headers); module wrappers switched to `singularity exec`, bcftools 1.24 and htslib 1.24 deployed and pinned with bwa 0.7.17, samtools 1.22.1, mosdepth 0.3.3, hap.py 0.3.9, snpeff 5.3.0a, snpsift 5.2, fastqc 0.12.1, multiqc 1.23; cores: alignment 16, calling 8 chunks x 2, hap.py 16, SnpEff 4, trio 4; hap.py vcfeval with a staged RTG SDF; SnpEff `GRCh38.mane.1.2.ensembl`; truth sets HG002 v5.0q primary (v4.2.1 for comparison), HG003 and HG004 v4.2.1, trio analyses inside the intersection of the three v4.2.1 `_noinconsistent` BEDs; IGV decided in P6. Open until G3: mpileup read filters (defaults vs `-q 20 -Q 20`) and the filter rule and thresholds | approved | 2026-10-09 |
+| G3 | Gate G3 (from Prompt 03 Part C, `maintenance/plan/reference-run.md`): call set q0 (mpileup defaults, no read filters); filters QUAL < 30 (`LowQual`), INFO/DP > 2 x median site depth (`HighDP`), INFO/MQ < 30 (`LowMQ`), genotypes with FMT/DP < 10 or FMT/GQ < 20 set to missing, the mask taught as the precision-recall trade-off; Episode 8 keeps the zero-candidate funnel and frames the 41 candidates after the region step as mostly real cell-line variants, not germline de novo (about 1-2 expected on chr20), citing the NIST HG002 mosaic benchmark paper, with the child allele fractions recorded in the memo; the recessive evidence step stays, with the reason it removes nothing; `evaluate.sh` at 24 cores; example region chr20:60,000-90,000, checked for a multiallelic site in Part D; Episode 5A callout that the `MQ should be declared as Type=Float` warning is harmless. Anchors frozen after the Part D finalize run | approved; frozen 2026-10-10 (`negishi-run/anchors.tsv`; results copy staged) | 2026-10-10 |
 
-Open parts of approved decisions: SLURM account (P2), bcftools 1.24 deployment or fallback to 1.17 (P2), Depot directories created and staged (P3), delivery date and co-instructor (P10).
+Open parts of approved decisions: the frozen anchors (P3 Part D), delivery date and co-instructor (P10). The SLURM account and bcftools version are settled by G2.
 
 ## Open findings
 
@@ -140,6 +142,127 @@ Decisions requested at G2 (details and recommendations in the feasibility memo):
 | G2-10 | Workshop SLURM account | Open; the pilot used `rcac` |
 | G2-11 | IGV approach | `samtools tview` plus prepared snapshots as the baseline; a desktop session only if `ood_igv_check.md` shows it works |
 
+### Phase 3 Part A, 2026-10-09 (prompt-03-reference-run.md; branch `dev/p03-reference` from d4e61a4)
+
+P2 was committed (d4e61a4) but not merged, so the branch starts from the P2 commit instead of `main` (agreed in session). Built off-cluster, nothing run on Negishi:
+
+- **Learner scripts:** `pipeline/learner-scripts/` holds `align.sh`, `call.sh`, `evaluate.sh`, `annotate.sh` and the interactive blocks `interactive/02-setup.sh` to `08-trio.sh`. The episodes will show these verbatim.
+- **Reference run:** `pipeline/` holds `01_setup.sh`, `run_reference.sh` (27-job graph), `jobs/`, `py/metrics.py`, `py/report.py`, `collect.sh` and `docs/ADAPTATIONS.md`.
+- **Staging:** `negishi-run/` gains `restage.sh`, `check_staged.sh`, `make_staged_manifest.py`, `regen_results.sh`, `jobs/stage-build.sh`, `py/chunk_regions.py` and `py/bed_intersect.py`.
+- **Updated:** `00_preflight.sh`, `config.sh`, `lib.sh`, `README.md` (Part B and Part D runbooks) and `data-prep/sources.tsv`.
+- **Manifests:** `staged_manifest.tsv` and `staged_ref_manifest.tsv` are written by `stage-build` on Negishi, come back in the Part B tarball, and are committed then.
+
+Layout fixed for the episodes:
+- **Workspace:** `$SCRATCH/varcall-workshop/` holds `data/` (`HG00N_R1/R2.fastq.gz`, `md5sums.txt`, `samples.tsv`, `trio.ped`), `ref/`, `resources/` (`truth/`, `gnomad/`, `regions/`), `scripts/`, and `results/` with `qc`, `bam`, `qc_alignment`, `vcf`, `eval`, `annot` and `trio`.
+- **Reference links:** `ref/` is created by one learner command, `ln -s /depot/workshop/data/varcall-workshop_ref/* ref/`. `varcall-workshop_ref/` stages the files under learner-facing names: `GRCh38_no_alt.fa` with `.fai`, `.dict` and the bwa index under the same prefix, `GRCh38_no_alt.sdf`, `snpeff_data/GRCh38.mane.1.2.ensembl` and `SOURCES.tsv` (NCBI origins).
+
+Checks run:
+- **Static checks:** `bash -n` on every script. shellcheck 0.10.0 is clean on the kit and pipeline scripts (two justified `SC2034` disables in `pipeline/lib.sh`). On the learner scripts, run with `-e SC2086,SC2164,SC2103,SC2231,SC2034`. Reason: they are typed-terminal style, as in the RNA-seq lesson (unquoted variables, bare `cd`, every `samples.tsv` column named on read); the one real issue, unquoted command substitutions in the funnel `printf`, was fixed.
+- **Python:** `py_compile` and real runs of every script under Python 3.6.15 (`python:3.6-slim`); output is identical to 3.13.
+- **Dry runs:** `restage.sh --build --dry-run` and `run_reference.sh --dry-run` print the full graph with `--account=rcac-rnaseq --partition=cpu --qos=standby`, cores and time, and no memory request.
+- **Greps:** no `--mem` and no URL outside `sources.tsv` and `config.sh`.
+- **Lesson:** `sandpaper::validate_lesson()` is clean, and the only new Markdown is two levels down (`pipeline/docs/ADAPTATIONS.md`).
+- **Local end-to-end test:** a 40 kb synthetic trio, with module commands shimmed to `docker run` of `bwa:0.7.17`, `samtools:1.22.1` and `staphb/bcftools:1.24`. `align.sh` and `call.sh` ran verbatim, then `05-merge.sh`, `06-filter.sh`, the gnomAD step of `annotate.sh` (SnpEff replaced by a stand-in `ANN`), `07-annotation-tables.sh` and `08-trio.sh`, all without a failed command. The funnel ended at exactly the simulated de novo and recessive sites, and `report.py` gave them the right truth status. `evaluate.sh` (hap.py), SnpEff, FastQC, MultiQC and mosdepth were not run locally.
+
+Findings and deviations:
+
+- `[should-fix]` The prompt's `call.sh` command has no GQ, but `bcftools call -m` writes FORMAT/GQ only when asked. `call.sh` adds `-a FORMAT/GQ`, needed by the genotype filter (Episode 6) and the trio evidence filter (Episode 8).
+- `[check]` `samtools markdup --write-index` (samtools 1.22.1) writes a `.csi` BAM index, not `.bai`; mosdepth and bcftools read it. P6 must confirm that the chosen IGV route reads CSI. Otherwise switch to `samtools index` (`.bai`).
+- `[check]` hap.py inputs use `--write-index=tbi` (`evaluate.sh`) in case the old htslib inside hap.py 0.3.9 does not read CSI for VCF; every other output uses `-W` (CSI).
+- `[should-fix]` bcftools regex alternation inside a quoted `~` string does not work: `INFO/ANN~"[|](HIGH|MODERATE)[|]"` and `INFO/ANN~"HIGH|MODERATE"` match nothing in 1.24, while `INFO/ANN~"[|]HIGH[|]" || INFO/ANN~"[|]MODERATE[|]"` works (staphb 1.24 container). The learner blocks use the two-term form. Episodes 7 and 8 must not show the alternation form.
+- `[nice]` Tested in the staphb bcftools 1.24 container:
+  - `+mendelian2 -P` works again (1.17 rejected it);
+  - `+split-vep` reads SnpEff `ANN`, including `-s worst`, `%INFO/...` and mixed `-i` expressions; SnpSift `extractFields` stays a kit-side fallback check;
+  - `filter -S .` without `-s` keeps sites and masks genotypes;
+  - `MIN(FMT/DP)` and `FMT/AD[1:1]` subscripts work;
+  - `stats -T ^bed` gives the complement;
+  - `plugin -l` lists `mendelian2`, `trio-dnm3`, `split-vep` and `fill-tags`.
+- `[nice]` Chunk regions now cut inside N-runs of 1 kb or more near the equal-length points (`py/chunk_regions.py`), so no variant can straddle two chunks. Cuts with no N-run nearby fall back to the equal-length point and are listed in `records/stage/chunks.txt`.
+- `[check]` New source `ucsc_centromeres` (UCSC hg38 `centromeres.txt.gz`, 1549 bytes, md5 94cb08b0b00932436cf4d5704257e224, checked 2026-10-09) gives the chr20 centromere span, 26,436,232-30,038,348, for the by-region breakdown. It is staged as `resources/regions/chr20_centromere.bed`.
+- `[should-fix]` Interim thresholds, which G3 confirms or changes:
+  - `06-filter.sh`: QUAL < 30, mean MQ < 30, HighDP above twice the median site depth (the block computes the cut), genotypes with DP < 10 or GQ < 20 masked;
+  - `08-trio.sh`: GQ >= 20 and DP >= 10 in all three samples, no ALT reads in either parent for de novo candidates, gnomAD AF < 0.01 (or absent) both globally and in asj.
+
+  `metrics-CS` writes the distributions and the proposal before any hap.py job runs.
+- `[check]` Depot group: `/depot/workshop/data` is `drwxrws--- jin456:workshop` (P2 preflight), so learners must be in the `workshop` group. `check_staged.sh --perm group` also checks that each file's group is `STAGED_GROUP` (`workshop`). Confirm the group before Part B.
+- `[nice]` `.gitignore`: only `maintenance/prompts/` is ignored now, so the plan, log and memos track normally (restores the P1 intent). An exception `!pipeline/docs/` was needed because a global `docs/` rule hid `pipeline/docs/ADAPTATIONS.md`. Run directories and P3 tarballs are ignored.
+- `[nice]` `negishi-run/lib.sh`:
+  - `kit_metric` and the record header take `KIT_LABEL` (pilot in P2, "reference run, not frozen" in P3);
+  - `kit_submit` takes `--time`;
+  - `kit_fetch` and `kit_dep` are unchanged from P2.
+
+What only Negishi can verify, and the check that covers it:
+
+| Not verifiable off-cluster | Covered by |
+|---|---|
+| Wrappers pass quotes, tabs and backslashes (bcftools `-i`/`query -f`, samtools `-e`, SnpSift filter, bwa `-R`) | preflight "quoting" rows, plus the wrapper kind (`run` is a FAIL) |
+| bcftools 1.24 plugins on Negishi | preflight plugin rows (`trio-dnm3` required) |
+| rtg inside the hap.py image; vcfeval with an SDF template | preflight (synthetic SDF), `stage-build` (`records/stage/rtg.txt`) |
+| Containers can read Depot through learners' `ref/` links | preflight "Depot visible inside containers" |
+| `rcac-rnaseq` association; learner headers accepted | preflight `sacctmgr` rows and `sbatch --test-only` on every learner script and kit job |
+| Staged copies complete, group-readable, nothing extra | `restage.sh --install` and preflight `check_staged.sh` rows |
+| chr20 N-runs usable as chunk cuts | `records/stage/chunks.txt` |
+| bwa `-K` determinism at 16 vs 32 cores on real data | `det-compare` (`records/determinism.tsv`) |
+| hap.py 0.3.9 reads the CSI/TBI indexes, `--engine-vcfeval-template` on the real SDF | `eval-CS`, `evalsum-CS` |
+| SnpEff from the staged `ref/snpeff_data` through the symlink | `annot-CS` |
+| Runtimes, memory and waits of every step | `sacct_summary.tsv` in the Part B tarball |
+
+### Phase 3 Part B preflight, 2026-10-09 (first run on Negishi, login06)
+
+Preflight: FAIL 16, WARN 2 (the two WARN rows are the staged copies, not built yet). Verified on Negishi:
+- **Modules:** bcftools/1.24 and htslib/1.24 load and are the defaults. Plugins `mendelian2`, `fill-tags`, `split-vep` and `trio-dnm3` are listed.
+- **Quoting:** the bcftools `-i`/`query -f`, SnpSift and bwa `-R` checks pass.
+- **Infrastructure:** containers see Depot; every kit job and learner script passes `sbatch --test-only`; the compute node has internet access, including the new UCSC host.
+
+- `[should-fix]` Account: the user chose `rcac` for now; a workshop-specific account comes later. Changed in `config.sh`, the four learner script headers and the six `sinteractive` lines. These replace the G2 value `rcac-rnaseq`. The account lives in three places, not two as the prompt said: the `sinteractive` lines carry it too, and preflight checks all three. This cleared 10 FAIL rows.
+- `[blocker]` Wrappers still on `singularity run`: bwa/0.7.17, samtools/1.22.1, fastqc/0.12.1 and multiqc/1.23. samtools shows the effect: `samtools view -c -e 'rname=="chrT"'` printed nothing. bwa `-R` passed, because its argument has no embedded quotes. Switching these four wrappers to `exec` is a module-side fix.
+- `[check]` `rtg format in the hap.py image` failed (`preflight/happy_rtg.txt` not seen here). The likely cause is that the kit called `apptainer exec` on the image directly, without the wrapper's binds and options; hap.py's own vcfeval run passed, so rtg itself works. New `lib.sh` helpers: `kit_wrapper_prefix` (the module wrapper's own container command) and `kit_happy_rtg` (hap.py's `--engine-vcfeval-path` default, else a search). Preflight and `stage-build` now run rtg through them, and the FAIL row carries the error text.
+
+- `[check]` Second preflight (2026-10-09, 22:29): FAIL 1, WARN 2. All wrappers now use `exec` and every quoting check passes. The account rows pass with `rcac`. Remaining FAIL: `/opt/hap.py/libexec/rtg-tools-install/rtg: Unable to execute java`. The launcher cannot start Java when called directly, although hap.py's own vcfeval runs (which call the same rtg) pass. New `kit_rtg_format` (`lib.sh`) tries four ways in order, each into its own temporary directory, and moves only a complete SDF into place: the launcher without `RTG_MEM`, the launcher with `RTG_MEM`, the Java named in the launcher's `rtg.cfg` on `RTG.jar`, then Java from `PATH` on `RTG.jar`. It records PATH, `java -version` and `rtg.cfg` from inside the container in `preflight/happy_rtg.txt`, or `records/stage/rtg_format.log` for `stage-build`. Tested locally on a mock where the launcher fails.
+
+- `[check]` Third preflight (2026-10-10): FAIL 0, WARN 2 (staged copies not built yet). rtg format works by way 4 (`java -jar RTG.jar` with java from PATH inside the hap.py image), and hap.py vcfeval with the SDF template passes.
+- `[should-fix]` `stage-build` job 44043753 failed within about 2 minutes; `restage.sh --install` then refused, as designed. Probable cause, not yet confirmed from the job log: the diagnostic line `$PRE "$RTG" version | head -5` calls the rtg launcher, which fails ("Unable to execute java"), and under `set -euo pipefail` that kills the job before the SDF step. Fixed with `|| true` on that diagnostic line. Also hardened: the `@RG` lookup read `samtools view -H | grep -m1`, which can SIGPIPE samtools under `pipefail`; it now reads the whole header first and stops if there is no `@RG`.
+- `[should-fix]` Job 44043753 actually failed on `missing state/ref.env`: the phase-2 prep folder had been removed before Part B, so the prep was rerun with `data-prep/01`-`05`. The prep outputs must stay in `$SCRATCH/varcall-prep` until Part D.
+- `[should-fix]` `stage-build` job 44051852 failed at the `@RG` lookup with `samtools: command not found` (exit 127). `kit_load` purges before loading, so loading the hap.py module for the SDF step dropped the samtools, bcftools and htslib modules loaded at the top of the job. The job now loads them again after the SDF step. No other job loads a second module and then uses the first (`report.sh` uses only SnpSift after loading it).
+- `[check]` Staged and checked 2026-10-10: `stage-build` job 44052021 PASS, `restage.sh --install` and `check_staged.sh` 0 problems on both copies, preflight FAIL 0, WARN 0.
+- `[should-fix]` `run_reference.sh` stopped after submitting the 16 q0 steps: `call-q20` is submitted from the q20 copy's `scripts/`, which `fork-q20` creates only after alignment, and sbatch reads the script at submission. The submitter now creates q20's `scripts/` (hard links to q0's) on the login node, and `fork.sh` keeps it. Also, a rerun skipped only finished steps and would have resubmitted queued ones; `want()` now also skips a step whose recorded job is still queued or running. Tested locally with stub `sbatch`/`squeue` in the failed state: the q0 steps are skipped and the q20 chain depends on the queued `fork-q20`.
+- `[should-fix]` First reference run `ref-2026-10-10` (records tarball 18:26) stopped at two kit failures; everything after them was cancelled by dependency. (1) `fork-q20` ran the old `fork.sh`, which refuses an existing copy directory: sbatch stores the script at submission, so a job submitted before a kit update keeps the old code (the earlier note that it would pick up the new file was wrong). (2) `merge-q0`: `bcftools view -H ... | head -3` in `05-merge.sh` gave `KIT-ERR rc=141`. `set -E` in the session file made the ERR trap fire inside the module's wrapper function on the tool's SIGPIPE, although the pipeline succeeded. `set -E` removed from `run_block` (`pipeline/lib.sh`); tested locally: without it, `tool | head` is not reported, while failing function calls, failing `$(...)` and failing commands still are, each once. Alignment, calling, QC and the determinism check completed: HG002 at 16 and 32 cores gives the same md5 of `samtools view -h` without `@PG` (18,980,761 records), PASS.
+
+### Phase 3 Part C, 2026-10-10 (records `varcall-p3-records-ref-2026-10-10-20261010-1908`; memo `maintenance/plan/reference-run.md`)
+
+All values "reference run, not frozen".
+
+- `[check]` Run `ref-2026-10-10` complete after the two kit fixes: 20 step markers PASS, no `KIT-ERR` in any console, determinism PASS (HG002 16 vs 32 cores identical), staged copies 0 problems, preflight FAIL 0, WARN 0. q0 agrees with the pilot within 0.0003 on every recall and precision value.
+- `[check]` Staged manifests (`negishi-run/staged_manifest.tsv`, `staged_ref_manifest.tsv`) brought back from the run and identical to the `stage-build` copies.
+- `[check]` q0 vs q20 (`-q 20 -Q 20`): inside the benchmark within 0.001 for SNVs; indels worse with q20 throughout. q20 adds calls in the centromere and outside the benchmark (whole-chr20 PASS Ts/Tv 1.96 vs 2.01) and halves what the LowMQ site filter catches (2,502 vs 6,407 sites). Recommendation q0 (G3).
+- `[should-fix]` The genotype mask (FMT/DP < 10 or GQ < 20) causes almost all of the indel recall loss from filtering (HG002 v4.2.1 0.943 to 0.908) while precision rises (0.947 to 0.971); indel F1 falls 0.9449 to 0.9383. SNV F1 rises 0.9905 to 0.9911. Keep and teach as the trade-off, or mask on DP only (G3 decision 2).
+- `[blocker]` 33 of the 41 de novo candidates left after the trio-region step are de novo in both HG002 truth sets (child het in v5.0q and v4.2.1, both parents hom-ref inside their benchmarks); 30 SNVs, 3 indels, 11 within 50 kb near 11.1-11.2 Mb. The plan expects about 1-2 germline de novo SNVs on chr20, and NIST's HG002 subclonal benchmark (85 SNVs genome-wide at AF > 5%) does not account for them. Episode 8's framing "most candidates are errors" does not hold after step 3. Next: child allele fractions at these sites (command in the memo, decision 3). Blocks the Episode 8 text, not the anchors.
+- `[check]` Episode 8 funnel ends at zero in both models (de novo 312, 81, 41, 0, 0; recessive 5,282, 5,282, 4,632, 8, 0). The recessive evidence step removes nothing after the genotype mask.
+- `[check]` Mendelian consistency (q0, PASS): 449 errors, 144,536 consistent, 0.31%.
+- `[should-fix]` `evaluate.sh` array task 2 (HG002 v5.0q, 2 hap.py runs) peaked at 35.1-35.6 GiB MaxRSS on 16 cores, above what 16 cores provide (about 31 GiB). Proposed `--cpus-per-task=24` (G3 decision 6).
+- `[check]` ACMG SF v3.3 (84 genes, August 2025): none of the 27 genes among HG002's rare protein-altering, HIGH-impact and recessive-impact variants (both call sets) is on the list. Gene list local only (`.claude/notes/`, gitignored).
+- `[nice]` Every bcftools read of these VCFs prints `[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float`. Episode 5A callout proposed.
+- `[check]` Annotation: `+split-vep` and `SnpSift extractFields` both work (240 rows for HG002). HG002 PASS variants 115,059; HIGH 3; HIGH or MODERATE 240; rare 20 by global AF and 12 by asj AF.
+
+### Phase 3 Part D, tasks 1-4, 2026-10-10 (G3 decided; finalize run pending)
+
+- `[check]` G3 recorded in the Decisions table.
+- `[check]` Learner scripts final: `call.sh` without the `READ_FILTERS` line (q0, mpileup defaults); `evaluate.sh` at 24 cores. Kit: `REF_CALL_SETS=q0`, the `READ_FILTERS` plumbing removed, a fork job only for call sets other than q0 (16 jobs per run).
+- `[should-fix]` `evaluate.sh` passed `--threads $SLURM_CPUS_PER_TASK` to hap.py; at 24 cores that means 24 threads, and memory appears to grow with threads (23.9 GiB at 8 threads in the pilot, 35.6 GiB at 16 here). Fixed at `--threads 16` on 24 cores. Not yet measured at 24 cores.
+- `[should-fix]` `evaluate.sh` array tasks 1 and 2 (HG002 v5.0q and v4.2.1) wrote the same `results/eval/HG002.<calls>.vcf.gz` at the same time; the first run was unaffected, but the race could corrupt the hap.py input. Each task now writes `<sample>.<truth>.<calls>.calls.vcf.gz`. Nothing else reads those files.
+- `[check]` `restage.sh --example --run RUN_ID`: cuts `resources/example/` (raw and filtered VCFs for `EXAMPLE_REGION`, chr20:60000-90000), checks for het, hom-alt, indel, multiallelic and not-PASS records, grows the region to the nearest multiallelic site if needed, and rewrites the manifest. Tested locally with bcftools 1.24 (staphb image) on mock VCFs: the widening path and the failure path both work; the failure path leaves the manifest untouched.
+- `[check]` `regen_results.sh --finalize` now refuses a run whose `scripts/` differ from `pipeline/learner-scripts/`, and a staged example that differs from the run's filtered calls in its region. `report.sh` writes `records/<cs>/trio/denovo_3_regions_af.tsv` (child, father and mother AD; child allele fraction) for the memo.
+- `[check]` Runbook (`negishi-run/README.md`, Phase 3 finalize) adds a final q0-only run before `regen_results.sh`: the first run used the pre-G3 scripts, and the results copy ships the run's `scripts/`. The rerun also gives the second run for the determinism of calling, evaluation and trio steps.
+- `[should-fix]` For P5: Episode 5A callout that the `MQ should be declared as Type=Float` warning is harmless; Episode 6 teaches the genotype mask as the precision-recall trade-off. For P6: Episode 8 frames the 41 de novo candidates after the region step as mostly real cell-line variants (NIST HG002 mosaic benchmark paper), keeps the zero-candidate funnel, and explains why the recessive evidence step removes nothing.
+
+### Phase 3 Part D, final run and anchors, 2026-10-10 (records `varcall-p3-records-ref-final-2026-10-11-20261010-2016`)
+
+- `[check]` `restage.sh --scripts`, `--example` (chr20:60000-90000, no widening: 1 multiallelic site before norm, 116 records not PASS) and `--install`: 0 problems on both staged copies. Updated `staged_manifest.tsv` brought back (36 files, `resources/example/` and final scripts; sizes match the repo).
+- `[check]` Final run `ref-final-2026-10-11` (q0, final learner scripts): 12 steps PASS, determinism PASS. All 57 anchor values and 5 sentinels identical to `ref-2026-10-10`, so every step is reproducible, not only alignment. Anchors frozen in `negishi-run/anchors.tsv` (tolerance exact).
+- `[check]` `evaluate.sh` at 24 cores, 16 threads: MaxRSS 1.75-6.31 GiB, 89-145 s per task. The first run's 35.6 GiB peak did not recur.
+- `[check]` De novo allele fractions (memo section 6): the 33 truth-supported candidates have a mean child AF of 0.44 (median 0.455; 3 below 0.3), with zero ALT reads in both parents. Heterozygous fractions point to clonal variants, germline or early cell line; they are not the low-fraction subclonal variants of the NIST mosaic benchmark. The P6 framing of "cell-line variants" needs this nuance.
+- `[check]` Results copy: `regen_results.sh --finalize --call-set q0 --run ref-final-2026-10-11` passed both guards (final scripts; example matches the run's calls) and wrote `/depot/workshop/data/varcall-workshop_results.2026-10-10` (6.6 GB, 235 files); swapped in as `/depot/workshop/data/varcall-workshop_results` (no earlier copy existed). `check_staged.sh --results`: 0 problems. `negishi-run/staged_results_manifest.tsv` brought back. Part D accepted: both staged copies and the results copy pass `check_staged.sh`; `anchors.tsv` traces to the final run; episodes and learner pages untouched. G3 frozen.
+
 ## Revision opportunities
 
 ## Runtime record
@@ -161,4 +284,30 @@ P2 pilot on Negishi, 2026-10-09, account `rcac`, QoS `standby`, partition `cpu`.
 | p-snpeff MANE | 4 | 35 s job, 24 s SnpEff | n/a | 870 s |
 | p-trio | 4 | 193 s | 0.11 | 40 s |
 
-## Done
+P3 reference run `ref-2026-10-10` on Negishi, 2026-10-10, account `rcac`, QoS `standby`, partition `cpu`. Reference run, not frozen; details in `maintenance/plan/reference-run.md`.
+
+| Step | Cores | Wall | MaxRSS (GiB) | Wait |
+|---|---|---|---|---|
+| `02-setup.sh` (login node) | - | 44 s | - | - |
+| `03-qc.sh` | 4 | 196 s | 2.14 | 27 s |
+| `align.sh`, per sample | 16 | 651-750 s | 13.4-13.5 | 27 s |
+| `align.sh` HG002 (determinism) | 32 | 402 s | 13.5 | 27 s |
+| `04-alignment-qc.sh` | 4 | 203 s | 0.27 | 815 s |
+| `call.sh`, per chunk, q0 / q20 | 2 | 141-254 s / 122-156 s | 0.18 | 124-815 s |
+| `05-merge.sh` | 4 | 13 s | <0.01 | 6-365 s |
+| `06-filter.sh` | 4 | 17 s | <0.01 | 247-605 s |
+| `evaluate.sh`, per task (2 hap.py runs) | 16 | 91-160 s | 1.2-35.6 | 306-713 s |
+| `annotate.sh` | 4 | 89-98 s | 0.05-1.75 | 306-713 s |
+| `07-annotation-tables.sh` | 4 | 15-19 s | <0.01 | 426-875 s |
+| `08-trio.sh` | 4 | 29 s | <0.01 | 545-1025 s |
+
+P3 final run `ref-final-2026-10-11`, 2026-10-10, q0 only (anchors frozen from it).
+
+| Step | Cores | Wall | MaxRSS (GiB) | Wait |
+|---|---|---|---|---|
+| `align.sh`, per sample | 16 | 668-738 s | 13.4-13.5 | 16 s |
+| `align.sh` HG002 (determinism) | 32 | 463 s | 13.5 | 16 s |
+| `call.sh`, per chunk | 2 | 133-220 s | 0.18 | 840 s |
+| `evaluate.sh`, per task (2 hap.py runs, 16 threads) | 24 | 89-145 s | 1.75-6.31 | 1578 s |
+| `annotate.sh` | 4 | 86 s | 0.05 | 1578 s |
+

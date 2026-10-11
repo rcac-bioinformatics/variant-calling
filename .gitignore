@@ -61,10 +61,11 @@ negishi-run/generated/
 negishi-run/staged-data/
 negishi-run/*.tar.gz
 !negishi-run/docs/
-maintenance/
+!pipeline/docs/
 
 # Local-only Claude Code instructions
 .claude/CLAUDE.md
+.claude/notes/
 
 # Phase-2 kit: local run output and returned record tarballs (scripts and data-prep/sources.tsv stay tracked)
 negishi-run/records/
@@ -73,3 +74,7 @@ data-prep/records/
 data-prep/state/
 varcall-p2-records-*/
 __pycache__/
+
+# Phase 3 reference runs and staging builds (records come back as tarballs)
+pipeline/runs/
+varcall-p3-*/

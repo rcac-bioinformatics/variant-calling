@@ -1,6 +1,9 @@
 #!/bin/bash
-# 00_preflight.sh: check Negishi before the phase-2 data prep and pilot (login node, about 5 to
-# 15 minutes, most of it waiting for one standby job of at most 10 minutes).
+# 00_preflight.sh: check Negishi before staging and the reference run (phase 3; it also served
+# the phase-2 pilot). Login node, about 5 to 15 minutes, most of it waiting for one standby job
+# of at most 10 minutes. Phase 3 adds: argument-quoting checks for every workshop module (the
+# 1.17 wrappers dropped embedded quotes), hap.py vcfeval with an RTG template, containers can
+# read Depot, the account in the learner scripts, and check_staged.sh on both staged copies.
 # Usage: bash negishi-run/00_preflight.sh [--no-srun]
 #   --no-srun  skip the compute-node job (network and module checks on a compute node)
 # Writes records/preflight.tsv (check, status, detail), records/preflight_summary.txt,
@@ -104,14 +107,11 @@ kit_row INFO "LD_PRELOAD on the login node" "${LD_PRELOAD:-unset}"
 section "bcftools plugins, bgzip and tabix"
 in_mod 1 "module load $BCFTOOLS_MODULE >/dev/null 2>&1; bcftools plugin -l" > "$R/bcftools_plugins.txt" || true
 in_mod 1 "module load $BCFTOOLS_MODULE >/dev/null 2>&1; bcftools +mendelian2 -h" > "$R/bcftools_mendelian2_help.txt" || true
-for pl in mendelian2 fill-tags split-vep; do
+for pl in mendelian2 fill-tags split-vep trio-dnm3; do
   if grep -qE "(^|[^a-z0-9-])$pl([^a-z0-9-]|$)" "$R/bcftools_plugins.txt"; then
     kit_row PASS "bcftools plugin $pl" "$BCFTOOLS_MODULE"
   else kit_row FAIL "bcftools plugin $pl" "not listed by bcftools plugin -l (see preflight/bcftools_plugins.txt)"; fi
 done
-if grep -qE '(^|[^a-z-])trio-dnm[23]([^a-z0-9-]|$)' "$R/bcftools_plugins.txt"; then
-  kit_row PASS "bcftools plugin trio-dnm2/3" "$(grep -oE 'trio-dnm[23]' "$R/bcftools_plugins.txt" | sort -u | tr '\n' ' ')"
-else kit_row WARN "bcftools plugin trio-dnm2/3" "neither listed (optional; the lesson uses filter expressions)"; fi
 for t in bgzip tabix; do
   a=$(in_mod 1 "module load $BCFTOOLS_MODULE >/dev/null 2>&1; type -t $t || echo absent" | tail -1)
   b=$(in_mod 1 "module load $HTSLIB_MODULE >/dev/null 2>&1; type -t $t || echo absent" | tail -1)
@@ -150,6 +150,85 @@ for e in xcmp vcfeval; do
   else kit_row FAIL "hap.py --engine $e" "failed (see preflight/happy_xcmp.log)"; fi
 done
 cp "$H"/out_*.summary.csv "$R/" 2>/dev/null || true
+# vcfeval with an RTG SDF template, built with the rtg that hap.py itself calls, run through the
+# hap.py module's own container command (its binds and options), as stage-build does
+APPX=$(command -v apptainer || command -v singularity || true)
+cat > "$H/rtg_test.sh" <<'T'
+source "$KIT_DIR/lib.sh" >/dev/null 2>&1
+module load "$HAPPY_MODULE" >/dev/null 2>&1
+pre=$(kit_wrapper_prefix hap.py); echo "PREFIX=$pre"
+r=$(kit_happy_rtg "$pre"); echo "RTG=$r"
+[ -n "$pre" ] && [ -n "$r" ] || exit 0
+cd "$H" && rm -rf tiny.sdf
+if w=$(kit_rtg_format "$pre" "$r" "$H/tiny.sdf" "$H/tiny.fa" 1g "$H/rtg_attempts.log"); then echo "RC=0"; echo "WAY=$w"
+else echo "RC=1"; grep -iE 'unable|error|exception|not found' "$H/rtg_attempts.log" | tail -2; fi
+T
+o=$(in_mod 1 "export KIT_DIR='$KIT_DIR' HAPPY_MODULE='$HAPPY_MODULE' H='$H'; source '$H/rtg_test.sh'" || true)
+printf '%s\n' "$o" > "$R/happy_rtg.txt"
+cat "$H/rtg_attempts.log" >> "$R/happy_rtg.txt" 2>/dev/null || true
+HPRE=$(printf '%s\n' "$o" | sed -n 's/^PREFIX=//p'); RTGP=$(printf '%s\n' "$o" | sed -n 's/^RTG=//p')
+if [ -z "$HPRE" ]; then kit_row FAIL "hap.py container command" "no singularity/apptainer ... .sif in the hap.py wrapper (see preflight/happy_rtg.txt)"
+elif [ -z "$RTGP" ]; then kit_row FAIL "rtg in the hap.py image" "not found (see preflight/happy_rtg.txt)"
+elif ! printf '%s\n' "$o" | grep -qx 'RC=0'; then
+  kit_row FAIL "rtg format in the hap.py image" "$RTGP, 4 ways tried: $(printf '%s\n' "$o" | grep -v -E '^(PREFIX|RTG|RC|WAY)=' | tail -2 | tr '\n' ' ') (see preflight/happy_rtg.txt)"
+else
+  kit_row PASS "rtg format in the hap.py image" "$RTGP, way $(printf '%s\n' "$o" | sed -n 's/^WAY=//p') of kit_rtg_format (see preflight/happy_rtg.txt)"
+  o=$(in_mod 1 "module load $HAPPY_MODULE >/dev/null 2>&1; cd '$H' && hap.py truth.vcf query.vcf -f conf.bed -r tiny.fa -o out_tmpl --engine vcfeval --engine-vcfeval-template tiny.sdf; echo rc=\$?" || true)
+  printf '%s\n' "$o" > "$R/happy_vcfeval_template.log"
+  if [ -s "$H/out_tmpl.summary.csv" ]; then kit_row PASS "hap.py vcfeval with SDF template" "summary.csv written"
+  else kit_row FAIL "hap.py vcfeval with SDF template" "failed (see preflight/happy_vcfeval_template.log)"; fi
+fi
+
+# ---------------------------------------------------------------- argument quoting through module wrappers
+section "Argument quoting (each module must pass quotes, tabs and backslashes through unchanged)"
+Q=$H/quote; mkdir -p "$Q"
+python3 - "$Q" "$H" <<'PY'
+import sys
+q, h = sys.argv[1], sys.argv[2]
+seq = open(h + "/tiny.fa").read().split("\n")[1]
+open(q + "/tiny.sam", "w").write("@SQ\tSN:chrT\tLN:2000\n" + "".join(
+    "r%d\t0\tchrT\t%d\t60\t50M\t*\t0\t0\t%s\t%s\n" % (i, p, seq[p - 1:p + 49], "I" * 50) for i, p in enumerate((100, 300))))
+open(q + "/reads.fq", "w").write("@r1\n%s\n+\n%s\n" % (seq[200:270], "I" * 70))
+PY
+cp "$H/tiny.fa" "$Q/tiny.fa"
+# Each test is sourced in a shell with the module loaded, typed exactly as an episode would show it.
+cat > "$Q/bcftools_i.sh" <<'T'
+echo "RESULT=$(bcftools view -H -i 'TYPE="snp"' query.vcf | wc -l)"
+T
+cat > "$Q/bcftools_query.sh" <<'T'
+echo "RESULT=$(bcftools query -f '%CHROM\t%POS\n' query.vcf | head -1 | awk -F'\t' '{ print NF }')"
+T
+cat > "$Q/samtools_e.sh" <<'T'
+echo "RESULT=$(samtools view -c -e 'rname=="chrT"' tiny.sam)"
+T
+cat > "$Q/snpsift_filter.sh" <<'T'
+echo "RESULT=$(SnpSift filter "(CHROM = 'chrT')" query.vcf | grep -vc '^#')"
+T
+cat > "$Q/bwa_rg.sh" <<'T'
+bwa index tiny.fa >/dev/null 2>&1
+echo "RESULT=$(bwa mem -R '@RG\tID:t\tSM:t' tiny.fa reads.fq 2>/dev/null | awk -F'\t' '$1 == "@RG" { print NF ":" $2 ":" $3 }')"
+T
+cp "$H/query.vcf" "$Q/"
+qtest() {  # label module test_file expected
+  local o; o=$(in_mod 1 "module load $2 >/dev/null 2>&1 || { echo LOADFAIL; exit 3; }; cd '$Q' && source '$Q/$3'" || true)
+  printf '== %s (%s)\n%s\n' "$1" "$2" "$o" >> "$R/quoting.txt"
+  local got; got=$(printf '%s\n' "$o" | sed -n 's/^RESULT=//p' | tail -1)
+  if [ "$got" = "$4" ]; then kit_row PASS "quoting: $1" "$2"
+  else kit_row FAIL "quoting: $1" "$2 gave '${got:-nothing}', expected '$4' (see preflight/quoting.txt)"; fi
+}
+: > "$R/quoting.txt"
+qtest "bcftools view -i 'TYPE=\"snp\"'" "$BCFTOOLS_MODULE" bcftools_i.sh 3
+qtest "bcftools query -f '%CHROM\\t%POS\\n'" "$BCFTOOLS_MODULE" bcftools_query.sh 2
+qtest "samtools view -e 'rname==\"chrT\"'" "$SAMTOOLS_MODULE" samtools_e.sh 2
+qtest "SnpSift filter \"(CHROM = 'chrT')\"" "$SNPSIFT_MODULE" snpsift_filter.sh 3
+qtest "bwa mem -R '@RG\\tID:t\\tSM:t'" "$BWA_MODULE" bwa_rg.sh "3:ID:t:SM:t"
+for m in BWA_MODULE SAMTOOLS_MODULE BCFTOOLS_MODULE HTSLIB_MODULE HAPPY_MODULE SNPEFF_MODULE SNPSIFT_MODULE MOSDEPTH_MODULE FASTQC_MODULE MULTIQC_MODULE; do
+  t=${!m%%/*}; c=$t; case $t in snpeff) c=snpEff;; snpsift) c=SnpSift;; htslib) c=tabix;; esac
+  w=$(in_mod 1 "module load ${!m} >/dev/null 2>&1; type $c 2>&1 | grep -oE 'singularity (run|exec)|apptainer (run|exec)' | head -1" | tail -1 || true)
+  printf '%s\t%s\n' "${!m}" "${w:-unknown}" >> "$R/wrapper_kind.tsv"
+  case "$w" in *run) kit_row FAIL "wrapper ${!m}" "uses '$w' (drops embedded quotes); switch to exec";;
+    *exec) kit_row PASS "wrapper ${!m}" "$w";; *) kit_row INFO "wrapper ${!m}" "not a shell function with singularity/apptainer (see quoting tests)";; esac
+done
 
 # ---------------------------------------------------------------- SnpEff
 section "SnpEff"
@@ -203,16 +282,24 @@ if [ -n "$KIT_ACCOUNT" ]; then
     local r; r=$(sbatch "${a[@]}" "$2" 2>&1 | tail -1) || true
     case "$r" in *"to start at"*) kit_row PASS "sbatch --test-only $1" "${r#sbatch: }";; *) kit_row FAIL "sbatch --test-only $1" "$r";; esac
   }
-  J=$REPO_DIR/data-prep/jobs; P=$KIT_DIR/pilot
-  testjob prep-faidx "$J/prep-faidx.sh"; testjob prep-bwaindex "$J/prep-bwaindex.sh"
-  testjob prep-fastq "$J/prep-fastq.sh" "" "1-$(wc -w <<< "$SAMPLES")"
-  testjob prep-truth "$J/prep-truth.sh"; testjob prep-annot "$J/prep-annot.sh"
-  for c in $PILOT_ALIGN_CORES; do testjob "p-align-c$c" "$P/p-align.sh" "$c"; done
-  testjob p-call-chunks "$P/p-call-chunk.sh" "" "1-$CALL_CHUNKS"
-  testjob p-call-vcmp "$P/p-call-vcmp.sh"; testjob p-call-merge "$P/p-call-merge.sh"; testjob p-eval "$P/p-eval.sh"
-  for c in $PILOT_SNPEFF_CORES; do testjob "p-snpeff-c$c" "$P/p-snpeff.sh" "$c"; done
-  testjob p-trio "$P/p-trio.sh"
+  testjob stage-build "$KIT_DIR/jobs/stage-build.sh"
+  PJ=$REPO_DIR/pipeline/jobs
+  for j in session fork det-compare metrics report anchors; do testjob "$j" "$PJ/$j.sh"; done
+  # learner scripts: their own headers decide account, QoS, partition, cores and array
+  for f in "$REPO_DIR"/pipeline/learner-scripts/*.sh; do
+    r=$(sbatch --test-only -o /dev/null "$f" 2>&1 | tail -1) || true
+    case "$r" in *"to start at"*) kit_row PASS "sbatch --test-only $(basename "$f")" "${r#sbatch: }";; *) kit_row FAIL "sbatch --test-only $(basename "$f")" "$r";; esac
+  done
 fi
+# the account appears only in config.sh and the learner script headers; they must agree
+for f in "$REPO_DIR"/pipeline/learner-scripts/*.sh; do
+  acct=$(sed -n 's/^#SBATCH --account=//p' "$f")
+  if [ "$acct" = "$KIT_ACCOUNT" ]; then kit_row PASS "account in $(basename "$f")" "$acct"; else kit_row FAIL "account in $(basename "$f")" "'$acct', config.sh has '$KIT_ACCOUNT'"; fi
+done
+for f in "$REPO_DIR"/pipeline/learner-scripts/interactive/*.sh; do
+  l=$(grep -m1 '^sinteractive ' "$f" || true); [ -n "$l" ] || continue
+  case "$l" in *"-A $KIT_ACCOUNT "*) kit_row PASS "account in $(basename "$f")" "$KIT_ACCOUNT";; *) kit_row FAIL "account in $(basename "$f")" "$l";; esac
+done
 
 # ---------------------------------------------------------------- storage (read only)
 section "Storage (read only)"
@@ -222,9 +309,20 @@ else kit_row INFO "myquota" "not available"; fi
 if [ -d /depot/workshop/data ]; then
   kit_row PASS "/depot/workshop/data exists" "$(stat -c '%A %U:%G' /depot/workshop/data)"
   kit_row INFO "/depot/workshop/data free" "$(df -h --output=size,used,avail,target /depot/workshop/data 2>/dev/null | tail -1 | tr -s ' ')"
-  for d in /depot/workshop/data/varcall-workshop /depot/workshop/data/varcall-workshop_results; do
-    if [ -e "$d" ]; then kit_row INFO "$d" "exists ($(stat -c '%A %U:%G' "$d")); phase 3 stages it"; else kit_row INFO "$d" "does not exist yet (phase 3)"; fi
+  # containers must see Depot: learners' ref/ links point there and every tool reads through them
+  BSIF=$(in_mod 1 "module load $BCFTOOLS_MODULE >/dev/null 2>&1; type bcftools" | grep -oE '/[^ "]+\.sif' | head -1 || true)
+  if [ -n "$BSIF" ] && [ -n "$APPX" ] && "$APPX" exec "$BSIF" ls -d /depot/workshop/data >/dev/null 2>&1; then
+    kit_row PASS "Depot visible inside containers" "$(basename "$BSIF")"
+  else kit_row FAIL "Depot visible inside containers" "could not list /depot/workshop/data inside ${BSIF:-the bcftools image}"; fi
+  for which in learner ref; do
+    case $which in learner) d=$STAGED; a=();; ref) d=$STAGED_REF; a=(--ref);; esac
+    if [ ! -e "$d" ]; then kit_row WARN "staged copy $d" "not there yet (restage.sh --build, then --install)"; continue; fi
+    if bash "$KIT_DIR/check_staged.sh" "$d" "${a[@]}" --quick > "$R/check_staged_$which.txt" 2>&1; then
+      kit_row PASS "staged copy $d" "check_staged.sh --quick: $(tail -1 "$R/check_staged_$which.txt")"
+    else kit_row FAIL "staged copy $d" "$(tail -1 "$R/check_staged_$which.txt") (see preflight/check_staged_$which.txt)"; fi
   done
+  if [ -e "$STAGED_RESULTS" ]; then kit_row INFO "$STAGED_RESULTS" "exists ($(stat -c '%A %U:%G' "$STAGED_RESULTS"))"
+  else kit_row INFO "$STAGED_RESULTS" "does not exist yet (Part D)"; fi
 else kit_row WARN "/depot/workshop/data exists" "not visible from this node"; fi
 kit_row INFO "groups" "$(id -Gn)"
 
@@ -289,7 +387,7 @@ section "Result"
 NF=$(awk -F'\t' 'NR > 1 && $2 == "FAIL"' "$ROWS_TSV" | wc -l)
 NW=$(awk -F'\t' 'NR > 1 && $2 == "WARN"' "$ROWS_TSV" | wc -l)
 {
-  printf 'Phase-2 preflight, %s, user %s, host %s, %s s\n' "$(kit_ts)" "$(id -un)" "$(hostname)" "$(( $(date +%s) - T0 ))"
+  printf 'Preflight, %s, user %s, host %s, %s s\n' "$(kit_ts)" "$(id -un)" "$(hostname)" "$(( $(date +%s) - T0 ))"
   printf 'FAIL %d, WARN %d\n\n' "$NF" "$NW"
   awk -F'\t' 'NR > 1 && ($2 == "FAIL" || $2 == "WARN") { printf "%-5s %s: %s\n", $2, $1, $3 }' "$ROWS_TSV"
 } | tee "$RECORDS/preflight_summary.txt" >&2
