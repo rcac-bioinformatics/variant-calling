@@ -1,6 +1,77 @@
 # Negishi run kit
 
-Phase 3 (current) stages the learner data on Depot and runs the reference run that produces the lesson anchors. Phase 2 (below, kept for the record) measured feasibility. Settings live in `config.sh`; external files in `../data-prep/sources.tsv`. Every number from either phase stays unfrozen until gate G3.
+Phase 4 (current) runs the lesson's own commands: `build_kit.py` extracts every command of the setup page and Episodes 2-4, checks it against `pipeline/learner-scripts/`, and `submit_all.sh` runs it as a new learner on standby. Phase 3 (below) staged the data and ran the reference run that froze the anchors in `anchors.tsv`; phase 2 measured feasibility. Settings live in `config.sh`; external files in `../data-prep/sources.tsv`.
+
+## Phase 4: the episode run kit (Prompt 04, Part B)
+
+What runs (`generated/steps.tsv`, `generated/graph.txt`):
+
+| Step | Where | What | Expected (records) |
+|---|---|---|---|
+| `02-setup` | login node, inside `submit_all.sh` | setup page and Episode 2 blocks: `rsync` of 36 files (5.7 GB), `ln -s` of the reference, `md5sum -c`, the sample sheet and PED file, `.fai`, `.dict`, `samtools faidx`, BED and FASTQ heads | about 1 min (the P3 setup block took 44 s) |
+| `03-qc` | batch job, 4 tasks, 1 h limit (the Episode 3 `sinteractive` line) | FastQC on 6 files, MultiQC; then a kit-only MultiQC PNG export | about 3 min (P3: 196 s) |
+| `04-align` | the learner's `scripts/align.sh`, array of 3 x 16 cores | `bwa mem`, `fixmate`, `sort`, `markdup` | 11-13 min per task (P3: 651-750 s) |
+| `04-alignqc` | batch job, 4 tasks, after `04-align` | `flagstat`, `stats`, `mosdepth`, MultiQC, `samtools view`/`flags`/`tview -d T -i`; then a kit-only MultiQC PNG export | about 3-4 min (P3: 203 s) |
+
+Critical path about 20 minutes plus standby waits. `docs/ADAPTATIONS.md` lists every difference from a learner.
+
+### Before you start
+
+- On the laptop, the kit must pass its checks and be built from the current text:
+
+  ```bash
+  cd ~/svn/variant-calling
+  python3 negishi-run/build_kit.py          # checks, then writes negishi-run/generated/
+  python3 negishi-run/build_kit.py --check  # must say "all kit checks pass; generated/ matches a fresh build"
+  ```
+
+- The staged copies on Depot pass `check_staged.sh` (preflight checks them), and `staged_manifest.tsv` lists the learner scripts with the md5 of `pipeline/learner-scripts/` (`build_kit.py` checks this).
+
+### Send the kit
+
+The kit reads the episodes, the setup page and the learner scripts, so send all of them (with `generated/`, which is not in git):
+
+```bash
+cd ~/svn/variant-calling
+rsync -av --relative ./episodes ./learners ./negishi-run ./pipeline ./data-prep aseethar@negishi.rcac.purdue.edu:/scratch/negishi/aseethar/variant-calling/
+```
+
+### Part B command order
+
+On a Negishi login node, in `tmux` or `screen`, from `/scratch/negishi/aseethar/variant-calling`:
+
+| Step | Command | Expected |
+|---|---|---|
+| 1 | `bash negishi-run/00_preflight.sh` | FAIL 0 (WARN rows are reviewed in Part C) |
+| 2 | `bash negishi-run/submit_all.sh --run kit-2026-10-11 --dry-run` | the four steps, three `sbatch --test-only` lines that say "to start at", "0 sbatch --test-only failure(s)" |
+| 3 | `bash negishi-run/submit_all.sh --run kit-2026-10-11` | runs `02-setup` on the login node (about a minute), then submits `03-qc`, `04-align` and `04-alignqc` |
+| 4 | wait until `squeue -u $USER` is empty | about 20 min plus standby waits |
+| 5 | `bash negishi-run/collect.sh --run kit-2026-10-11` | writes `$SCRATCH/varcall-kit/kit-runs/varcall-p4-kit-kit-2026-10-11-<date>.tar.gz` and prints the `rsync` command |
+| 6 | on the laptop, run the printed `rsync` | the tarball lands in the repository root |
+
+Use any new run ID; the date in it is only a label. Start with `SUMMARY.md` in the tarball: per-step status with the first error of any failure, the 18 alignment anchors (each must PASS, exact match), runtime against front matter, every `{{kit:...}}` placeholder value, the MultiQC PNG exports, and the console output of every block.
+
+### Recovery
+
+- A failed step cancels its dependents (`--kill-on-invalid-dep=yes`). Logs: kit jobs in `kit-runs/<RUN_ID>/logs/`; session console in `kit-runs/<RUN_ID>/records/console/<step>.log` (search for `### KIT-ERR`); the learner's alignment logs in `kit-runs/<RUN_ID>/scratch/varcall-workshop/scripts/cluster-align.*`.
+- If a learner command fails as written, do not patch the kit: bring the run back (step 5) so Part C can fix the episode.
+- After fixing a kit-side cause, rerun `submit_all.sh --run <RUN_ID>`: finished steps are skipped (markers; for `04-align`, the three `.csi` indexes). `--from STEP` skips earlier steps that are done; `--force` resubmits batch steps. `02-setup` never reruns in the same run; use a new run ID.
+
+### Changing the SLURM account
+
+The account is `rcac` for now. It appears in `config.sh` (`KIT_ACCOUNT`), in the `#SBATCH --account=` headers of `pipeline/learner-scripts/*.sh`, in every `sinteractive -A` line (learner blocks and episodes), and in the setup page. To switch every place at once, from the repository root on the laptop (set `NEW` first):
+
+```bash
+NEW=rcac-varcall; grep -rlZE -- '(--account=|-A )rcac([^-[:alnum:]]|$)|KIT_ACCOUNT:-rcac\}' negishi-run/config.sh pipeline/learner-scripts episodes learners | xargs -0 sed -i -E "s/(--account=|-A )rcac([^-[:alnum:]]|$)/\1$NEW\2/g; s/KIT_ACCOUNT:-rcac\}/KIT_ACCOUNT:-$NEW}/"
+```
+
+Then check:
+
+```bash
+python3 negishi-run/build_kit.py --check
+```
+
+The account check passes at once (every `--account=` and `-A` equals the new `KIT_ACCOUNT`). The staged-script check fails until the scripts on Depot are restaged, because learners submit the staged copies: run `bash negishi-run/restage.sh --scripts` and `bash negishi-run/restage.sh --install` on Negishi, bring back `negishi-run/staged_manifest.tsv`, and run the check again. Tested on a copy of the repository on 2026-10-10: the command rewrote 5 `--account=` headers and 9 `-A` values and `config.sh`.
 
 ## Phase 3: staging and the reference run (Part B)
 

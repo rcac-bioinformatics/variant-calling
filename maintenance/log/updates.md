@@ -263,6 +263,81 @@ All values "reference run, not frozen".
 - `[check]` De novo allele fractions (memo section 6): the 33 truth-supported candidates have a mean child AF of 0.44 (median 0.455; 3 below 0.3), with zero ALT reads in both parents. Heterozygous fractions point to clonal variants, germline or early cell line; they are not the low-fraction subclonal variants of the NIST mosaic benchmark. The P6 framing of "cell-line variants" needs this nuance.
 - `[check]` Results copy: `regen_results.sh --finalize --call-set q0 --run ref-final-2026-10-11` passed both guards (final scripts; example matches the run's calls) and wrote `/depot/workshop/data/varcall-workshop_results.2026-10-10` (6.6 GB, 235 files); swapped in as `/depot/workshop/data/varcall-workshop_results` (no earlier copy existed). `check_staged.sh --results`: 0 problems. `negishi-run/staged_results_manifest.tsv` brought back. Part D accepted: both staged copies and the results copy pass `check_staged.sh`; `anchors.tsv` traces to the final run; episodes and learner pages untouched. G3 frozen.
 
+### Phase 4 Part A, 2026-10-10 (prompt-04-episodes-1-4.md; branch `dev/p04-episodes-1-4` from `main` at f628d91)
+
+Episodes 1-4, the full setup page and run kit v1, written and checked on the laptop. Nothing was run on Negishi in this part; every output block and dataset number not held by `anchors.tsv`, `reference-run.md` or `feasibility.md` is a `{{kit:...}}` placeholder that Part C fills from the kit run.
+
+Files:
+- **Episodes:** `01`-`04` written to plan 3.4 with the Prompt 04 front-matter times (35/15, 20/20, 15/15, 45/45, unchanged). `04` shows `align.sh` byte-for-byte from `pipeline/learner-scripts/align.sh`; every interactive block matches `pipeline/learner-scripts/interactive/` (checked by the kit). Episodes 5A-8 untouched.
+- **Figures:** `episodes/fig/03/contrast_*.png`, six FastQC cartoons by Zandra Selina (CC BY 4.0) copied from `../rnaseq-analysis/episodes/fig/02_qc/examples/` with their RNA-seq captions and alt text. Seven figure slots for the MultiQC plot exports (`<!-- kit: figure ID -->`) wait for Part C.
+- **Learner pages:** `learners/setup.md` complete (instructors, schedule with date `TBD(P10)`, prerequisites, scope with the dataset facts, toolchain table with the pinned modules of `pipeline/learner-scripts/`, not covered, SSH, data setup with the canonical copy and link commands, verification, scratch purge, completed results, `TBD(P6)` graphical session); `learners/reference.md` gains 22 glossary terms and the list of sources cited in Episodes 1-4.
+- **Kit:** `negishi-run/build_kit.py`, `kitrun.sh`, `submit_all.sh`, `py/summarize.py`, `docs/ADAPTATIONS.md`; `collect.sh` gains `--run` (without it, the phase-2 collection is unchanged); `config.sh` gains `KIT_RUNS`; `README.md` gains the Phase 4 runbook and the account swap.
+- **Figure specification:** `maintenance/plan/figures/reads-to-genotype.md` (storyboard of 8 scenes, about 80 s, Play and `?autoplay=1`, alt and title text).
+
+Kit design: every bash fence carries an invisible marker, `<!-- kit: script|interactive|extra|submit|not-run ... -->`; `build_kit.py` fails on an unmarked fence. The step graph is `02-setup` (login node: setup page and Episode 2), `03-qc` (batch job with the `sinteractive` resources), `04-align` (the learner's staged `scripts/align.sh`), `04-alignqc` (batch job after `04-align`).
+
+Static validation (all pass):
+- `python3 negishi-run/build_kit.py --check`: all kit checks pass; 39 bash blocks (script 1, interactive 15, extra 9, submit 1, not-run 13), 4 steps, 27 placeholders, 7 figure slots; `generated/` matches a fresh build.
+- Kit checks fire: a mutation test on a copy of the repository (14 mutations: script text, interactive order, account in an episode and in a learner block, `--mem`, a command URL not in `sources.tsv`, a cited URL missing from `reference.md`, front matter, an extra block that writes, a fallback path missing from the results manifest, an unmarked fence, a staged-script md5, a placeholder without a handler, the submit block) caught all 14.
+- `bash -n` on every kit script, generated job and session; shellcheck 0.10.0 (Docker `koalaman/shellcheck:v0.10.0`) clean on `kitrun.sh`, `submit_all.sh`, `collect.sh` and the generated jobs, and on the generated sessions with the P3 learner-style excludes (`-e SC2086,SC2164,SC2103,SC2231,SC2034`).
+- `py_compile` of `build_kit.py`, `py/summarize.py` and `py/sacct_summary.py`, and `build_kit.py --check`, under Python 3.6.15 (`python:3.6-slim`).
+- `submit_all.sh --run test-dry --dry-run` with a stub `sbatch` (rejects `--mem` and any account but `rcac`): 4 steps, 3 test-only submissions accepted.
+- `summarize.py` on a synthetic run: the alignment-anchor table PASSes 17 values and FAILs the one changed on purpose; runtime, placeholder, figure and console sections fill; FastQC values parsed from a real FastQC 0.12.1 zip; the `tview` counts parsed from real output.
+- The Episode 4 read-only commands (`samtools view` of a region, `samtools flags 99 1123`, both `samtools tview -d T -i -w 41 -p ...`) ran on a synthetic 90 kb chr20 with the pinned `samtools:1.22.1` container.
+- `sandpaper::validate_lesson()` (sandpaper 0.17.1) clean; `sandpaper::build_lesson(preview = FALSE)` builds; titles render as "1. ..." to "4. ..."; no Markdown from `maintenance/` or `negishi-run/` rendered (the stale `site/built/prompt-01-scaffold.md` is from P1, noted then).
+- No em or en dashes in the changed files.
+
+Findings and decisions:
+- `[check]` Extra commands. Plan 3.4 and the prompt ask for commands that are not in `pipeline/learner-scripts/interactive/`: `samtools faidx`, the `.fai` and `.dict` heads, a BED head and a FASTQ head (Episode 2); `samtools view` of a region, `samtools flags`, and two `samtools tview -d T -i` views (Episode 4); plus one `cd $SCRATCH/varcall-workshop` so Episode 2 works in a new login. They are marked `extra`, run in the kit, and `build_kit.py` refuses any extra block that writes, creates, removes or submits, so no canonical command or anchor input changes. Decided 2026-10-10: the exact-match rule applies to commands that create or change files or submit jobs; read-only inspection commands may appear only in episodes if the kit check confirms they write and submit nothing. Recorded in `.claude/CLAUDE.md` and `negishi-run/docs/ADAPTATIONS.md`.
+- `[should-fix]` `samtools tview -d T` ruler labels do not sit at the `-p` position (seen on the synthetic test: `-p chr20:88088` labels 88091, 88101, 88111). The episode places the site in column 21 instead and adds `-i` (hide insertions) so that columns are reference positions; `summarize.py` reads column 21 and the consensus line.
+- `[check]` Account `rcac` now also appears on the setup page (`-A rcac` in the prerequisites) and in the two `sinteractive` lines of Episodes 3 and 4. The README one-line swap was tested on a copy: it rewrote 5 headers, 9 `-A` values and `config.sh`; the staged-script md5 check then fails until `restage.sh --scripts` and `--install` are run on Negishi, as intended.
+- `[check]` MultiQC 1.23 `--export` (PNG) inside the biocontainer is not verified (it needs a static-image backend). The export is a kit extra: a failure is a WARN and Part C falls back to screenshots or the `multiqc_data` tables.
+- `[check]` Spoiler descriptions written before the run that Part C must verify against the output: the `flagstat` line explanation, the `mosdepth` summary `total` row, the `samtools stats` field names, the 3-line `tview` header (ruler, reference, consensus), and the `samtools view -c -e 'mapq==0'` count against `reads MQ0` (983,436).
+- `[nice]` Plan 3.4 Episode 4 "optional tiny-FASTA demo" of index building: replaced by a not-run `bwa index` spoiler (a demo would write files). Plan 3.4 Episode 2 "writing `samples.tsv` and `trio.ped`": per the prompt, learners inspect the staged files and write one PED line in a challenge.
+- `[nice]` `.gitignore` should ignore extracted kit tarballs (`varcall-p4-*/`) at the repository root; `.gitignore` is outside the Part A file list, so not changed. Done by the owner in Part C (`varcall-p*-*/`).
+- `[nice]` FastQC duplication (Episode 3) is compared with the duplicate fractions after `markdup`, 10.44%, 10.98% and 10.99%, computed from the frozen `reads_duplicated` and `raw_total_sequences` anchors. Mapping and pairing percentages in Episode 4 are computed the same way.
+
+Placeholders for Part C (27): `setup-out-ls`; `02-out-md5`, `02-out-samples-ped`, `02-out-fai-dict`, `02-out-faidx`, `02-out-bed`, `02-sol-bed-region`, `02-sol-bed-length`, `02-out-fastq`; `03-out-multiqc-ls`, `03-sol-reads`, `03-sol-status`, `03-sol-adapter`, `03-sol-duplication`; `04-out-ls-bam`, `04-out-flagstat`, `04-out-stats-sn`, `04-out-mosdepth`, `04-out-mapq0-rg`, `04-sol-insert`, `04-sol-cov10`, `04-sol-mapq0-view`, `04-out-view-region`, `04-out-flags`, `04-out-tview-het`, `04-sol-tview-het`, `04-sol-tview-homalt`. Figure slots (7): `03-fastqc-per-base-quality`, `03-fastqc-per-sequence-quality`, `03-fastqc-gc`, `03-fastqc-duplication`, `03-fastqc-adapter`, `04-multiqc-samtools-alignment`, `04-multiqc-mosdepth-cumcoverage`. Each id, its line and its source are in `negishi-run/generated/placeholders.tsv` and `figures.tsv`.
+
+Claims cut or changed for lack of an acceptable source:
+- Episode 1: "public reference samples from healthy volunteers" (now "public reference samples"); "long-read methods address these limits" (now "other methods, such as long-read sequencing, are needed"); "tens of thousands of heterozygous sites per person" (now the benchmark count, more than 70,000 SNVs for HG002 on chr20).
+- Episode 2: plan 3.4's "GIAB consent permits public release" (replaced by NIST's redistribution terms from the v5.0q README); "cell lines such as ours are made with EBV"; "tools such as PLINK report an error when a father is not male".
+- Episode 3: "older Illumina instruments reported about 40 quality values".
+- Episode 4: "PCR-free duplicates are mostly optical"; "duplicate-flagged reads are not shown by tview"; "MultiQC parses the markdup statistics"; "sorting before fixmate makes markdup fail or mark nothing" (softened to what the samtools manual supports); "much of the centromere is N in the reference" (wrong for GRCh38, removed).
+- Sources used beyond the plan's list are official documentation or run records: the SAM, VCF and BED specifications, the bwa, samtools, bcftools, mosdepth, FastQC, fastp, PLINK and GATK manuals, bwa `README-alt.md`, the NCBI analysis-set README (captured in the P2 records), the feasibility and reference-run memos. All are listed in `learners/reference.md`, and `build_kit.py` fails if an episode cites a URL that page does not list.
+
+Part B commands (from `negishi-run/README.md`, Phase 4):
+1. Laptop: `python3 negishi-run/build_kit.py`, then `python3 negishi-run/build_kit.py --check`, then `rsync -av --relative ./episodes ./learners ./negishi-run ./pipeline ./data-prep aseethar@negishi.rcac.purdue.edu:/scratch/negishi/aseethar/variant-calling/`.
+2. Negishi: `bash negishi-run/00_preflight.sh` (FAIL 0).
+3. `bash negishi-run/submit_all.sh --run kit-2026-10-11 --dry-run`, then `bash negishi-run/submit_all.sh --run kit-2026-10-11`.
+4. When `squeue -u $USER` is empty: `bash negishi-run/collect.sh --run kit-2026-10-11`, and run the printed `rsync` on the laptop.
+
+### Phase 4 Part C, 2026-10-10 (kit run `kit-2026-10-11`, tarball `varcall-p4-kit-kit-2026-10-11-20261010-2143.tar.gz`)
+
+Run check: `build_kit.py --check` passed at submission; all four steps completed (`02-setup` PASS on the login node in 46 s; `03-qc`, `04-align` x3 and `04-alignqc` COMPLETED, markers PASS); no `### KIT-ERR` in any console; `sources_check.txt` 17 of 17 OK (the run used the committed episodes and learner scripts); modules resolved to bwa/0.7.17, samtools/1.22.1, mosdepth/0.3.3, fastqc/0.12.1, multiqc/1.23; both MultiQC PNG exports PASS (12 and 10 plots). All 18 alignment anchors match `anchors.tsv` exactly, so alignment reproduces for the third time (two P3 runs and this one). No learner command failed.
+
+Filled from the run (27 placeholders, 7 figures):
+- Output spoilers: the console output of each block, verbatim. Trimmed only: the biocontainers banner ("User guides for each biocontainer module ...") that `module load` prints, in `02-out-faidx` and `04-out-ls-bam`, and MultiQC's start banner and update notice in `03-out-multiqc-ls`. Both spoilers now say that `module load` prints such a message.
+- Solutions: the BED region `chr20:81336-101267` (19,932 bp); FastQC read counts; module status (only Per sequence GC content, WARN in all six files); adapter content; FastQC duplication (14.7% to 15.7%); insert sizes (410.1, 417.8, 399.4 bp); 98.0% of chr20 at 10x or more in HG002; `samtools view -c -e 'mapq==0'` 1,054,357 against `reads MQ0` 983,436; the two `tview` columns.
+- Figures: seven MultiQC exports copied to `episodes/fig/03/multiqc_*.png` (per-base quality, per-sequence quality, GC content in percent, duplication, adapter content) and `episodes/fig/04/multiqc_*.png` (samtools alignment in percent, mosdepth cumulative coverage), each with a caption and descriptive alt text written from the plot.
+
+Text corrected from the run (old, then new):
+- `[should-fix]` Episode 4, het site chr20:88,108: "Roughly half the reads carry `C`" became 14 of 39 reads carry `C` (36%), with the binomial point that 14 or fewer of one allele out of 39 happens about 5% of the time at a balanced site. The genotype and the benchmark (`0/1`) are unchanged.
+- `[should-fix]` Episode 3, adapter content: the highest lines (1.43% to 1.49%) are FastQC 0.12's poly-A series, not adapter; the Illumina Universal Adapter reaches 0.37% to 0.54%. The text now says that FastQC counts poly-A and poly-G in this module.
+- `[should-fix]` Episode 3, per-base quality: "boxes and whiskers jump between the four values" became what the data show: median and quartiles 37 at every position, the 10th percentile 25 near the read end, MultiQC means near 35 to 36.
+- `[should-fix]` Episode 3, GC content: "a single smooth peak is expected ... reflects chromosome 20" became the observed curve (peak near 40% GC, shoulder near 50%, identical in all six files, FastQC WARN) and why that does not point to contamination.
+- `[nice]` Episode 4: BAM size "about 1.1 GB" became "about 1 GB" (HG004 is 1015M); the FLAG challenge's third answer now decodes the reads in the output (163, and 1171 = duplicate of the 147 read with the same position, mate position and template length); the MAPQ 0 solution now explains the 70,921 difference (unmapped reads, 36,402, carry MAPQ 0; `samtools stats` counts only mapped reads and leaves out supplementary alignments, 55,861 in all); the flagstat spoiler names the primary, supplementary and singleton counts; the `.fai` spoiler gives 195 sequences and the `.dict` fields `UR`, `AS`, `SP`.
+- Runtimes: Episode 3 "about 3 minutes" became "about 4 minutes" (217 s); Episode 4 alignment "11 to 13 minutes" became "10 to 14 minutes" (585-833 s here, 651-750 s in P3); setup page "reference run" became "test runs" (46 s here, 44 s in P3). Every other number in Episodes 1-4 and the setup page matches the run or the frozen records (checked line by line).
+
+Runtimes against front matter: Episode 2, 0.8 min of work against 40 min (live 20); Episode 3, 3.6 min (wait 0.1) against 30 (live 15); Episode 4, alignment 9.8-13.9 min plus QC 3.9 min (waits 0.1 and 1.8 min) against 90 (live 70). Alignment stays under the plan's 15-minute live-job rule; the schedule in plan section 4 holds.
+
+Kit fixes after the run:
+- `[should-fix]` `py/summarize.py` reported a 15.8 min "wait" for `04-alignqc`: it counted the time the job waited for its dependency. The wait of a dependent step is now measured from when its last dependency ended (recomputed from this run's sacct: about 1.8 min).
+- `[nice]` `submit_all.sh` recorded only the total in `02-setup-du.txt` (one `du -sb` call counts subfolders once); it now runs `du -sb` per path.
+- `[nice]` Extracting the tarball at the repository root made `sandpaper::build_lesson()` render its `SUMMARY.md` (one folder down). The extraction now lives in the gitignored `negishi-run/records/`. `.gitignore` now also ignores `varcall-p*-*/` (owner change, 2026-10-10), which keeps such folders out of git but not out of a local `build_lesson()`, so extract kit tarballs under `negishi-run/records/`.
+
+Checks after the edits: `build_kit.py --check` passes (0 placeholders and 0 figure slots left; the generated sessions' commands are identical to the run's); `validate_lesson()` clean; `build_lesson()` builds; no em dashes; shellcheck 0.10.0 clean on `submit_all.sh`; `summarize.py` parses under Python 3.6.15.
+
 ## Revision opportunities
 
 ## Runtime record
@@ -311,3 +386,11 @@ P3 final run `ref-final-2026-10-11`, 2026-10-10, q0 only (anchors frozen from it
 | `evaluate.sh`, per task (2 hap.py runs, 16 threads) | 24 | 89-145 s | 1.75-6.31 | 1578 s |
 | `annotate.sh` | 4 | 86 s | 0.05 | 1578 s |
 
+P4 episode kit run `kit-2026-10-11`, 2026-10-10, account `rcac`, QoS `standby` (wait = time from eligibility to start).
+
+| Step | Cores | Wall | MaxRSS (GiB) | Wait |
+|---|---|---|---|---|
+| `02-setup` (login node: setup page and Episode 2 blocks) | - | 46 s | - | - |
+| `03-qc` session | 4 | 217 s | 2.23 | 3 s |
+| `align.sh`, per sample | 16 | 585-833 s | 13.34-13.47 | 3 s |
+| `04-alignqc` session | 4 | 233 s | 0.27 | about 110 s after alignment ended |

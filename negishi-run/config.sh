@@ -86,6 +86,8 @@ STAGED_GROUP=${STAGED_GROUP:-workshop}     # Depot group of /depot/workshop/data
 STAGE_BUILD=${STAGE_BUILD:-$PREP_DIR/stage}
 # Reference runs: $KIT_SCRATCH_BASE/runs/<RUN_ID>/ (each call set gets its own learner copy).
 KIT_SCRATCH_BASE=${KIT_SCRATCH_BASE:-${SCRATCH:-}/varcall-kit}
+# Phase 4 episode run kit (submit_all.sh, collect.sh --run): one directory per run ID
+KIT_RUNS=${KIT_RUNS:-$KIT_SCRATCH_BASE/kit-runs}
 # Call sets of the reference run. G3 (2026-10-10) chose q0, mpileup defaults, now written into
 # call.sh; the q0 vs q20 (-q 20 -Q 20) comparison is in maintenance/plan/reference-run.md.
 REF_CALL_SETS=${REF_CALL_SETS:-q0}

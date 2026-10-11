@@ -78,3 +78,4 @@ __pycache__/
 # Phase 3 reference runs and staging builds (records come back as tarballs)
 pipeline/runs/
 varcall-p3-*/
+varcall-p*-*/
