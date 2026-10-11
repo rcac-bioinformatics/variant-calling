@@ -394,8 +394,104 @@
 <section id="01-intro-to-variant-calling"><h2 class="section-heading"><a href="01-intro-to-variant-calling.html">1. Introduction to genetic variation and variant calling</a></h2>
 <hr class="half-width"></section><section id="02-data-and-project-setup"><h2 class="section-heading"><a href="02-data-and-project-setup.html">2. Data, reference genomes, and project setup</a></h2>
 <hr class="half-width"></section><section id="03-read-qc"><h2 class="section-heading"><a href="03-read-qc.html">3. Read quality control</a></h2>
-<hr class="half-width"></section><section id="04-alignment-and-alignment-qc"><h2 class="section-heading"><a href="04-alignment-and-alignment-qc.html">4. Read alignment and alignment QC</a></h2>
-<hr class="half-width"></section><section id="05a-calling-with-bcftools"><h2 class="section-heading"><a href="05a-calling-with-bcftools.html">5A. Calling variants with bcftools</a></h2>
+<hr class="half-width">
+<h3 id="03-read-qc-figure-1">Figure 1</h3>
+<p aria-hidden="true">Image 1 of 1: ‘MultiQC line plot of mean Phred score against read position for six files; all lines lie close together near 35 to 36 in the green zone and dip slightly over the last cycles’</p>
+<figure style="text-align: center"><img src="fig/03/multiqc_per_base_quality.png" alt="MultiQC line plot of mean Phred score against read position for six files; all lines lie close together near 35 to 36 in the green zone and dip slightly over the last cycles" class="figure mx-auto d-block"><figcaption>
+Your output: mean base quality at each position of the six workshop
+FASTQ files (MultiQC). The means stay between about Q34 and Q36 along
+the whole 151 bp read.
+</figcaption></figure><hr>
+<h3 id="03-read-qc-figure-2">Figure 2</h3>
+<p aria-hidden="true">Image 1 of 1: ‘Three cartoon quality plots: read 2 quality collapsing while read 1 stays high, a short quality bump followed by a drop, and a stable high profile’</p>
+<figure style="text-align: center"><img src="fig/03/contrast_sequence_quality_histogram.png" alt="Three cartoon quality plots: read 2 quality collapsing while read 1 stays high, a short quality bump followed by a drop, and a stable high profile" class="figure mx-auto d-block"><figcaption>
+Contrast example, schematic and not data: one read of a pair failing, a
+chemistry problem during the run, and a good profile. Cartoon by Zandra
+Selina, CC BY 4.0.
+</figcaption></figure><hr>
+<h3 id="03-read-qc-figure-3">Figure 3</h3>
+<p aria-hidden="true">Image 1 of 1: ‘MultiQC line plot of read counts against mean read quality for six files; the curves are flat near zero below 30 and rise to a single sharp peak of 5 to 6 million reads at quality 36’</p>
+<figure style="text-align: center"><img src="fig/03/multiqc_per_sequence_quality.png" alt="MultiQC line plot of read counts against mean read quality for six files; the curves are flat near zero below 30 and rise to a single sharp peak of 5 to 6 million reads at quality 36" class="figure mx-auto d-block"><figcaption>
+Your output: mean quality per read for the six workshop FASTQ files
+(MultiQC). Most reads have a high mean quality, with a sharp peak at 36.
+</figcaption></figure><hr>
+<h3 id="03-read-qc-figure-4">Figure 4</h3>
+<p aria-hidden="true">Image 1 of 1: ‘Three cartoon histograms of per read quality: a single peak at low quality, two peaks, and one sharp peak at high quality’</p>
+<figure style="text-align: center"><img src="fig/03/contrast_per_sequence_quality_score.png" alt="Three cartoon histograms of per read quality: a single peak at low quality, two peaks, and one sharp peak at high quality" class="figure mx-auto d-block"><figcaption>
+Contrast example, schematic and not data: most reads of low quality (a
+bad run), a bimodal distribution (often a flowcell location artifact),
+and a good single peak at high quality. Cartoon by Zandra Selina, CC BY
+4.0.
+</figcaption></figure><hr>
+<h3 id="03-read-qc-figure-5">Figure 5</h3>
+<p aria-hidden="true">Image 1 of 1: ‘MultiQC line plot of the percentage of reads against GC content for six files; the curves overlap almost perfectly, rising to a peak of about 4% of reads at 40% GC, with a shoulder around 45 to 50% GC, and falling to near zero by 70% GC’</p>
+<figure style="text-align: center"><img src="fig/03/multiqc_gc_content.png" alt="MultiQC line plot of the percentage of reads against GC content for six files; the curves overlap almost perfectly, rising to a peak of about 4% of reads at 40% GC, with a shoulder around 45 to 50% GC, and falling to near zero by 70% GC" class="figure mx-auto d-block"><figcaption>
+Your output: GC content per read for the six workshop FASTQ files
+(MultiQC). All six curves overlap: a peak near 40% GC with a shoulder
+near 50%.
+</figcaption></figure><hr>
+<h3 id="03-read-qc-figure-6">Figure 6</h3>
+<p aria-hidden="true">Image 1 of 1: ‘Three cartoon GC content plots: two shifted peaks, one skewed peak, and an observed peak matching the expected curve’</p>
+<figure style="text-align: center"><img src="fig/03/contrast_per_sequence_GC_content.png" alt="Three cartoon GC content plots: two shifted peaks, one skewed peak, and an observed peak matching the expected curve" class="figure mx-auto d-block"><figcaption>
+Contrast example, schematic and not data: libraries with different GC
+content (fine across species, a warning within one), a non-normal
+distribution that suggests a lab artifact, and a good match to the
+expected curve. Cartoon by Zandra Selina, CC BY 4.0.
+</figcaption></figure><hr>
+<h3 id="03-read-qc-figure-7">Figure 7</h3>
+<p aria-hidden="true">Image 1 of 1: ‘Three cartoon N content plots: a curve rising at the end of the read, a flat line above zero, and a flat line at zero’</p>
+<figure style="text-align: center"><img src="fig/03/contrast_per_base_n_content.png" alt="Three cartoon N content plots: a curve rising at the end of the read, a flat line above zero, and a flat line at zero" class="figure mx-auto d-block"><figcaption>
+Contrast example, schematic and not data: N bases rising toward the end
+of the read (chemistry running out), a constant N level (a failed lane
+or masked reads), and no N bases. Cartoon by Zandra Selina, CC BY 4.0.
+</figcaption></figure><hr>
+<h3 id="03-read-qc-figure-8">Figure 8</h3>
+<p aria-hidden="true">Image 1 of 1: ‘MultiQC line plot of the percentage of the library against duplication level for six files; all curves start at about 73 to 75% at level 1, drop to about 17 to 18% at level 2 and 3% at level 3, and stay near zero after that’</p>
+<figure style="text-align: center"><img src="fig/03/multiqc_duplication.png" alt="MultiQC line plot of the percentage of the library against duplication level for six files; all curves start at about 73 to 75% at level 1, drop to about 17 to 18% at level 2 and 3% at level 3, and stay near zero after that" class="figure mx-auto d-block"><figcaption>
+Your output: sequence duplication levels for the six workshop FASTQ
+files (MultiQC). About three quarters of the reads occur once, and most
+of the rest twice.
+</figcaption></figure><hr>
+<h3 id="03-read-qc-figure-9">Figure 9</h3>
+<p aria-hidden="true">Image 1 of 1: ‘Three cartoon duplication plots: a slowly decaying curve, a wavy pattern, and a single spike at duplication level one’</p>
+<figure style="text-align: center"><img src="fig/03/contrast_sequence_duplication_level.png" alt="Three cartoon duplication plots: a slowly decaying curve, a wavy pattern, and a single spike at duplication level one" class="figure mx-auto d-block"><figcaption>
+Contrast example, schematic and not data: high duplication from a
+low-complexity or over-amplified library, a periodic pattern that can be
+fine for amplicon data, and a library dominated by unique reads. Cartoon
+by Zandra Selina, CC BY 4.0.
+</figcaption></figure><hr>
+<h3 id="03-read-qc-figure-10">Figure 10</h3>
+<p aria-hidden="true">Image 1 of 1: ‘MultiQC line plot of the percentage of reads containing adapter sequence against read position; one group of lines rises steadily to about 1.5% at position 140, a second group stays near zero and rises to about 0.5% over the last 30 positions, all within the green pass zone’</p>
+<figure style="text-align: center"><img src="fig/03/multiqc_adapter_content.png" alt="MultiQC line plot of the percentage of reads containing adapter sequence against read position; one group of lines rises steadily to about 1.5% at position 140, a second group stays near zero and rises to about 0.5% over the last 30 positions, all within the green pass zone" class="figure mx-auto d-block"><figcaption>
+Your output: adapter content for the six workshop FASTQ files (MultiQC).
+Every line stays below 1.5% of reads; the highest lines are FastQC’s
+poly-A series, and the Illumina Universal Adapter stays at or below
+0.54%.
+</figcaption></figure><hr>
+<h3 id="03-read-qc-figure-11">Figure 11</h3>
+<p aria-hidden="true">Image 1 of 1: ‘Two cartoon adapter content plots: a curve rising toward the end of the read, and a flat line at zero’</p>
+<figure style="text-align: center"><img src="fig/03/contrast_adapter_content.png" alt="Two cartoon adapter content plots: a curve rising toward the end of the read, and a flat line at zero" class="figure mx-auto d-block"><figcaption>
+Contrast example, schematic and not data: adapter content rising toward
+the read end (short inserts, acceptable only for fragmented ancient DNA)
+and a flat line near zero. Cartoon by Zandra Selina, CC BY 4.0.
+</figcaption></figure><hr></section><section id="04-alignment-and-alignment-qc"><h2 class="section-heading"><a href="04-alignment-and-alignment-qc.html">4. Read alignment and alignment QC</a></h2>
+<hr class="half-width">
+<h3 id="04-alignment-and-alignment-qc-figure-1">Figure 1</h3>
+<p aria-hidden="true">Image 1 of 1: ‘MultiQC stacked horizontal bar chart, one bar per sample (HG002, HG003, HG004); each bar is about 95% blue for reads mapped with MQ above 0, about 5% orange for MQ0 reads, and a barely visible red sliver for unmapped reads’</p>
+<figure style="text-align: center"><img src="fig/04/multiqc_samtools_alignment.png" alt="MultiQC stacked horizontal bar chart, one bar per sample (HG002, HG003, HG004); each bar is about 95% blue for reads mapped with MQ above 0, about 5% orange for MQ0 reads, and a barely visible red sliver for unmapped reads" class="figure mx-auto d-block"><figcaption>
+Your output: alignment summary from samtools stats for the three samples
+(MultiQC). In each sample about 95% of reads are mapped with mapping
+quality above 0, about 5% have mapping quality 0, and a thin sliver is
+unmapped.
+</figcaption></figure><hr>
+<h3 id="04-alignment-and-alignment-qc-figure-2">Figure 2</h3>
+<p aria-hidden="true">Image 1 of 1: ‘MultiQC line plot of the percentage of chromosome 20 covered by at least X reads against X for three samples; the three curves overlap, stay near 98 to 99% up to about 20x, fall steeply between 30x and 45x, and drop to a few percent by about 55x’</p>
+<figure style="text-align: center"><img src="fig/04/multiqc_mosdepth_cumcoverage.png" alt="MultiQC line plot of the percentage of chromosome 20 covered by at least X reads against X for three samples; the three curves overlap, stay near 98 to 99% up to about 20x, fall steeply between 30x and 45x, and drop to a few percent by about 55x" class="figure mx-auto d-block"><figcaption>
+Your output: cumulative coverage of chromosome 20 for the three samples
+(mosdepth, MultiQC). About 98% of the chromosome is covered by at least
+10 reads, and the curves fall steeply between 30x and 45x, around the
+mean of about 39x.
+</figcaption></figure><hr></section><section id="05a-calling-with-bcftools"><h2 class="section-heading"><a href="05a-calling-with-bcftools.html">5A. Calling variants with bcftools</a></h2>
 <hr class="half-width"></section><section id="06-filtering-and-evaluation"><h2 class="section-heading"><a href="06-filtering-and-evaluation.html">6. Filtering and evaluating variant calls</a></h2>
 <hr class="half-width"></section><section id="07-annotation"><h2 class="section-heading"><a href="07-annotation.html">7. Annotating variants</a></h2>
 <hr class="half-width"></section><section id="08-trio-candidate-variants"><h2 class="section-heading"><a href="08-trio-candidate-variants.html">8. Application: candidate variants in a family trio</a></h2>

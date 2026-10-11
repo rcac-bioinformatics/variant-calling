@@ -359,6 +359,8 @@
 <li>Indel</li>
 <li>Mendelian error</li>
 <li>Multi-nucleotide variant (MNV)</li>
+<li>Phasing (phased and unphased genotypes)</li>
+<li>Pileup</li>
 <li>Ploidy</li>
 <li>Single-nucleotide variant (SNV)</li>
 <li>Somatic variant</li>
@@ -372,33 +374,48 @@
 <li>BAM, CRAM and SAM</li>
 <li>BCF</li>
 <li>BED</li>
+<li>BGZF (block gzip)</li>
 <li>bgzip</li>
+<li>Checksum (MD5)</li>
 <li>Contig</li>
+<li>Coordinate systems (0-based half-open, 1-based closed)</li>
 <li>Decoy sequence</li>
 <li>FASTA</li>
 <li>FASTQ</li>
+<li>gVCF</li>
 <li>Index (<code>.fai</code>, <code>.dict</code>, <code>.bai</code>,
 <code>.csi</code>, <code>.tbi</code>)</li>
 <li>No-alt analysis set</li>
 <li>PED file</li>
+<li>Pseudoautosomal region (PAR)</li>
 <li>Reference genome</li>
+<li>Sample sheet</li>
+<li>Sequence dictionary (<code>.dict</code>)</li>
 <li>VCF</li>
-<li>gVCF</li>
 </ul></div>
 <div class="section level3">
 <h3 id="sequencing-and-alignment">Sequencing and alignment<a class="anchor" aria-label="anchor" href="#sequencing-and-alignment"></a></h3>
-<ul><li>Base quality (Phred score)</li>
-<li>Base alignment quality (BAQ)</li>
+<ul><li>Base alignment quality (BAQ)</li>
+<li>Base quality (Phred score)</li>
+<li>Base quality score recalibration (BQSR)</li>
 <li>CIGAR string</li>
 <li>Coverage (depth)</li>
+<li>Duplicate marking</li>
 <li>Duplicate read (PCR, optical)</li>
 <li>FLAG</li>
 <li>Insert size</li>
+<li>IUPAC ambiguity code</li>
+<li>Local alignment</li>
 <li>Mapping quality (MAPQ)</li>
 <li>Paired-end reads</li>
+<li>Proper pair</li>
+<li>Quality binning</li>
 <li>Read group</li>
+<li>Secondary alignment</li>
 <li>Seed-and-extend alignment</li>
 <li>Soft clipping</li>
+<li>Supplementary alignment</li>
+<li>Template length (TLEN)</li>
 </ul></div>
 <div class="section level3">
 <h3 id="calling-filtering-and-evaluation">Calling, filtering and evaluation<a class="anchor" aria-label="anchor" href="#calling-filtering-and-evaluation"></a></h3>
@@ -433,11 +450,67 @@
 <li>Sequence Ontology term</li>
 <li>Transcript</li>
 </ul></div>
+<div class="section level3">
+<h3 id="running-jobs-on-the-cluster">Running jobs on the cluster<a class="anchor" aria-label="anchor" href="#running-jobs-on-the-cluster"></a></h3>
+<ul><li>Array job</li>
+<li>Interactive session (<code>sinteractive</code>)</li>
+<li>Login node</li>
+<li>Module (<code>module load</code>)</li>
+<li>Standby QoS</li>
+</ul></div>
 </section><section><h2 class="section-heading" id="further-reading">Further reading<a class="anchor" aria-label="anchor" href="#further-reading"></a></h2>
-<hr class="half-width"><!-- TBD(P7): references for the methods and tools, and for the topics listed under "What is not covered" on the setup page. --><!--
+<hr class="half-width"><!-- TBD(P7): references for the methods and tools of Episodes 5A-8, and for the topics listed under "What is not covered" on the setup page. --><div class="section level3">
+<h3 id="sources-cited-in-episodes-1-4">Sources cited in Episodes 1-4<a class="anchor" aria-label="anchor" href="#sources-cited-in-episodes-1-4"></a></h3>
+<p>Data and reference:</p>
+<ul><li>Genome in a Bottle, NIST: <a href="https://www.nist.gov/programs-projects/genome-bottle" class="external-link uri">https://www.nist.gov/programs-projects/genome-bottle</a>.
+The data usage terms are in the HG002 v5.0q README in the <a href="https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/AshkenazimTrio/HG002_NA24385_son/latest/" class="external-link">HG002
+release directory</a>.</li>
+<li>DeepTrio WGS case study (source of the chromosome 20 alignments): <a href="https://github.com/google/deepvariant/blob/r1.10/docs/deeptrio-wgs-case-study.md" class="external-link uri">https://github.com/google/deepvariant/blob/r1.10/docs/deeptrio-wgs-case-study.md</a>
+</li>
+<li>GRCh38 no-alt analysis set and its README, NCBI: <a href="https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/" class="external-link uri">https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/</a>
+</li>
+<li>Workshop data sources, sizes and checksums: <a href="https://github.com/rcac-bioinformatics/variant-calling/blob/main/data-prep/sources.tsv" class="external-link uri">https://github.com/rcac-bioinformatics/variant-calling/blob/main/data-prep/sources.tsv</a>,
+and the preparation scripts: <a href="https://github.com/rcac-bioinformatics/variant-calling/tree/main/data-prep" class="external-link uri">https://github.com/rcac-bioinformatics/variant-calling/tree/main/data-prep</a>
+</li>
+<li>Workshop run records: the <a href="https://github.com/rcac-bioinformatics/variant-calling/blob/main/maintenance/plan/feasibility.md" class="external-link">feasibility
+memo</a> and the <a href="https://github.com/rcac-bioinformatics/variant-calling/blob/main/maintenance/plan/reference-run.md" class="external-link">reference-run
+memo</a>
+</li>
+</ul><p>File formats:</p>
+<ul><li>SAM and BAM: <a href="https://samtools.github.io/hts-specs/SAMv1.pdf" class="external-link uri">https://samtools.github.io/hts-specs/SAMv1.pdf</a>; VCF,
+CRAM and the other htslib formats: <a href="https://samtools.github.io/hts-specs/" class="external-link uri">https://samtools.github.io/hts-specs/</a>
+</li>
+<li>BED (UCSC): <a href="https://genome.ucsc.edu/FAQ/FAQformat.html#format1" class="external-link uri">https://genome.ucsc.edu/FAQ/FAQformat.html#format1</a>
+</li>
+<li>PED and FAM (PLINK 1.9): <a href="https://www.cog-genomics.org/plink/1.9/formats#fam" class="external-link uri">https://www.cog-genomics.org/plink/1.9/formats#fam</a>
+</li>
+</ul><p>Tools:</p>
+<ul><li>bwa manual: <a href="https://bio-bwa.sourceforge.net/bwa.shtml" class="external-link uri">https://bio-bwa.sourceforge.net/bwa.shtml</a>; alt-aware
+alignment: <a href="https://github.com/lh3/bwa/blob/master/README-alt.md" class="external-link uri">https://github.com/lh3/bwa/blob/master/README-alt.md</a>
+</li>
+<li>samtools manual: <a href="https://www.htslib.org/doc/samtools.html" class="external-link uri">https://www.htslib.org/doc/samtools.html</a>, with the pages
+for <a href="https://www.htslib.org/doc/samtools-faidx.html" class="external-link">faidx</a>,
+<a href="https://www.htslib.org/doc/samtools-flags.html" class="external-link">flags</a>, <a href="https://www.htslib.org/doc/samtools-markdup.html" class="external-link">markdup</a>, <a href="https://www.htslib.org/doc/samtools-tview.html" class="external-link">tview</a> and <a href="https://www.htslib.org/doc/samtools-view.html" class="external-link">view</a>
+</li>
+<li>bcftools manual: <a href="https://samtools.github.io/bcftools/bcftools.html" class="external-link uri">https://samtools.github.io/bcftools/bcftools.html</a> (see
+<a href="https://samtools.github.io/bcftools/bcftools.html#mpileup" class="external-link"><code>mpileup</code></a>)</li>
+<li>mosdepth: <a href="https://github.com/brentp/mosdepth" class="external-link uri">https://github.com/brentp/mosdepth</a>
+</li>
+<li>FastQC: <a href="https://www.bioinformatics.babraham.ac.uk/projects/fastqc/" class="external-link uri">https://www.bioinformatics.babraham.ac.uk/projects/fastqc/</a>
+</li>
+<li>fastp: <a href="https://github.com/OpenGene/fastp" class="external-link uri">https://github.com/OpenGene/fastp</a>
+</li>
+<li>GATK base quality score recalibration: <a href="https://gatk.broadinstitute.org/hc/en-us/articles/360035890531-Base-Quality-Score-Recalibration-BQSR" class="external-link uri">https://gatk.broadinstitute.org/hc/en-us/articles/360035890531-Base-Quality-Score-Recalibration-BQSR</a>
+</li>
+</ul><p>Figures:</p>
+<ul><li>The FastQC contrast cartoons in Episode 3 are by Zandra Selina, CC
+BY 4.0, reused from the <a href="https://github.com/rcac-bioinformatics/rnaseq-analysis" class="external-link">RCAC
+RNA-seq workshop</a>.</li>
+</ul><!--
 Place links that you need to refer to multiple times across pages here. Delete
 any links that you are not going to use.
- --></section></div> <!-- / div.lesson-content -->
+ --></div>
+</section></div> <!-- / div.lesson-content -->
     </main><!-- / main#main-content.main-content --><nav class="bottom-pagination mx-md-4" aria-label="Previous and Next Chapter"><div class="d-block d-sm-block d-md-none">
         <a class="chapter-link" href="../instructor/index.html"><i aria-hidden="true" class="small-arrow" data-feather="arrow-left"></i>Previous</a>
       <!-- content for large screens -->

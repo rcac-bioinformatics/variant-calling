@@ -476,46 +476,69 @@ any links that you are not going to use.
       The actual schedule may vary slightly depending on the topics and exercises chosen by the instructor.
       </p>
       </section><section id="setup"><section><h2 class="section-heading" id="instructors">Instructors<a class="anchor" aria-label="anchor" href="#instructors"></a></h2>
-<hr class="half-width"><!-- TBD(P10): instructor roster for the delivery. Arun Seetharam is confirmed; the co-instructor is TBD (D8). --><ol style="list-style-type: decimal"><li>
-<strong>Arun Seetharam, Ph.D.</strong>: Arun is a lead
+<hr class="half-width"><!-- TBD(P10): confirm the instructor roster for the delivery. --><ol style="list-style-type: decimal"><li><p><strong>Arun Seetharam, Ph.D.</strong>: Arun is a lead
 bioinformatics scientist at Purdue University’s Rosen Center for
-Advanced Computing.</li>
-</ol></section><section><h2 class="section-heading" id="schedule">Schedule<a class="anchor" aria-label="anchor" href="#schedule"></a></h2>
-<hr class="half-width"><!-- TBD(P10): delivery date in the heading, for example "Schedule (MM/DD/YYYY)". The day runs 9:00 to 4:30 with 6 hours of instruction (D6). Fill the table from instructors/instructor-notes.md once job runtimes are measured (P2, P3). --><table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr><th align="left"><strong>Time</strong></th>
+Advanced Computing.</p></li>
+<li><p><strong>Co-instructor</strong>: TBD(P10).</p></li>
+</ol></section><section><h2 class="section-heading" id="schedule-date-tbdp10">Schedule (date TBD(P10))<a class="anchor" aria-label="anchor" href="#schedule-date-tbdp10"></a></h2>
+<hr class="half-width"><p>The day runs 9:00 AM to 4:30 PM, with 6 hours of instruction plus
+lunch and two breaks.</p>
+<table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr><th align="left"><strong>Time</strong></th>
 <th align="left"><strong>Session</strong></th>
 </tr></thead><tbody><tr><td align="left"><strong>8:30 AM</strong></td>
-<td align="left">Arrival, login, and data check</td>
+<td align="left">Arrival, login, and data check (copy the data now if
+you have not done it before the workshop)</td>
 </tr><tr><td align="left"><strong>9:00 AM</strong></td>
-<td align="left"><strong>Introduction to genetic variation and variant
-calling (Episode 1)</strong></td>
+<td align="left">
+<strong>Introduction to genetic variation and variant
+calling (Episode 1):</strong> types of variants, genotypes, how reads
+become a genotype call, why calls can be wrong</td>
 </tr><tr><td align="left"><strong>9:30 AM</strong></td>
-<td align="left"><strong>Data, reference, and read quality control
-(Episodes 2-3)</strong></td>
+<td align="left">
+<strong>Data, reference, and read quality control
+(Episodes 2-3):</strong> the trio and its metadata, the reference genome
+and its indexes, checksums, FastQC and MultiQC. The alignment jobs are
+submitted at the end of this block and run over the break</td>
 </tr><tr><td align="left"><strong>10:05 AM</strong></td>
 <td align="left"><strong>Break</strong></td>
 </tr><tr><td align="left"><strong>10:20 AM</strong></td>
-<td align="left"><strong>Read alignment and alignment QC (Episode
-4)</strong></td>
+<td align="left">
+<strong>Read alignment and alignment QC (Episode
+4):</strong> <code>bwa mem</code>, read groups, duplicate marking,
+alignment metrics, viewing a locus</td>
 </tr><tr><td align="left"><strong>11:30 AM</strong></td>
-<td align="left"><strong>Calling variants with bcftools (Episode
-5A)</strong></td>
+<td align="left">
+<strong>Calling variants with bcftools (Episode
+5A):</strong> joint calling of the trio with an array job,
+normalization, reading a VCF</td>
 </tr><tr><td align="left"><strong>12:15 PM</strong></td>
 <td align="left"><strong>Lunch</strong></td>
 </tr><tr><td align="left"><strong>1:15 PM</strong></td>
-<td align="left"><strong>Filtering and evaluating variant calls (Episode
-6)</strong></td>
+<td align="left">
+<strong>Filtering and evaluating variant calls (Episode
+6):</strong> filters, precision and recall against the GIAB
+benchmarks</td>
 </tr><tr><td align="left"><strong>2:15 PM</strong></td>
 <td align="left"><strong>Break</strong></td>
 </tr><tr><td align="left"><strong>2:30 PM</strong></td>
-<td align="left"><strong>Annotating variants (Episode 7)</strong></td>
+<td align="left">
+<strong>Annotating variants (Episode 7):</strong>
+predicted consequences with SnpEff, population frequencies from
+gnomAD</td>
 </tr><tr><td align="left"><strong>3:10 PM</strong></td>
-<td align="left"><strong>Application: candidate variants in a family
-trio (Episode 8)</strong></td>
+<td align="left">
+<strong>Application: candidate variants in a family
+trio (Episode 8):</strong> Mendelian consistency, de novo and recessive
+candidates, a filtering funnel</td>
 </tr><tr><td align="left"><strong>4:00 PM</strong></td>
-<td align="left"><strong>Wrap-up, next steps, and survey</strong></td>
+<td align="left"><strong>Wrap-up, limitations, next steps, and
+survey</strong></td>
 </tr><tr><td align="left"><strong>4:30 PM</strong></td>
 <td align="left">End of workshop</td>
-</tr></tbody></table><p>The full lesson is longer than one day. Episodes 5B (GATK
+</tr></tbody></table><p>Every job in the workshop has a completed-results fallback (see
+“Completed results” below), so you can rejoin at the next episode if a
+job does not finish.</p>
+<p>The full lesson is longer than one day. Episodes 5B (GATK
 HaplotypeCaller), 9 (variation across samples and populations), and 10
 (adapting the workflow) are self-paced and will be published on this
 site when they are ready.</p>
@@ -524,15 +547,20 @@ site when they are ready.</p>
 <ul><li>
 <strong>Basic Linux/command-line skills</strong>: navigating
 directories, running commands, editing files</li>
-<li><strong>A Purdue career account with access to the Negishi
-cluster</strong></li>
+<li>
+<strong>A Purdue career account with access to the Negishi
+cluster</strong>, with membership in the workshop SLURM account
+(<code>-A rcac</code> in the commands) and in the Depot group
+<code>workshop</code>, which can read the staged data under
+<code>/depot/workshop/data</code>
+</li>
 <li>
 <strong>An SSH client</strong>: terminal (macOS/Linux) or
 MobaXterm/PuTTY (Windows)</li>
 <li>
 <strong>Genetics knowledge</strong>: genes, alleles, and the basics
 of DNA sequencing</li>
-</ul><!-- TBD(P2): how registrants get Negishi access (membership in the workshop SLURM account, a reservation, or their own group's account) and in the Depot group that can read the staged data. --><p>No prior variant-calling experience is required.</p>
+</ul><!-- TBD(P10): how registrants are added to the SLURM account and to the Depot group for the delivery. --><p>No prior variant-calling experience is required.</p>
 </section><section><h2 class="section-heading" id="scope-of-this-workshop">Scope of this workshop<a class="anchor" aria-label="anchor" href="#scope-of-this-workshop"></a></h2>
 <hr class="half-width"><p>This workshop teaches calling germline SNVs and small indels (under
 50 bp) from Illumina short-read whole-genome data of diploid
@@ -540,50 +568,66 @@ samples:</p>
 <ul><li>
 <strong>Dataset:</strong> the Genome in a Bottle Ashkenazi trio:
 HG002 (child), HG003 (father), and HG004 (mother). Illumina NovaSeq,
-PCR-free, about 35x coverage, reads from chromosome 20.</li>
+PCR-free library, 151 bp paired-end reads, with base qualities binned to
+four values. The files are labeled 35x; the mean depth on chromosome 20
+is about 40x.</li>
 <li>
-<strong>Reference:</strong> GRCh38, no-alt analysis set.</li>
+<strong>Region:</strong> reads selected from alignments to
+chromosome 20 (64.4 Mb) and converted back to FASTQ: 9.35 to 9.48
+million read pairs per sample. Because the reads were selected this way,
+mapping rate and coverage outside chromosome 20 are not realistic.</li>
 <li>
-<strong>Benchmarks:</strong> Genome in a Bottle truth sets for
-measuring call quality.</li>
-</ul><!-- TBD(P2): read length, read counts per sample, benchmark versions, and any region or coverage subsetting. --><div class="section level3">
+<strong>Reference:</strong> GRCh38, NCBI no-alt analysis set, with
+NCBI’s prebuilt bwa index.</li>
+<li>
+<strong>Benchmarks:</strong> Genome in a Bottle small-variant
+benchmarks for measuring call quality: v5.0q for HG002 (v4.2.1 for
+comparison), v4.2.1 for HG003 and HG004.</li>
+<li>
+<strong>Annotation:</strong> SnpEff with the
+<code>GRCh38.mane.1.2.ensembl</code> database, and gnomAD v4.1 genome
+allele frequencies.</li>
+</ul><div class="section level3">
 <h3 id="toolchain">Toolchain<a class="anchor" aria-label="anchor" href="#toolchain"></a></h3>
-<!-- TBD(P2): module versions. samtools and bcftools are loaded with explicit versions (D5); record the version of every module used for the delivery. -->
-<table class="table"><colgroup><col width="16%"><col width="18%"><col width="40%"><col width="24%"></colgroup><thead><tr><th align="left">Step</th>
-<th align="left">Tools</th>
+<p>Every tool is loaded with <code>module load biocontainers</code>
+followed by the tool module at an explicit version, for example
+<code>module load bcftools/1.24</code>. The versions are pinned because
+tool behavior changes between releases, bcftools in particular.</p>
+<table class="table"><colgroup><col width="15%"><col width="23%"><col width="38%"><col width="23%"></colgroup><thead><tr><th align="left">Step</th>
+<th align="left">Modules</th>
 <th align="left">Where it runs</th>
 <th align="left">Episode</th>
 </tr></thead><tbody><tr><td align="left">Project setup and reference</td>
-<td align="left">samtools</td>
-<td align="left">Negishi shell</td>
+<td align="left">samtools/1.22.1</td>
+<td align="left">Negishi login node</td>
 <td align="left">2</td>
 </tr><tr><td align="left">Read quality control</td>
-<td align="left">FastQC, MultiQC (fastp shown for reference)</td>
+<td align="left">fastqc/0.12.1, multiqc/1.23 (fastp shown for reference
+only)</td>
 <td align="left">Negishi, interactive job</td>
 <td align="left">3</td>
 </tr><tr><td align="left">Alignment and alignment QC</td>
-<td align="left">bwa mem, samtools, mosdepth, MultiQC</td>
-<td align="left">Negishi, SLURM batch and array jobs</td>
+<td align="left">bwa/0.7.17, samtools/1.22.1, mosdepth/0.3.3,
+multiqc/1.23</td>
+<td align="left">Negishi, SLURM array job and interactive job</td>
 <td align="left">4</td>
 </tr><tr><td align="left">Variant calling</td>
-<td align="left">bcftools</td>
-<td align="left">Negishi, SLURM array job</td>
+<td align="left">bcftools/1.24</td>
+<td align="left">Negishi, SLURM array job and interactive job</td>
 <td align="left">5A</td>
 </tr><tr><td align="left">Filtering and evaluation</td>
-<td align="left">bcftools, hap.py</td>
-<td align="left">Negishi</td>
+<td align="left">bcftools/1.24, hap.py/0.3.9 (vcfeval engine)</td>
+<td align="left">Negishi, interactive job and SLURM array job</td>
 <td align="left">6</td>
 </tr><tr><td align="left">Annotation</td>
-<td align="left">SnpEff, SnpSift, bcftools</td>
-<td align="left">Negishi</td>
+<td align="left">snpeff/5.3.0a, bcftools/1.24</td>
+<td align="left">Negishi, SLURM batch job and interactive job</td>
 <td align="left">7</td>
 </tr><tr><td align="left">Trio analysis</td>
-<td align="left">bcftools, IGV</td>
-<td align="left">Negishi</td>
+<td align="left">bcftools/1.24</td>
+<td align="left">Negishi, interactive job</td>
 <td align="left">8</td>
-</tr></tbody></table><p>Command-line tools are loaded as modules with
-<code>module load biocontainers</code> followed by the tool module.</p>
-</div>
+</tr></tbody></table></div>
 <div class="section level3">
 <h3 id="what-you-will-be-able-to-do">What you will be able to do<a class="anchor" aria-label="anchor" href="#what-you-will-be-able-to-do"></a></h3>
 <p>By the end of the workshop you will be able to:</p>
@@ -607,7 +651,8 @@ sequencing</li>
 <li>Long-read variant calling</li>
 <li>Variant calling from RNA-seq data</li>
 <li>Pooled and polyploid samples</li>
-</ol><p>Episode 10 (self-paced) points to methods for these cases.</p>
+<li>Clinical interpretation of variants</li>
+</ol><p>Episode 10 (self-paced) points to methods for items 2 to 6.</p>
 </section><section><h2 class="section-heading" id="ssh-setup">SSH setup<a class="anchor" aria-label="anchor" href="#ssh-setup"></a></h2>
 <hr class="half-width"><p>You need SSH access to Negishi to copy the workshop data and to run
 the command-line steps in Episodes 2 to 8. Follow the instructions for
@@ -676,7 +721,7 @@ authentication</li>
 <ol style="list-style-type: decimal"><li>Open <strong>Terminal</strong> (Applications &gt; Utilities &gt;
 Terminal)</li>
 <li>Connect to the cluster:</li>
-</ol><div class="codewrapper sourceCode" id="cb1">
+</ol><!-- kit: not-run laptop --><div class="codewrapper sourceCode" id="cb1">
 <h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
 </h3>
 <pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1" aria-label="code-block-1-1"></a><span class="fu">ssh</span> your_username@negishi.rcac.purdue.edu</span></code></pre>
@@ -699,7 +744,7 @@ password is being entered)</li>
 <div class="accordion-body">
 <ol style="list-style-type: decimal"><li>Open your terminal emulator</li>
 <li>Connect to the cluster:</li>
-</ol><div class="codewrapper sourceCode" id="cb2">
+</ol><!-- kit: not-run laptop --><div class="codewrapper sourceCode" id="cb2">
 <h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
 </h3>
 <pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1" aria-label="code-block-2-1"></a><span class="fu">ssh</span> your_username@negishi.rcac.purdue.edu</span></code></pre>
@@ -714,6 +759,7 @@ password is being entered)</li>
 <p>Once logged in, check that your scratch directory variable is set.
 Every episode works under <code>$SCRATCH</code>, so it must print your
 scratch path:</p>
+<!-- kit: interactive 02-setup.sh -->
 <div class="codewrapper sourceCode" id="cb3">
 <h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
 </h3>
@@ -725,13 +771,133 @@ scratch path:</p>
 <pre class="output" tabindex="0"><code>/scratch/negishi/your_username</code></pre>
 </div>
 </section><section><h2 class="section-heading" id="data-setup">Data setup<a class="anchor" aria-label="anchor" href="#data-setup"></a></h2>
-<hr class="half-width"><div class="section level3">
+<hr class="half-width"><p>Do this before the workshop if you can; it takes a few minutes. All
+commands run on a Negishi login node.</p>
+<div class="section level3">
 <h3 id="copying-the-workshop-data">Copying the workshop data<a class="anchor" aria-label="anchor" href="#copying-the-workshop-data"></a></h3>
-<!-- TBD(P3): the copy command from /depot/workshop/data/varcall-workshop into $SCRATCH/varcall-workshop, and the list of what it copies. The reference and its indexes stay on Depot and are linked from ref/ (plan section 5.4). -->
+<p>The workshop data is staged on Depot. Create your working directory
+and copy the data into it:</p>
+<!-- kit: interactive 02-setup.sh -->
+<div class="codewrapper sourceCode" id="cb5">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" tabindex="-1" aria-label="code-block-5-1"></a><span class="fu">mkdir</span> <span class="at">-p</span> <span class="va">$SCRATCH</span>/varcall-workshop</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1" aria-label="code-block-5-2"></a><span class="fu">rsync</span> <span class="at">-av</span> /depot/workshop/data/varcall-workshop/ <span class="va">$SCRATCH</span>/varcall-workshop/</span></code></pre>
+</div>
+<p>This copies 36 files, about 5.7 GB, and took under a minute in the
+workshop’s test runs. It creates:</p>
+<ul><li>
+<strong><code>data/</code></strong>: the six FASTQ files
+(<code>HG002_R1.fastq.gz</code>, <code>HG002_R2.fastq.gz</code>, and the
+same for HG003 and HG004; 4.85 GB together), their checksums in
+<code>md5sums.txt</code>, the sample sheet <code>samples.tsv</code>, and
+the pedigree <code>trio.ped</code>.</li>
+<li>
+<strong><code>resources/</code></strong>: the GIAB benchmark call
+sets and regions for chromosome 20 (<code>truth/</code>), gnomAD allele
+frequencies for chromosome 20 (<code>gnomad/</code>), the region lists
+used for calling (<code>regions/</code>), and a small example VCF
+(<code>example/</code>).</li>
+<li>
+<strong><code>scripts/</code></strong>: the four SLURM job scripts
+of the workshop: <code>align.sh</code>, <code>call.sh</code>,
+<code>evaluate.sh</code> and <code>annotate.sh</code>.</li>
+</ul><p>Next, create the results folders and link the reference genome. The
+reference, its indexes and the SnpEff database stay in one read-only
+copy on Depot (about 10 GB); <code>ref/</code> holds links to them
+instead of copies:</p>
+<!-- kit: interactive 02-setup.sh -->
+<div class="codewrapper sourceCode" id="cb6">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" tabindex="-1" aria-label="code-block-6-1"></a><span class="bu">cd</span> <span class="va">$SCRATCH</span>/varcall-workshop</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1" aria-label="code-block-6-2"></a><span class="fu">mkdir</span> <span class="at">-p</span> ref results/qc results/bam results/qc_alignment results/vcf results/eval results/annot results/trio</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1" aria-label="code-block-6-3"></a><span class="fu">ln</span> <span class="at">-s</span> /depot/workshop/data/varcall-workshop_ref/<span class="pp">*</span> ref/</span></code></pre>
+</div>
 </div>
 <div class="section level3">
 <h3 id="verifying-the-data">Verifying the data<a class="anchor" aria-label="anchor" href="#verifying-the-data"></a></h3>
-<!-- TBD(P3): verification commands, expected file count, and size of the copy. -->
+<!-- kit: interactive 02-setup.sh -->
+<div class="codewrapper sourceCode" id="cb7">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" tabindex="-1" aria-label="code-block-7-1"></a><span class="fu">ls</span> <span class="at">-l</span> ref/</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1" aria-label="code-block-7-2"></a><span class="fu">ls</span> data/ resources/ scripts/</span></code></pre>
+</div>
+<div id="accordionSpoiler1" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler1" aria-expanded="false" aria-controls="collapseSpoiler1">
+  <h3 class="accordion-header" id="headingSpoiler1">
+  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div>
+  What does the output look like?
+  </h3>
+</button>
+<div id="collapseSpoiler1" class="accordion-collapse collapse" aria-labelledby="headingSpoiler1" data-bs-parent="#accordionSpoiler1">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>total 28
+lrwxrwxrwx 1 aseethar workshop 60 Oct 10 21:21 GRCh38_no_alt.dict -&gt; /depot/workshop/data/varcall-workshop_ref/GRCh38_no_alt.dict
+lrwxrwxrwx 1 aseethar workshop 58 Oct 10 21:21 GRCh38_no_alt.fa -&gt; /depot/workshop/data/varcall-workshop_ref/GRCh38_no_alt.fa
+lrwxrwxrwx 1 aseethar workshop 62 Oct 10 21:21 GRCh38_no_alt.fa.amb -&gt; /depot/workshop/data/varcall-workshop_ref/GRCh38_no_alt.fa.amb
+lrwxrwxrwx 1 aseethar workshop 62 Oct 10 21:21 GRCh38_no_alt.fa.ann -&gt; /depot/workshop/data/varcall-workshop_ref/GRCh38_no_alt.fa.ann
+lrwxrwxrwx 1 aseethar workshop 62 Oct 10 21:21 GRCh38_no_alt.fa.bwt -&gt; /depot/workshop/data/varcall-workshop_ref/GRCh38_no_alt.fa.bwt
+lrwxrwxrwx 1 aseethar workshop 62 Oct 10 21:21 GRCh38_no_alt.fa.fai -&gt; /depot/workshop/data/varcall-workshop_ref/GRCh38_no_alt.fa.fai
+lrwxrwxrwx 1 aseethar workshop 62 Oct 10 21:21 GRCh38_no_alt.fa.pac -&gt; /depot/workshop/data/varcall-workshop_ref/GRCh38_no_alt.fa.pac
+lrwxrwxrwx 1 aseethar workshop 61 Oct 10 21:21 GRCh38_no_alt.fa.sa -&gt; /depot/workshop/data/varcall-workshop_ref/GRCh38_no_alt.fa.sa
+lrwxrwxrwx 1 aseethar workshop 59 Oct 10 21:21 GRCh38_no_alt.sdf -&gt; /depot/workshop/data/varcall-workshop_ref/GRCh38_no_alt.sdf
+lrwxrwxrwx 1 aseethar workshop 53 Oct 10 21:21 snpeff_data -&gt; /depot/workshop/data/varcall-workshop_ref/snpeff_data
+lrwxrwxrwx 1 aseethar workshop 53 Oct 10 21:21 SOURCES.tsv -&gt; /depot/workshop/data/varcall-workshop_ref/SOURCES.tsv
+data/:
+HG002_R1.fastq.gz
+HG002_R2.fastq.gz
+HG003_R1.fastq.gz
+HG003_R2.fastq.gz
+HG004_R1.fastq.gz
+HG004_R2.fastq.gz
+md5sums.txt
+samples.tsv
+trio.ped
+
+resources/:
+example
+gnomad
+regions
+truth
+
+scripts/:
+align.sh
+annotate.sh
+call.sh
+evaluate.sh</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Check that:</p>
+<ul><li>
+<code>ref/</code> has 11 entries, each a link (<code>-&gt;</code>)
+into <code>/depot/workshop/data/varcall-workshop_ref/</code>: the FASTA
+<code>GRCh38_no_alt.fa</code> with its <code>.fai</code> and the five
+bwa index files (<code>.amb</code>, <code>.ann</code>,
+<code>.bwt</code>, <code>.pac</code>, <code>.sa</code>), the dictionary
+<code>GRCh38_no_alt.dict</code>, the folders
+<code>GRCh38_no_alt.sdf</code> and <code>snpeff_data</code>, and
+<code>SOURCES.tsv</code>.</li>
+<li>
+<code>data/</code> has 9 files: six FASTQ files,
+<code>md5sums.txt</code>, <code>samples.tsv</code> and
+<code>trio.ped</code>.</li>
+<li>
+<code>resources/</code> has the folders <code>example</code>,
+<code>gnomad</code>, <code>regions</code> and <code>truth</code>, and
+<code>scripts/</code> the four <code>.sh</code> files.</li>
+</ul><p>If a link in <code>ls -l ref/</code> is shown in red or
+<code>ls</code> reports “No such file or directory”, your account cannot
+read the Depot copy; contact the instructors. Episode 2 checks the FASTQ
+files with their checksums.</p>
 <div id="scratch-is-temporary" class="callout">
 <div class="callout-square">
 <i class="callout-icon" data-feather="bell"></i>
@@ -742,21 +908,45 @@ scratch path:</p>
 <div class="callout-content">
 <p>Negishi scratch is not backed up, and files that are not accessed for
 a while are purged automatically. Copy the data shortly before the
-workshop, and move anything you want to keep to your home directory or
-your group’s Depot space afterwards.</p>
+workshop, and move anything you want to keep (VCFs, tables, reports) to
+your home directory or your group’s Depot space afterwards. If your copy
+was purged, run the commands above again; <code>rsync</code> copies only
+what is missing, and <code>ln -s</code> reports “File exists” for links
+that are already there, which you can ignore.</p>
 </div>
 </div>
 </div>
 </div>
 <div class="section level3">
 <h3 id="completed-results-backup">Completed results (backup)<a class="anchor" aria-label="anchor" href="#completed-results-backup"></a></h3>
-<!-- TBD(P3): how to use /depot/workshop/data/varcall-workshop_results when a job does not finish, with one copy example. -->
+<p>A completed copy of the workshop directory, made with the same
+scripts, is at:</p>
+<pre><code>/depot/workshop/data/varcall-workshop_results</code></pre>
+<p>It has the same layout as your
+<code>$SCRATCH/varcall-workshop</code>, without the FASTQ files,
+<code>ref/</code> and <code>resources/</code>, which you already have.
+Use it <strong>only if a job does not finish in time</strong>. Do not
+copy the whole directory; copy only the files you need into the matching
+place in your own directory. Each episode’s “Short on time?” box gives
+the exact command. For example, to continue with Episode 5A without your
+own alignments:</p>
+<!-- kit: not-run fallback -->
+<div class="codewrapper sourceCode" id="cb10">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" tabindex="-1" aria-label="code-block-10-1"></a><span class="fu">cp</span> /depot/workshop/data/varcall-workshop_results/results/bam/HG00<span class="pp">?</span>.markdup.bam<span class="pp">*</span> <span class="va">$SCRATCH</span>/varcall-workshop/results/bam/</span></code></pre>
+</div>
+<p>List what is available with
+<code>ls /depot/workshop/data/varcall-workshop_results/results</code>.</p>
 </div>
 </section><section><h2 class="section-heading" id="graphical-session-for-igv">Graphical session for IGV<a class="anchor" aria-label="anchor" href="#graphical-session-for-igv"></a></h2>
-<hr class="half-width"><!-- TBD(P2): which graphical session learners use for IGV in Episodes 4 and 8 (an Open OnDemand desktop or ThinLinc), the resource request, and the fallback (samtools tview plus snapshots). --><!--
+<hr class="half-width"><!-- TBD(P6): whether learners use IGV in a graphical session (Open OnDemand desktop or ThinLinc) in Episodes 4 and 8, the resource request, and the fallback (samtools tview plus prepared snapshots). --><p>TBD(P6). Episode 4 uses the text viewer <code>samtools tview</code>,
+which needs no graphical session.</p>
+<!--
 Place links that you need to refer to multiple times across pages here. Delete
 any links that you are not going to use.
- --></section></section></main><nav class="bottom-pagination mx-md-4" aria-label="Next Chapter"><!-- content for small screens --><div class="d-block d-sm-block d-md-none">
+ -->
+</section></section></main><nav class="bottom-pagination mx-md-4" aria-label="Next Chapter"><!-- content for small screens --><div class="d-block d-sm-block d-md-none">
         <a class="chapter-link float-end" href="../instructor/01-intro-to-variant-calling.html">Next<i aria-hidden="true" class="small-arrow" data-feather="arrow-right"></i></a>
       </div>
       <!-- content for large screens -->

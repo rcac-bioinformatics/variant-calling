@@ -217,8 +217,8 @@
 
     <div id="flush-collapsecurrent" class="accordion-collapse collapse show" data-bs-parent="#accordionFlushcurrent">
       <div class="accordion-body">
-        <ul><li><a href="#types-of-genetic-variation">Types of genetic variation</a></li>
-<li><a href="#germline-and-somatic-variants">Germline and somatic variants</a></li>
+        <ul><li><a href="#introduction">Introduction</a></li>
+<li><a href="#types-of-genetic-variation">Types of genetic variation</a></li>
 <li><a href="#the-reference-is-a-coordinate-system">The reference is a coordinate system</a></li>
 <li><a href="#diploid-genotypes">Diploid genotypes</a></li>
 <li><a href="#from-reads-to-a-genotype">From reads to a genotype</a></li>
@@ -227,6 +227,7 @@
 <li><a href="#what-short-reads-cannot-see">What short reads cannot see</a></li>
 <li><a href="#the-workflow-and-its-files">The workflow and its files</a></li>
 <li><a href="#the-workshop-question">The workshop question</a></li>
+<li><a href="#summary">Summary</a></li>
         </ul></div><!--/div.accordion-body-->
     </div><!--/div.accordion-collapse-->
 
@@ -400,6 +401,188 @@ HG003, HG004).</li>
 </div>
 </div>
 </div>
+<section><h2 class="section-heading" id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a></h2>
+<hr class="half-width"><p>Variant calling answers a simple-sounding question: where does the
+DNA of this individual differ from a reference sequence, and what are
+the two alleles at each of those positions? The answer is never read
+directly off the sequencer. It is inferred from millions of short,
+imperfect reads, each placed on the genome by an aligner that can also
+be wrong. Every call is therefore a statistical statement with a
+confidence attached, and part of the job is deciding which statements to
+believe.</p>
+<p>In this workshop we call variants on chromosome 20 in three people: a
+child and both parents, from the Genome in a Bottle (GIAB) Ashkenazi
+trio. Their genomes have been characterized so thoroughly that public
+benchmark call sets exist for all three, so later in the day we can
+measure how many of our calls are right instead of guessing.</p>
+<p>This episode introduces the vocabulary and the reasoning. There are
+no commands to run.</p>
+</section><section><h2 class="section-heading" id="types-of-genetic-variation">Types of genetic variation<a class="anchor" aria-label="anchor" href="#types-of-genetic-variation"></a></h2>
+<hr class="half-width"><p>A <strong>variant</strong> is a position, or a stretch of sequence,
+where a sample differs from the reference genome. The
+<strong>allele</strong> that matches the reference is the reference
+allele (REF); any other allele is an alternate allele (ALT).</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Type</th>
+<th>What changes</th>
+<th>Example (reference &gt; sample)</th>
+</tr></thead><tbody><tr><td>Single-nucleotide variant (SNV)</td>
+<td>One base is replaced by another</td>
+<td><code>T &gt; C</code></td>
+</tr><tr><td>Multi-nucleotide variant (MNV)</td>
+<td>Two or more adjacent bases change together</td>
+<td><code>AG &gt; TC</code></td>
+</tr><tr><td>Insertion or deletion (indel)</td>
+<td>Bases are added or removed</td>
+<td>
+<code>T &gt; TTGG</code> (insertion), <code>CAT &gt; C</code>
+(deletion)</td>
+</tr><tr><td>Structural variant (SV)</td>
+<td>Larger rearrangements: large deletions and insertions, inversions,
+translocations</td>
+<td>thousands of bases moved or lost</td>
+</tr><tr><td>Copy-number variant (CNV)</td>
+<td>A segment is present in more or fewer copies than in the
+reference</td>
+<td>a gene present three times instead of twice</td>
+</tr></tbody></table><p>In this lesson, “small variants” means SNVs and indels shorter than
+50 bp. Structural and copy-number variants need different methods and
+are not covered (see the setup page).</p>
+<p>SNVs come in two kinds that matter later. A
+<strong>transition</strong> exchanges a purine for a purine (A and G) or
+a pyrimidine for a pyrimidine (C and T). A <strong>transversion</strong>
+exchanges a purine for a pyrimidine or the reverse. The ratio of the two
+(Ts/Tv) is a quick quality check on a call set, which Episode 6
+uses.</p>
+<div class="section level3">
+<h3 id="germline-and-somatic-variants">Germline and somatic variants<a class="anchor" aria-label="anchor" href="#germline-and-somatic-variants"></a></h3>
+<p>A <strong>germline</strong> variant was inherited from a parent or
+arose in a parent’s egg or sperm, so it is present in every cell of the
+body. A <strong>somatic</strong> variant arose after conception, in some
+cells only, and is present in only a fraction of the cells sampled. A
+germline variant in a diploid individual is therefore expected in either
+half of the reads (one copy) or all of them (two copies). A somatic
+variant can be present in any fraction. This workshop calls germline
+variants; somatic calling uses different statistical models and is not
+covered.</p>
+<p>A <strong>de novo</strong> variant is a germline variant present in a
+child and absent from both parents. They are rare, and Episode 8 will
+show how hard they are to find among the many apparent de novo calls
+that are errors.</p>
+</div>
+</section><section><h2 class="section-heading" id="the-reference-is-a-coordinate-system">The reference is a coordinate system<a class="anchor" aria-label="anchor" href="#the-reference-is-a-coordinate-system"></a></h2>
+<hr class="half-width"><p>The reference genome is one haploid sequence used as a shared map.
+Every position has a name (<code>chr20:88108</code> is base 88,108 of
+chromosome 20), and REF is simply the base found at that position in the
+reference. REF is not “normal”, “healthy” or “ancestral”, and ALT is not
+necessarily rare or harmful. An ALT allele only differs from the
+reference sequence; it can be the more common allele at that position in
+many populations.</p>
+<div id="two-different-frequencies" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="two-different-frequencies" class="callout-inner">
+<h3 class="callout-title">Two different frequencies</h3>
+<div class="callout-content">
+<p>Two numbers are easy to confuse:</p>
+<ul><li>
+<strong>Variant allele fraction</strong> (within one sample): the
+fraction of reads at a position that carry the ALT allele, for example
+18 of 40 reads, 0.45. It tells you about the genotype of that one
+sample.</li>
+<li>
+<strong>Population allele frequency</strong>: the fraction of
+chromosomes in a population that carry the ALT allele, for example from
+gnomAD (Episode 7). It tells you how common the allele is among other
+people.</li>
+</ul><p>A heterozygous call has an allele fraction near 0.5 whether the
+allele is rare or common in the population.</p>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="diploid-genotypes">Diploid genotypes<a class="anchor" aria-label="anchor" href="#diploid-genotypes"></a></h2>
+<hr class="half-width"><p>Humans are diploid: each autosome is present in two copies, one from
+each parent. A <strong>genotype</strong> lists the two alleles at a
+position, written as allele numbers: 0 is REF, 1 is the first ALT, 2 the
+second ALT, and so on. This is how genotypes appear in a VCF file, the
+format Episode 5A produces (<a href="https://samtools.github.io/hts-specs/" class="external-link">VCF specification</a>).</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Genotype</th>
+<th>Name</th>
+<th>Meaning</th>
+</tr></thead><tbody><tr><td><code>0/0</code></td>
+<td>homozygous reference</td>
+<td>both copies match the reference</td>
+</tr><tr><td><code>0/1</code></td>
+<td>heterozygous</td>
+<td>one copy REF, one copy ALT</td>
+</tr><tr><td><code>1/1</code></td>
+<td>homozygous alternate</td>
+<td>both copies carry the ALT allele</td>
+</tr><tr><td><code>1/2</code></td>
+<td>heterozygous, two ALT alleles</td>
+<td>each copy carries a different ALT allele</td>
+</tr><tr><td><code>./.</code></td>
+<td>missing</td>
+<td>no genotype could be called (for example, no reads)</td>
+</tr></tbody></table><p>The <code>/</code> means the two alleles are unphased: we know which
+two alleles are present, not which parental chromosome carries which. A
+<code>|</code> (as in <code>0|1</code>) marks a phased genotype.</p>
+</section><section><h2 class="section-heading" id="from-reads-to-a-genotype">From reads to a genotype<a class="anchor" aria-label="anchor" href="#from-reads-to-a-genotype"></a></h2>
+<hr class="half-width"><p>A caller sees, at each position, the stack of aligned reads covering
+it: the <strong>pileup</strong>. The schematic pileups below show a 9 bp
+window. Dots are bases that match the reference; letters are
+mismatches.</p>
+<pre class="schematic"><code>SCHEMATIC, NOT DATA
+position     1 2 3 4 5 6 7 8 9
+reference    A C G T T G C A T
+read 1       . . . . C . . . .
+read 2       . . . . . . . . .
+read 3       . . . . C . . . .
+read 4       . . . . . . . . .
+read 5       . . . . C . . . .
+read 6       . . . . . . . . .
+read 7       . . . . C . . . .
+read 8       . . . . . . . . .</code></pre>
+<p>At position 5, four of eight reads carry <code>C</code> and four
+carry the reference <code>T</code>. That is what a heterozygous
+<code>T/C</code> (genotype <code>0/1</code>) is expected to look like. A
+homozygous ALT site would show <code>C</code> in nearly every read.</p>
+<p>Not every read counts equally. Two kinds of quality decide how much a
+read contributes:</p>
+<ul><li>
+<strong>Base quality</strong> is the sequencer’s estimate that a
+base call is wrong, on the Phred scale: Q = -10 log10(probability of
+error). Q20 means a 1 in 100 chance of error, Q30 1 in 1,000 (<a href="https://samtools.github.io/hts-specs/SAMv1.pdf" class="external-link">SAM
+specification</a>). A mismatch on a Q2 base is weak evidence; a mismatch
+on a Q37 base is strong evidence.</li>
+<li>
+<strong>Mapping quality (MAPQ)</strong> is the aligner’s estimate,
+on the same scale, that the read is placed at the wrong position in the
+genome. A read from a repeat that occurs twice in the genome cannot be
+placed with confidence, and gets a mapping quality near 0 (Episode
+4).</li>
+</ul><p>The caller then asks, for each possible genotype (<code>0/0</code>,
+<code>0/1</code>, <code>1/1</code>): how likely are these reads, with
+these qualities, if that genotype were true? Those <strong>genotype
+likelihoods</strong> are stored in the VCF as <code>PL</code>,
+Phred-scaled so that the most likely genotype gets 0. The called
+genotype is the most probable one, and two quality values summarize the
+confidence (<a href="https://samtools.github.io/hts-specs/" class="external-link">VCF
+specification</a>; <a href="https://samtools.github.io/bcftools/bcftools.html" class="external-link">bcftools
+manual</a>):</p>
+<ul><li>
+<strong>QUAL</strong>, per site: how confident the caller is that
+any ALT allele is present at this position in any of the samples.</li>
+<li>
+<strong>GQ</strong> (genotype quality), per sample: how confident
+the caller is that this sample’s genotype is the right one.</li>
+</ul><p>Calling, filtering and interpretation are separate steps. The caller
+writes down every site it thinks may be variant, together with these
+qualities. Filtering (Episode 6) decides which calls to trust.
+Interpretation (Episodes 7 and 8) decides what the trusted calls mean.
+Mixing them up, for example by treating every line of a raw VCF as a
+real variant, is one of the most common errors in variant analysis.</p>
 <div id="accordionInstructor1" class="accordion instructor-note accordion-flush">
 <div class="accordion-item">
 <button class="accordion-button instructor-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInstructor1" aria-expanded="false" aria-controls="collapseInstructor1">
@@ -407,21 +590,279 @@ HG003, HG004).</li>
 </button>
 <div id="collapseInstructor1" class="accordion-collapse collapse" data-bs-parent="#accordionInstructor1" aria-labelledby="headingInstructor1">
 <div class="accordion-body">
-<p>Stub: content arrives in phase P4.</p>
+<p>Animation placeholder: “From reads to a genotype” (about 80 seconds)
+goes here. Its storyboard, scene list and alt text are specified in
+<code>maintenance/plan/figures/reads-to-genotype.md</code> (local file,
+not published); P7 builds the HTML animation in the style of the RNA-seq
+lesson animations. Until then, draw the pileup above on the board and
+walk through the three genotype hypotheses.</p>
 </div>
 </div>
 </div>
 </div>
-<section><h2 class="section-heading" id="types-of-genetic-variation">Types of genetic variation<a class="anchor" aria-label="anchor" href="#types-of-genetic-variation"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="germline-and-somatic-variants">Germline and somatic variants<a class="anchor" aria-label="anchor" href="#germline-and-somatic-variants"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="the-reference-is-a-coordinate-system">The reference is a coordinate system<a class="anchor" aria-label="anchor" href="#the-reference-is-a-coordinate-system"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="diploid-genotypes">Diploid genotypes<a class="anchor" aria-label="anchor" href="#diploid-genotypes"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="from-reads-to-a-genotype">From reads to a genotype<a class="anchor" aria-label="anchor" href="#from-reads-to-a-genotype"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="how-many-reads-make-a-heterozygous-call">How many reads make a heterozygous call?<a class="anchor" aria-label="anchor" href="#how-many-reads-make-a-heterozygous-call"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="why-calls-can-be-wrong">Why calls can be wrong<a class="anchor" aria-label="anchor" href="#why-calls-can-be-wrong"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="what-short-reads-cannot-see">What short reads cannot see<a class="anchor" aria-label="anchor" href="#what-short-reads-cannot-see"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="the-workflow-and-its-files">The workflow and its files<a class="anchor" aria-label="anchor" href="#the-workflow-and-its-files"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="the-workshop-question">The workshop question<a class="anchor" aria-label="anchor" href="#the-workshop-question"></a></h2>
+<div id="challenge-call-the-genotype" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-call-the-genotype" class="callout-inner">
+<h3 class="callout-title">Challenge: call the genotype</h3>
+<div class="callout-content">
+<p>Each schematic pileup shows one position in one sample. All bases
+have high base quality, and all reads have high mapping quality unless
+marked. What genotype would you call at the marked position
+(<code>*</code>), and how confident are you?</p>
+<pre class="schematic"><code>SCHEMATIC, NOT DATA        position *, reference base G
+
+Pileup A (10 reads)   G G A G A A G A G A
+Pileup B (3 reads)    A A A
+Pileup C (12 reads)   A A A A A A A A A A A A
+Pileup D (10 reads)   G G G G G G G G G A
+Pileup E (8 reads)    A A A A G G G G     (every read has mapping quality 0)</code></pre>
+</div>
+</div>
+</div>
+<div id="accordionSolution1" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution1" aria-expanded="false" aria-controls="collapseSolution1">
+  <h4 class="accordion-header" id="headingSolution1"> Show me the solution </h4>
+</button>
+<div id="collapseSolution1" class="accordion-collapse collapse" data-bs-parent="#accordionSolution1" aria-labelledby="headingSolution1">
+<div class="accordion-body">
+<ul><li>
+<strong>A:</strong> 5 <code>A</code> and 5 <code>G</code>:
+heterozygous <code>0/1</code>, called with confidence.</li>
+<li>
+<strong>B:</strong> 3 <code>A</code>: most likely <code>1/1</code>,
+but only three reads. A heterozygous site shows only one allele in three
+reads one time in four (next section), so the genotype quality is
+low.</li>
+<li>
+<strong>C:</strong> 12 <code>A</code>: homozygous alternate
+<code>1/1</code>, confident.</li>
+<li>
+<strong>D:</strong> one <code>A</code> in 10 reads: most likely
+<code>0/0</code> with one sequencing error. If the <code>A</code> had
+low base quality, even more so.</li>
+<li>
+<strong>E:</strong> the allele fraction looks like a perfect
+heterozygote, but every read has mapping quality 0. The reads may come
+from another copy of a repeat, so the “variant” may be a difference
+between two copies of the repeat, not between this person’s two
+chromosomes. A careful caller gives it little or no weight. Episode 6
+filters sites like this on mapping quality.</li>
+</ul></div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="how-many-reads-make-a-heterozygous-call">How many reads make a heterozygous call?<a class="anchor" aria-label="anchor" href="#how-many-reads-make-a-heterozygous-call"></a></h2>
+<hr class="half-width"><p>At a heterozygous site, each read comes from one of the two
+chromosomes with equal probability, like a coin toss. With n reads, the
+chance that all of them come from the same chromosome, so that the site
+looks homozygous, is 2 x 0.5^n. This idealized model ignores sequencing
+errors and assumes both chromosomes are sampled equally.</p>
+<table class="table"><thead><tr><th>Reads (n)</th>
+<th>Chance a heterozygous site shows only one allele</th>
+</tr></thead><tbody><tr><td>3</td>
+<td>0.25 (1 in 4)</td>
+</tr><tr><td>5</td>
+<td>0.0625 (1 in 16)</td>
+</tr><tr><td>10</td>
+<td>0.002 (about 1 in 500)</td>
+</tr><tr><td>15</td>
+<td>0.00006 (about 1 in 16,000)</td>
+</tr></tbody></table><div id="challenge-how-many-reads-before-you-trust-a-heterozygous-call" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-how-many-reads-before-you-trust-a-heterozygous-call" class="callout-inner">
+<h3 class="callout-title">Challenge: how many reads before you trust a
+heterozygous call?</h3>
+<div class="callout-content">
+<ol style="list-style-type: decimal"><li>Use the formula above. At 5 reads, how often would a true
+heterozygous site look homozygous? At 10 reads?</li>
+<li>Our samples have a mean depth of about 39x on chromosome 20 (Episode
+4). Why is the mean depth not enough to say that every heterozygous site
+will be called correctly?</li>
+<li>In Episode 6 we will set genotypes supported by fewer than 10 reads
+to missing (<code>./.</code>). What do we gain, and what do we
+lose?</li>
+</ol></div>
+</div>
+</div>
+<div id="accordionSolution2" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution2" aria-expanded="false" aria-controls="collapseSolution2">
+  <h4 class="accordion-header" id="headingSolution2"> Show me the solution </h4>
+</button>
+<div id="collapseSolution2" class="accordion-collapse collapse" data-bs-parent="#accordionSolution2" aria-labelledby="headingSolution2">
+<div class="accordion-body">
+<ol style="list-style-type: decimal"><li>At 5 reads, 2 x 0.5^5 = 0.0625, about one heterozygous site in 16
+looks homozygous. At 10 reads, 2 x 0.5^10 = 0.002, about one in 500. The
+benchmark for the child alone lists more than 70,000 SNVs on chromosome
+20 (Episode 6), so even one in 500 of the heterozygous ones adds
+up.</li>
+<li>Depth varies along the genome. A mean of 39x includes positions with
+far fewer reads (and far more), and the low-depth positions are where
+heterozygous sites are missed or miscalled. Episode 4 measures how much
+of chromosome 20 is covered at a given depth.</li>
+<li>We gain precision: genotypes with too little evidence no longer
+count as calls. We lose recall: some true genotypes become missing.
+Episode 6 measures this trade-off against the benchmark.</li>
+</ol></div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="why-calls-can-be-wrong">Why calls can be wrong<a class="anchor" aria-label="anchor" href="#why-calls-can-be-wrong"></a></h2>
+<hr class="half-width"><p>Every error source below produces calls that look real in a raw
+VCF:</p>
+<ul><li>
+<strong>Sequencing errors.</strong> A wrong base on a few reads
+looks like a low-fraction ALT allele. Base quality and the number of
+supporting reads separate most of them from real variants.</li>
+<li>
+<strong>Sampling.</strong> Too few reads, or unlucky sampling, makes
+a heterozygous site look homozygous or hides it (previous section).</li>
+<li>
+<strong>Mapping errors.</strong> Reads from a repeat or a duplicated
+region can be placed at the wrong copy. Differences between the copies
+then look like variants. Mapping quality flags many of these reads, not
+all.</li>
+<li>
+<strong>Duplicates.</strong> Copies of the same original DNA
+fragment are not independent evidence. Episode 4 marks them so the
+caller can skip them.</li>
+<li>
+<strong>Reference problems.</strong> Gaps, errors or collapsed
+repeats in the reference attract misplaced reads.</li>
+<li>
+<strong>Representation.</strong> One indel can often be written in
+several equivalent ways, and two call sets can disagree only in how they
+wrote it. Episode 5A normalizes calls to remove this.</li>
+</ul></section><section><h2 class="section-heading" id="what-short-reads-cannot-see">What short reads cannot see<a class="anchor" aria-label="anchor" href="#what-short-reads-cannot-see"></a></h2>
+<hr class="half-width"><p>Our reads are 151 bases long, from DNA fragments a few hundred bases
+long. A read cannot be placed uniquely if it falls entirely inside a
+repeat longer than the fragment. In our data, about 5% of each sample’s
+reads get mapping quality 0, which means the aligner found several
+equally good places for them (Episode 4).</p>
+<p>Repeats concentrate the errors. In the reference run of this
+workshop, the centromere of chromosome 20, about 5.6% of the
+chromosome’s length, held 22% of the raw SNV calls in the child (HG002),
+with a transition/transversion ratio of 1.22, far below the 2.28 of
+calls inside the benchmark regions (<a href="https://github.com/rcac-bioinformatics/variant-calling/blob/main/maintenance/plan/reference-run.md" class="external-link">reference-run
+memo</a>, section 3). Many of those calls are almost certainly mapping
+artifacts, and Episode 6 filters most of them.</p>
+<p>Short reads also miss most structural variants, cannot resolve which
+copy of a segmental duplication a read comes from, and cannot tell which
+parental chromosome carries each allele over long distances (phasing).
+Other methods, such as long-read sequencing, are needed for these
+questions; they are outside the scope of this workshop.</p>
+</section><section><h2 class="section-heading" id="the-workflow-and-its-files">The workflow and its files<a class="anchor" aria-label="anchor" href="#the-workflow-and-its-files"></a></h2>
+<hr class="half-width"><table class="table"><colgroup><col width="20%"><col width="20%"><col width="20%"><col width="20%"><col width="20%"></colgroup><thead><tr><th>Step</th>
+<th>Episode</th>
+<th>Tools</th>
+<th>Input</th>
+<th>Output</th>
+</tr></thead><tbody><tr><td>Set up the project and check the data</td>
+<td>2</td>
+<td>
+<code>rsync</code>, <code>md5sum</code>, samtools</td>
+<td>staged copy on Depot</td>
+<td>
+<code>data/</code>, <code>ref/</code>, <code>resources/</code>,
+<code>scripts/</code>, <code>results/</code>
+</td>
+</tr><tr><td>Check read quality</td>
+<td>3</td>
+<td>FastQC, MultiQC</td>
+<td>FASTQ (<code>data/*.fastq.gz</code>)</td>
+<td><code>results/qc/multiqc_report.html</code></td>
+</tr><tr><td>Align reads, mark duplicates</td>
+<td>4</td>
+<td>bwa mem, samtools</td>
+<td>FASTQ, reference and bwa index</td>
+<td>
+<code>results/bam/&lt;sample&gt;.markdup.bam</code> and
+<code>.csi</code> index</td>
+</tr><tr><td>Check the alignments</td>
+<td>4</td>
+<td>samtools, mosdepth, MultiQC</td>
+<td>BAM</td>
+<td><code>results/qc_alignment/</code></td>
+</tr><tr><td>Call variants jointly in the trio</td>
+<td>5A</td>
+<td>bcftools</td>
+<td>three BAMs, reference</td>
+<td><code>results/vcf/trio.norm.vcf.gz</code></td>
+</tr><tr><td>Filter and evaluate</td>
+<td>6</td>
+<td>bcftools, hap.py</td>
+<td>VCF, GIAB benchmarks</td>
+<td>
+<code>results/vcf/trio.filtered.vcf.gz</code>,
+<code>results/eval/</code>
+</td>
+</tr><tr><td>Annotate</td>
+<td>7</td>
+<td>SnpEff, bcftools</td>
+<td>filtered VCF, gnomAD frequencies</td>
+<td><code>results/annot/trio.ann.vcf.gz</code></td>
+</tr><tr><td>Find candidate variants in the trio</td>
+<td>8</td>
+<td>bcftools</td>
+<td>annotated VCF, PED file</td>
+<td>
+<code>results/trio/funnel.tsv</code>,
+<code>results/trio/candidates.tsv</code>
+</td>
+</tr></tbody></table><p>The file formats (FASTQ, BAM, VCF, BED, PED) are introduced in the
+episode where they first appear.</p>
+<div id="accordionInstructor2" class="accordion instructor-note accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button instructor-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInstructor2" aria-expanded="false" aria-controls="collapseInstructor2">
+  <h3 class="accordion-header" id="headingInstructor2">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="edit-2"></i></div> Instructor Note </h3>
+</button>
+<div id="collapseInstructor2" class="accordion-collapse collapse" data-bs-parent="#accordionInstructor2" aria-labelledby="headingInstructor2">
+<div class="accordion-body">
+<p>A workflow diagram for this table is a P7 figure (plan section 2).
+Until it exists, sketch the boxes on the board: FASTQ to BAM to VCF,
+with the QC step after each.</p>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="the-workshop-question">The workshop question<a class="anchor" aria-label="anchor" href="#the-workshop-question"></a></h2>
+<hr class="half-width"><p>The trio is a child (HG002) and both parents (HG003, HG004). By the
+end of the day we will ask:</p>
+<blockquote>
+<p>In the child, which variants are consistent with a de novo or a
+recessive inheritance model, are plausibly protein-altering, and are
+rare in an ancestry-matched population? How many of these candidates
+survive inspection?</p>
+</blockquote>
+<p>Answering it needs every step of the workflow: good alignments,
+trustworthy calls, filters we can justify, measured error rates, and
+annotation. It also needs restraint. These are public reference samples,
+and nothing we find says anything about anyone’s health. The goal is to
+learn how evidence accumulates, and how often an exciting-looking
+candidate turns out to be an error.</p>
+<div id="discussion-what-would-convince-you" class="callout discussion">
+<div class="callout-square">
+<i class="callout-icon" data-feather="message-circle"></i>
+</div>
+<span class="callout-header">Discussion</span>
+<div id="discussion-what-would-convince-you" class="callout-inner">
+<h3 class="callout-title">Discussion: what would convince you?</h3>
+<div class="callout-content">
+<p>Suppose the final list contains one variant that is heterozygous in
+the child and absent from both parents. Before calling it a de novo
+mutation, what evidence would you want to see? Keep your list; Episode 8
+comes back to it.</p>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a></h2>
 <hr class="half-width"><div id="keypoints1" class="callout keypoints">
 <div class="callout-square">
 <i class="callout-icon" data-feather="key"></i>
@@ -429,7 +870,20 @@ HG003, HG004).</li>
 <span class="callout-header">Key Points</span>
 <div class="callout-inner">
 <div class="callout-content">
-<ul><li>TBD(P4)</li>
+<ul><li>A variant is a difference from the reference sequence. The reference
+is a coordinate system, not a description of a healthy or ancestral
+genome.</li>
+<li>Diploid genotypes are written as allele numbers: <code>0/0</code>,
+<code>0/1</code>, <code>1/1</code>, and <code>./.</code> for
+missing.</li>
+<li>A caller weighs each read by its base quality and mapping quality,
+computes genotype likelihoods, and reports the most probable genotype
+with QUAL and GQ.</li>
+<li>At a heterozygous site, the chance of seeing only one allele in n
+reads is 2 x 0.5^n, so low-depth genotypes are unreliable.</li>
+<li>Sequencing errors, sampling, mapping errors in repeats, duplicates
+and representation differences all produce calls that look real.
+Calling, filtering and interpretation are separate steps.</li>
 </ul></div>
 </div>
 </div>

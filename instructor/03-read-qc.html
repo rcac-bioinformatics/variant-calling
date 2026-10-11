@@ -235,13 +235,13 @@
 
     <div id="flush-collapsecurrent" class="accordion-collapse collapse show" data-bs-parent="#accordionFlushcurrent">
       <div class="accordion-body">
-        <ul><li><a href="#phred-scores-and-binned-qualities">Phred scores and binned qualities</a></li>
-<li><a href="#running-fastqc-and-multiqc">Running FastQC and MultiQC</a></li>
-<li><a href="#reading-the-reports">Reading the reports</a></li>
-<li><a href="#adapters-soft-clipping-and-trimming">Adapters, soft-clipping and trimming</a></li>
-<li><a href="#duplicates">Duplicates</a></li>
-<li><a href="#why-base-quality-matters-for-genotype-likelihoods">Why base quality matters for genotype likelihoods</a></li>
-<li><a href="#trimming-with-fastp-reference-only">Trimming with fastp (reference only)</a></li>
+        <ul><li><a href="#introduction">Introduction</a></li>
+<li><a href="#phred-scores-and-binned-qualities">Phred scores and binned qualities</a></li>
+<li><a href="#step-1-run-fastqc-in-an-interactive-session">Step 1: Run FastQC in an interactive session</a></li>
+<li><a href="#step-2-combine-the-reports-with-multiqc">Step 2: Combine the reports with MultiQC</a></li>
+<li><a href="#step-3-read-the-report">Step 3: Read the report</a></li>
+<li><a href="#step-4-decide-whether-to-trim">Step 4: Decide whether to trim</a></li>
+<li><a href="#summary">Summary</a></li>
         </ul></div><!--/div.accordion-body-->
     </div><!--/div.accordion-collapse-->
 
@@ -390,25 +390,408 @@ variants?</li>
 </div>
 </div>
 </div>
-<div id="accordionInstructor1" class="accordion instructor-note accordion-flush">
+<section><h2 class="section-heading" id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a></h2>
+<hr class="half-width"><p>Before aligning, we check that the reads are what we expect: the
+right length, good base qualities, few adapters, and nothing strange in
+their composition. FastQC writes one report per FASTQ file, and MultiQC
+combines all of them into one page so the samples can be compared side
+by side.</p>
+<p>For variant calling, read QC answers one practical question: is
+anything wrong with the reads that alignment and calling will not handle
+by themselves? With modern Illumina data the answer is usually no, and
+the main risk is the opposite one: removing good data because a QC plot
+looks unfamiliar.</p>
+<div id="before-you-start" class="callout prereq">
+<div class="callout-square">
+<i class="callout-icon" data-feather="check"></i>
+</div>
+<span class="callout-header">Prerequisite</span>
+<div id="before-you-start" class="callout-inner">
+<h3 class="callout-title">Before you start</h3>
+<div class="callout-content">
+<p>You need the workshop copy from the setup page and Episode 2
+(<code>$SCRATCH/varcall-workshop/data/</code> with six FASTQ files).</p>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="phred-scores-and-binned-qualities">Phred scores and binned qualities<a class="anchor" aria-label="anchor" href="#phred-scores-and-binned-qualities"></a></h2>
+<hr class="half-width"><p>The fourth line of each FASTQ record (Episode 2) holds one character
+per base. Each character encodes the base quality as a Phred score:
+subtract 33 from the character’s ASCII code (<a href="https://samtools.github.io/hts-specs/SAMv1.pdf" class="external-link">SAM
+specification</a>, which uses the same encoding). A Phred score Q means
+an estimated error probability of 10^(-Q/10).</p>
+<p>Our NovaSeq reads use only four different quality values, a scheme
+called quality binning. In the first 200,000 reads of the source data we
+found exactly these characters (<a href="https://github.com/rcac-bioinformatics/variant-calling/blob/main/maintenance/plan/feasibility.md" class="external-link">feasibility
+memo</a>):</p>
+<table class="table"><thead><tr><th>Character</th>
+<th>ASCII code</th>
+<th>Phred score</th>
+<th>Estimated error probability</th>
+</tr></thead><tbody><tr><td><code>#</code></td>
+<td>35</td>
+<td>2</td>
+<td>0.63</td>
+</tr><tr><td><code>,</code></td>
+<td>44</td>
+<td>11</td>
+<td>0.08</td>
+</tr><tr><td><code>:</code></td>
+<td>58</td>
+<td>25</td>
+<td>0.003</td>
+</tr><tr><td><code>F</code></td>
+<td>70</td>
+<td>37</td>
+<td>0.0002</td>
+</tr></tbody></table><div id="why-base-quality-matters-for-variant-calling" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="why-base-quality-matters-for-variant-calling" class="callout-inner">
+<h3 class="callout-title">Why base quality matters for variant
+calling</h3>
+<div class="callout-content">
+<p>The caller uses base qualities directly. In the genotype likelihoods
+of Episode 1, a mismatching base with Q37 counts as strong evidence for
+an ALT allele, and a mismatching base with Q2 counts as almost none.
+bcftools also adjusts base qualities near indels before calling (base
+alignment quality, BAQ), so that mismatches caused by misaligned indels
+count less (<a href="https://samtools.github.io/bcftools/bcftools.html#mpileup" class="external-link">bcftools
+manual, <code>mpileup</code></a>). Low-quality bases do not need to be
+removed for calling to work; they need to be reported honestly, and that
+is what the quality string does.</p>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-1-run-fastqc-in-an-interactive-session">Step 1: Run FastQC in an interactive session<a class="anchor" aria-label="anchor" href="#step-1-run-fastqc-in-an-interactive-session"></a></h2>
+<hr class="half-width"><p>FastQC reads every base of every file, which is too much work for a
+login node. Start an interactive session on a compute node with 4 cores,
+then run FastQC on all six files, 4 at a time (<code>-t 4</code>):</p>
+<!-- kit: interactive 03-qc.sh -->
+<div class="codewrapper sourceCode" id="cb1">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1" aria-label="code-block-1-1"></a><span class="ex">sinteractive</span> <span class="at">-A</span> rcac <span class="at">-q</span> standby <span class="at">-p</span> cpu <span class="at">-N</span> 1 <span class="at">-n</span> 4 <span class="at">--time</span><span class="op">=</span>1:00:00</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1" aria-label="code-block-1-2"></a><span class="ex">module</span> load biocontainers</span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1" aria-label="code-block-1-3"></a><span class="ex">module</span> load fastqc/0.12.1</span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1" aria-label="code-block-1-4"></a><span class="ex">module</span> load multiqc/1.23</span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1" aria-label="code-block-1-5"></a><span class="bu">cd</span> <span class="va">$SCRATCH</span>/varcall-workshop</span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1" aria-label="code-block-1-6"></a><span class="ex">fastqc</span> <span class="at">-t</span> 4 <span class="at">-o</span> results/qc data/<span class="pp">*</span>.fastq.gz</span></code></pre>
+</div>
+<p>Starting the session can take a few minutes when the standby queue is
+busy. FastQC prints its progress for each file; in the workshop’s test
+run, FastQC and MultiQC together took about 4 minutes on 4 cores.</p>
+</section><section><h2 class="section-heading" id="step-2-combine-the-reports-with-multiqc">Step 2: Combine the reports with MultiQC<a class="anchor" aria-label="anchor" href="#step-2-combine-the-reports-with-multiqc"></a></h2>
+<hr class="half-width"><p>In the same session, run MultiQC on the FastQC output folder and list
+what was written:</p>
+<!-- kit: interactive 03-qc.sh -->
+<div class="codewrapper sourceCode" id="cb2">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1" aria-label="code-block-2-1"></a><span class="ex">multiqc</span> <span class="at">-o</span> results/qc results/qc</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1" aria-label="code-block-2-2"></a><span class="fu">ls</span> results/qc</span></code></pre>
+</div>
+<div id="accordionSpoiler1" class="accordion spoiler-accordion accordion-flush">
 <div class="accordion-item">
-<button class="accordion-button instructor-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInstructor1" aria-expanded="false" aria-controls="collapseInstructor1">
-  <h3 class="accordion-header" id="headingInstructor1">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="edit-2"></i></div> Instructor Note </h3>
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler1" aria-expanded="false" aria-controls="collapseSpoiler1">
+  <h3 class="accordion-header" id="headingSpoiler1">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
 </button>
-<div id="collapseInstructor1" class="accordion-collapse collapse" data-bs-parent="#accordionInstructor1" aria-labelledby="headingInstructor1">
+<div id="collapseSpoiler1" class="accordion-collapse collapse" aria-labelledby="headingSpoiler1" data-bs-parent="#accordionSpoiler1">
 <div class="accordion-body">
-<p>Stub: content arrives in phase P4.</p>
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>       file_search | Search path: /scratch/negishi/aseethar/varcall-kit/kit-runs/kit-2026-10-11/scratch/varcall-workshop/results/qc
+            fastqc | Found 6 reports
+     write_results | Data        : results/qc/multiqc_data
+     write_results | Report      : results/qc/multiqc_report.html
+           multiqc | MultiQC complete
+HG002_R1_fastqc.html
+HG002_R1_fastqc.zip
+HG002_R2_fastqc.html
+HG002_R2_fastqc.zip
+HG003_R1_fastqc.html
+HG003_R1_fastqc.zip
+HG003_R2_fastqc.html
+HG003_R2_fastqc.zip
+HG004_R1_fastqc.html
+HG004_R1_fastqc.zip
+HG004_R2_fastqc.html
+HG004_R2_fastqc.zip
+multiqc_data
+multiqc_report.html</code></pre>
+</div>
+<p>MultiQC reports what it found (six FastQC reports) and where it wrote
+its output. The listing shows one <code>_fastqc.html</code> report and
+one <code>_fastqc.zip</code> archive per FASTQ file, plus
+<code>multiqc_report.html</code> and its data folder
+<code>multiqc_data/</code>.</p>
 </div>
 </div>
 </div>
 </div>
-<section><h2 class="section-heading" id="phred-scores-and-binned-qualities">Phred scores and binned qualities<a class="anchor" aria-label="anchor" href="#phred-scores-and-binned-qualities"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="running-fastqc-and-multiqc">Running FastQC and MultiQC<a class="anchor" aria-label="anchor" href="#running-fastqc-and-multiqc"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="reading-the-reports">Reading the reports<a class="anchor" aria-label="anchor" href="#reading-the-reports"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="adapters-soft-clipping-and-trimming">Adapters, soft-clipping and trimming<a class="anchor" aria-label="anchor" href="#adapters-soft-clipping-and-trimming"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="duplicates">Duplicates<a class="anchor" aria-label="anchor" href="#duplicates"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="why-base-quality-matters-for-genotype-likelihoods">Why base quality matters for genotype likelihoods<a class="anchor" aria-label="anchor" href="#why-base-quality-matters-for-genotype-likelihoods"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="trimming-with-fastp-reference-only">Trimming with fastp (reference only)<a class="anchor" aria-label="anchor" href="#trimming-with-fastp-reference-only"></a></h2>
+<p>Type <code>exit</code> to leave the interactive session when you are
+done. To read the report, copy
+<code>results/qc/multiqc_report.html</code> to your computer (for
+example with <code>scp</code>, or the file browser in MobaXterm) and
+open it in a web browser.</p>
+<div id="short-on-time" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="short-on-time" class="callout-inner">
+<h3 class="callout-title">Short on time?</h3>
+<div class="callout-content">
+<p>If your FastQC session did not finish, the completed reports are in
+the results copy. Open the MultiQC report from there instead of your
+own:</p>
+<!-- kit: not-run fallback -->
+<div class="codewrapper sourceCode" id="cb4">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1" aria-label="code-block-4-1"></a><span class="fu">cp</span> /depot/workshop/data/varcall-workshop_results/results/qc/multiqc_report.html <span class="va">$SCRATCH</span>/varcall-workshop/results/qc/</span></code></pre>
+</div>
+<p>Nothing later in the workshop reads the QC reports, so you can
+continue with Episode 4 either way.</p>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-3-read-the-report">Step 3: Read the report<a class="anchor" aria-label="anchor" href="#step-3-read-the-report"></a></h2>
+<hr class="half-width"><p>FastQC marks each module with a pass, warning or fail. These marks
+come from thresholds designed for a generic whole-genome library (<a href="https://www.bioinformatics.babraham.ac.uk/projects/fastqc/" class="external-link">FastQC
+documentation</a>); read the plots, not only the colors. Below, each
+module is described with what to expect from this dataset, followed by a
+schematic cartoon that shows what a problem looks like. The cartoons are
+not this workshop’s data.</p>
+<div class="section level3">
+<h3 id="per-base-sequence-quality">Per base sequence quality<a class="anchor" aria-label="anchor" href="#per-base-sequence-quality"></a></h3>
+<p>The distribution of base qualities at each position along the read.
+With binned qualities, the box plots in each FastQC report look blocky:
+medians, quartiles and percentiles can only take the four values (2, 11,
+25, 37). That is binning, not a failure. In our files the median and
+both quartiles are 37 at every position; only the 10th percentile drops
+to 25 near the end of the read. MultiQC plots the mean, which stays near
+35 to 36 and falls slightly over the last cycles.</p>
+<figure style="text-align: center"><img src="../fig/03/multiqc_per_base_quality.png" alt="MultiQC line plot of mean Phred score against read position for six files; all lines lie close together near 35 to 36 in the green zone and dip slightly over the last cycles" class="figure mx-auto d-block"><figcaption>
+Your output: mean base quality at each position of the six workshop
+FASTQ files (MultiQC). The means stay between about Q34 and Q36 along
+the whole 151 bp read.
+</figcaption></figure><figure style="text-align: center"><img src="../fig/03/contrast_sequence_quality_histogram.png" alt="Three cartoon quality plots: read 2 quality collapsing while read 1 stays high, a short quality bump followed by a drop, and a stable high profile" class="figure mx-auto d-block"><figcaption>
+Contrast example, schematic and not data: one read of a pair failing, a
+chemistry problem during the run, and a good profile. Cartoon by Zandra
+Selina, CC BY 4.0.
+</figcaption></figure></div>
+<div class="section level3">
+<h3 id="per-sequence-quality-scores">Per sequence quality scores<a class="anchor" aria-label="anchor" href="#per-sequence-quality-scores"></a></h3>
+<p>The mean quality of each read, as a histogram. A good run has one
+sharp peak at high quality.</p>
+<figure style="text-align: center"><img src="../fig/03/multiqc_per_sequence_quality.png" alt="MultiQC line plot of read counts against mean read quality for six files; the curves are flat near zero below 30 and rise to a single sharp peak of 5 to 6 million reads at quality 36" class="figure mx-auto d-block"><figcaption>
+Your output: mean quality per read for the six workshop FASTQ files
+(MultiQC). Most reads have a high mean quality, with a sharp peak at 36.
+</figcaption></figure><figure style="text-align: center"><img src="../fig/03/contrast_per_sequence_quality_score.png" alt="Three cartoon histograms of per read quality: a single peak at low quality, two peaks, and one sharp peak at high quality" class="figure mx-auto d-block"><figcaption>
+Contrast example, schematic and not data: most reads of low quality (a
+bad run), a bimodal distribution (often a flowcell location artifact),
+and a good single peak at high quality. Cartoon by Zandra Selina, CC BY
+4.0.
+</figcaption></figure></div>
+<div class="section level3">
+<h3 id="per-sequence-gc-content">Per sequence GC content<a class="anchor" aria-label="anchor" href="#per-sequence-gc-content"></a></h3>
+<p>The GC fraction of each read, compared with a theoretical
+distribution. Two separate peaks, or a sharp spike, can mean
+contamination from another organism or an overrepresented sequence.
+FastQC warns when the curve departs from the smooth normal shape it
+expects. Our six files peak near 40% GC with a shoulder near 50%, and
+FastQC warns for all six. The curves are the same in every file, which
+points to the composition of the sequenced region (all reads come from
+chromosome 20) rather than to contamination, which would differ between
+samples or add a separate peak.</p>
+<figure style="text-align: center"><img src="../fig/03/multiqc_gc_content.png" alt="MultiQC line plot of the percentage of reads against GC content for six files; the curves overlap almost perfectly, rising to a peak of about 4% of reads at 40% GC, with a shoulder around 45 to 50% GC, and falling to near zero by 70% GC" class="figure mx-auto d-block"><figcaption>
+Your output: GC content per read for the six workshop FASTQ files
+(MultiQC). All six curves overlap: a peak near 40% GC with a shoulder
+near 50%.
+</figcaption></figure><figure style="text-align: center"><img src="../fig/03/contrast_per_sequence_GC_content.png" alt="Three cartoon GC content plots: two shifted peaks, one skewed peak, and an observed peak matching the expected curve" class="figure mx-auto d-block"><figcaption>
+Contrast example, schematic and not data: libraries with different GC
+content (fine across species, a warning within one), a non-normal
+distribution that suggests a lab artifact, and a good match to the
+expected curve. Cartoon by Zandra Selina, CC BY 4.0.
+</figcaption></figure></div>
+<div class="section level3">
+<h3 id="per-base-n-content">Per base N content<a class="anchor" aria-label="anchor" href="#per-base-n-content"></a></h3>
+<p>The fraction of bases the sequencer could not call (<code>N</code>)
+at each position. It should be near zero everywhere.</p>
+<figure style="text-align: center"><img src="../fig/03/contrast_per_base_n_content.png" alt="Three cartoon N content plots: a curve rising at the end of the read, a flat line above zero, and a flat line at zero" class="figure mx-auto d-block"><figcaption>
+Contrast example, schematic and not data: N bases rising toward the end
+of the read (chemistry running out), a constant N level (a failed lane
+or masked reads), and no N bases. Cartoon by Zandra Selina, CC BY 4.0.
+</figcaption></figure></div>
+<div class="section level3">
+<h3 id="sequence-duplication-levels">Sequence duplication levels<a class="anchor" aria-label="anchor" href="#sequence-duplication-levels"></a></h3>
+<p>How many reads have exactly the same sequence as another read. FastQC
+estimates this from the first reads of each file and from read 1 or read
+2 alone, so it is only a rough guide. The duplicate rate that matters
+for calling is measured after alignment, from read pairs, in Episode
+4.</p>
+<p>Duplicates have two main sources: PCR amplification during library
+preparation, and the sequencer itself, when one DNA fragment is read in
+more than one cluster (optical duplicates; the <a href="https://www.htslib.org/doc/samtools-markdup.html" class="external-link">samtools markdup
+manual</a> describes how they are detected). Our libraries are PCR-free,
+which removes most of the first kind, but not the second.</p>
+<figure style="text-align: center"><img src="../fig/03/multiqc_duplication.png" alt="MultiQC line plot of the percentage of the library against duplication level for six files; all curves start at about 73 to 75% at level 1, drop to about 17 to 18% at level 2 and 3% at level 3, and stay near zero after that" class="figure mx-auto d-block"><figcaption>
+Your output: sequence duplication levels for the six workshop FASTQ
+files (MultiQC). About three quarters of the reads occur once, and most
+of the rest twice.
+</figcaption></figure><figure style="text-align: center"><img src="../fig/03/contrast_sequence_duplication_level.png" alt="Three cartoon duplication plots: a slowly decaying curve, a wavy pattern, and a single spike at duplication level one" class="figure mx-auto d-block"><figcaption>
+Contrast example, schematic and not data: high duplication from a
+low-complexity or over-amplified library, a periodic pattern that can be
+fine for amplicon data, and a library dominated by unique reads. Cartoon
+by Zandra Selina, CC BY 4.0.
+</figcaption></figure></div>
+<div class="section level3">
+<h3 id="adapter-content">Adapter content<a class="anchor" aria-label="anchor" href="#adapter-content"></a></h3>
+<p>The fraction of reads that contain adapter sequence at each position.
+Adapters appear when a DNA fragment is shorter than the read length, so
+the sequencer reads past the end of the fragment into the adapter. Our
+fragments average about 400 bp (the insert sizes of the source
+alignments were 399.5 to 417.9 bp on average; feasibility memo), well
+above the 151 bp read length, so few reads should reach the adapter.
+FastQC 0.12 also counts poly-A and poly-G stretches in this module, and
+reports each adapter type as its own line.</p>
+<figure style="text-align: center"><img src="../fig/03/multiqc_adapter_content.png" alt="MultiQC line plot of the percentage of reads containing adapter sequence against read position; one group of lines rises steadily to about 1.5% at position 140, a second group stays near zero and rises to about 0.5% over the last 30 positions, all within the green pass zone" class="figure mx-auto d-block"><figcaption>
+Your output: adapter content for the six workshop FASTQ files (MultiQC).
+Every line stays below 1.5% of reads; the highest lines are FastQC’s
+poly-A series, and the Illumina Universal Adapter stays at or below
+0.54%.
+</figcaption></figure><figure style="text-align: center"><img src="../fig/03/contrast_adapter_content.png" alt="Two cartoon adapter content plots: a curve rising toward the end of the read, and a flat line at zero" class="figure mx-auto d-block"><figcaption>
+Contrast example, schematic and not data: adapter content rising toward
+the read end (short inserts, acceptable only for fragmented ancient DNA)
+and a flat line near zero. Cartoon by Zandra Selina, CC BY 4.0.
+</figcaption></figure><div id="challenge-interpret-the-qc-report" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-interpret-the-qc-report" class="callout-inner">
+<h3 class="callout-title">Challenge: interpret the QC report</h3>
+<div class="callout-content">
+<p>Using your MultiQC report (or the one from the results copy):</p>
+<ol style="list-style-type: decimal"><li>How many reads does each file have, and are R1 and R2 of each sample
+equal?</li>
+<li>Which FastQC modules are not marked “pass” in at least one file? For
+each, decide whether it points to a problem for variant calling.</li>
+<li>Is there enough adapter sequence to justify trimming?</li>
+<li>What does FastQC report for duplication, and how does that compare
+with the duplicate rate after alignment that Episode 4 reports?</li>
+</ol></div>
+</div>
+</div>
+<div id="accordionSolution1" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution1" aria-expanded="false" aria-controls="collapseSolution1">
+  <h4 class="accordion-header" id="headingSolution1"> Show me the solution </h4>
+</button>
+<div id="collapseSolution1" class="accordion-collapse collapse" aria-labelledby="headingSolution1" data-bs-parent="#accordionSolution1">
+<div class="accordion-body">
+<ol style="list-style-type: decimal"><li>HG002 has 9,462,450 reads in R1 and in R2, HG003 9,480,040 and HG004
+9,347,118. R1 and R2 of a sample must have the same number of reads,
+because each read pair contributes one read to each file.</li>
+<li>Only one module is not marked pass: Per sequence GC content, a
+warning in all six files. The curves have a shoulder near 50% GC and are
+identical across files, so this reflects the sequence of chromosome 20,
+not a problem with the libraries. It is not a reason to change anything
+for variant calling.</li>
+<li>No. Adapter Content passes in all six files. The Illumina Universal
+Adapter reaches at most 0.37% to 0.54% of reads per file, at the read
+end; the highest lines, 1.43% to 1.49%, are FastQC’s poly-A series. With
+fragments averaging about 400 bp and 151 bp reads, adapter read-through
+is rare, and the aligner handles the few reads that have it (next
+section). No trimming is needed.</li>
+<li>FastQC reports that 84.3% to 85.3% of reads would remain after
+removing duplicates (“Total Deduplicated Percentage”), so it estimates
+14.7% to 15.7% duplicates per file. After alignment,
+<code>samtools markdup</code> flags 10.4% to 11.0% of the reads as
+duplicates (Episode 4). The two numbers measure different things: FastQC
+compares single reads by sequence, <code>markdup</code> compares read
+pairs by alignment position.</li>
+</ol></div>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-4-decide-whether-to-trim">Step 4: Decide whether to trim<a class="anchor" aria-label="anchor" href="#step-4-decide-whether-to-trim"></a></h2>
+<hr class="half-width"><p>Trimming removes adapter sequence and low-quality ends from reads
+before alignment. For variant calling with <code>bwa mem</code>, it is
+usually unnecessary:</p>
+<ul><li>
+<strong><code>bwa mem</code> performs local alignment.</strong> It
+aligns the part of a read that matches the genome and
+<strong>soft-clips</strong> the rest: the clipped bases stay in the file
+but are not aligned and do not count as mismatches (<a href="https://bio-bwa.sourceforge.net/bwa.shtml" class="external-link">bwa manual</a>).
+Adapter sequence at a read end is clipped this way.</li>
+<li>
+<strong>Base qualities already carry the uncertainty.</strong> The
+caller down-weights low-quality bases (callout above), so cutting them
+off gains little.</li>
+<li>
+<strong>Trimming has costs.</strong> Shorter reads map less
+uniquely, uneven trimming creates differences between samples, and it
+adds parameters that must be recorded to reproduce the analysis.</li>
+</ul><p>Trim when QC shows a real problem that the aligner cannot absorb:
+many short inserts with adapter in a large fraction of reads, a failed
+stretch of cycles, or a library type that needs it (for example, some
+amplicon and small-RNA protocols).</p>
+<div id="discussion-when-would-you-trim" class="callout discussion">
+<div class="callout-square">
+<i class="callout-icon" data-feather="message-circle"></i>
+</div>
+<span class="callout-header">Discussion</span>
+<div id="discussion-when-would-you-trim" class="callout-inner">
+<h3 class="callout-title">Discussion: when would you trim?</h3>
+<div class="callout-content">
+<p>Your own data shows adapter content rising to 30% of reads at the 3’
+end, and a median insert size of 120 bp with 150 bp reads. Would you
+trim before running <code>bwa mem</code>? What would you check after
+alignment to confirm your choice?</p>
+</div>
+</div>
+</div>
+<div id="accordionSpoiler2" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler2" aria-expanded="false" aria-controls="collapseSpoiler2">
+  <h3 class="accordion-header" id="headingSpoiler2">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> Trimming with fastp (reference only) </h3>
+</button>
+<div id="collapseSpoiler2" class="accordion-collapse collapse" aria-labelledby="headingSpoiler2" data-bs-parent="#accordionSpoiler2">
+<div class="accordion-body">
+<p><em>Optional reference: not part of the hands-on, and not tested by
+the workshop’s run kit.</em> If your data does need trimming, <a href="https://github.com/OpenGene/fastp" class="external-link">fastp</a> detects and removes
+adapters, trims low-quality ends, keeps read pairs in sync and writes a
+QC report:</p>
+<!-- kit: not-run reference -->
+<div class="codewrapper sourceCode" id="cb5">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" tabindex="-1" aria-label="code-block-5-1"></a><span class="ex">module</span> load biocontainers</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1" aria-label="code-block-5-2"></a><span class="ex">module</span> load fastp/0.23.2</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1" aria-label="code-block-5-3"></a><span class="ex">fastp</span> <span class="dt">\</span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1" aria-label="code-block-5-4"></a>  <span class="at">-i</span> sample_R1.fastq.gz <span class="dt">\</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1" aria-label="code-block-5-5"></a>  <span class="at">-I</span> sample_R2.fastq.gz <span class="dt">\</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1" aria-label="code-block-5-6"></a>  <span class="at">-o</span> sample_R1.trimmed.fastq.gz <span class="dt">\</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1" aria-label="code-block-5-7"></a>  <span class="at">-O</span> sample_R2.trimmed.fastq.gz <span class="dt">\</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1" aria-label="code-block-5-8"></a>  <span class="at">--detect_adapter_for_pe</span> <span class="dt">\</span></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1" aria-label="code-block-5-9"></a>  <span class="at">--thread</span> 8 <span class="dt">\</span></span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1" aria-label="code-block-5-10"></a>  <span class="at">--html</span> sample.fastp.html <span class="dt">\</span></span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1" aria-label="code-block-5-11"></a>  <span class="at">--json</span> sample.fastp.json</span></code></pre>
+</div>
+<p>Run it in a batch job or an interactive session, never on a login
+node. Rerun FastQC on the trimmed files, and record the fastp version
+and options with your results.</p>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a></h2>
 <hr class="half-width"><div id="keypoints1" class="callout keypoints">
 <div class="callout-square">
 <i class="callout-icon" data-feather="key"></i>
@@ -416,7 +799,18 @@ variants?</li>
 <span class="callout-header">Key Points</span>
 <div class="callout-inner">
 <div class="callout-content">
-<ul><li>TBD(P4)</li>
+<ul><li>Base qualities are Phred scores; our NovaSeq reads use only four
+binned values (2, 11, 25, 37), which makes quality plots look blocky
+without indicating a problem.</li>
+<li>FastQC and MultiQC summarize read quality; run them in an
+interactive job, not on a login node.</li>
+<li>Pass, warn and fail marks come from generic thresholds; interpret
+each plot for your data type.</li>
+<li>The caller uses base qualities directly, so low-quality bases are
+down-weighted rather than removed.</li>
+<li>
+<code>bwa mem</code> soft-clips adapters and poor read ends, so
+trimming is usually unnecessary for these data.</li>
 </ul></div>
 </div>
 </div>

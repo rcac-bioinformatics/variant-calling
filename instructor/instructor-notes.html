@@ -743,28 +743,42 @@ any links that you are not going to use.
 <h3 id="01-intro-to-variant-calling-headingInstructor1">
 <a href="01-intro-to-variant-calling.html#headingInstructor1">Instructor Note</a><a class="anchor" aria-label="anchor" href="#01-intro-to-variant-calling-headingInstructor1"></a>
 </h3>
-<p>Stub: content arrives in phase P4.</p>
+<p>Animation placeholder: “From reads to a genotype” (about 80 seconds)
+goes here. Its storyboard, scene list and alt text are specified in
+<code>maintenance/plan/figures/reads-to-genotype.md</code> (local file,
+not published); P7 builds the HTML animation in the style of the RNA-seq
+lesson animations. Until then, draw the pileup above on the board and
+walk through the three genotype hypotheses.</p>
+<hr>
+<br><h3 id="01-intro-to-variant-calling-headingInstructor2">
+<a href="01-intro-to-variant-calling.html#headingInstructor2">Instructor Note</a><a class="anchor" aria-label="anchor" href="#01-intro-to-variant-calling-headingInstructor2"></a>
+</h3>
+<p>A workflow diagram for this table is a P7 figure (plan section 2).
+Until it exists, sketch the boxes on the board: FASTQ to BAM to VCF,
+with the QC step after each.</p>
 <hr>
 <br></section><section id="02-data-and-project-setup"><h2 class="section-heading"><a href="02-data-and-project-setup.html">2. Data, reference genomes, and project setup</a></h2>
-<hr class="half-width">
-<h3 id="02-data-and-project-setup-headingInstructor1">
-<a href="02-data-and-project-setup.html#headingInstructor1">Instructor Note</a><a class="anchor" aria-label="anchor" href="#02-data-and-project-setup-headingInstructor1"></a>
-</h3>
-<p>Stub: content arrives in phase P4.</p>
-<hr>
-<br></section><section id="03-read-qc"><h2 class="section-heading"><a href="03-read-qc.html">3. Read quality control</a></h2>
-<hr class="half-width">
-<h3 id="03-read-qc-headingInstructor1">
-<a href="03-read-qc.html#headingInstructor1">Instructor Note</a><a class="anchor" aria-label="anchor" href="#03-read-qc-headingInstructor1"></a>
-</h3>
-<p>Stub: content arrives in phase P4.</p>
-<hr>
-<br></section><section id="04-alignment-and-alignment-qc"><h2 class="section-heading"><a href="04-alignment-and-alignment-qc.html">4. Read alignment and alignment QC</a></h2>
+<hr class="half-width"></section><section id="03-read-qc"><h2 class="section-heading"><a href="03-read-qc.html">3. Read quality control</a></h2>
+<hr class="half-width"></section><section id="04-alignment-and-alignment-qc"><h2 class="section-heading"><a href="04-alignment-and-alignment-qc.html">4. Read alignment and alignment QC</a></h2>
 <hr class="half-width">
 <h3 id="04-alignment-and-alignment-qc-headingInstructor1">
 <a href="04-alignment-and-alignment-qc.html#headingInstructor1">Instructor Note</a><a class="anchor" aria-label="anchor" href="#04-alignment-and-alignment-qc-headingInstructor1"></a>
 </h3>
-<p>Stub: content arrives in phase P4.</p>
+<p>Pacing (plan section 4): have learners submit <code>align.sh</code>
+at the end of the Episode 2-3 block, before the morning break, so the
+jobs run during the break. Episode 4 then dissects the script while the
+jobs finish. If learners submit only now, the explanation sections below
+still cover the run time.</p>
+<hr>
+<br><h3 id="04-alignment-and-alignment-qc-headingInstructor2">
+<a href="04-alignment-and-alignment-qc.html#headingInstructor2">Instructor Note</a><a class="anchor" aria-label="anchor" href="#04-alignment-and-alignment-qc-headingInstructor2"></a>
+</h3>
+<p>Graphical viewing is decided in P6 (IGV through a graphical session,
+or prepared snapshots). Until then, <code>samtools tview -d T</code> is
+the locus view for this episode. Learners can also run
+<code>samtools tview</code> without <code>-d T</code> for the
+interactive viewer (<code>?</code> for help, <code>q</code> to
+quit).</p>
 <hr>
 <br></section><section id="05a-calling-with-bcftools"><h2 class="section-heading"><a href="05a-calling-with-bcftools.html">5A. Calling variants with bcftools</a></h2>
 <hr class="half-width">

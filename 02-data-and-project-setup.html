@@ -226,17 +226,17 @@
 
     <div id="flush-collapsecurrent" class="accordion-collapse collapse show" data-bs-parent="#accordionFlushcurrent">
       <div class="accordion-body">
-        <ul><li><a href="#the-ashkenazi-trio">The Ashkenazi trio</a></li>
+        <ul><li><a href="#introduction">Introduction</a></li>
+<li><a href="#the-ashkenazi-trio">The Ashkenazi trio</a></li>
 <li><a href="#project-layout">Project layout</a></li>
-<li><a href="#verifying-the-staged-copy">Verifying the staged copy</a></li>
-<li><a href="#the-reference-genome">The reference genome</a></li>
-<li><a href="#contig-names-and-index-files">Contig names and index files</a></li>
-<li><a href="#file-formats-fasta-fastq-bed-and-ped">File formats: FASTA, FASTQ, BED and PED</a></li>
-<li><a href="#coordinate-systems">Coordinate systems</a></li>
-<li><a href="#sample-sheet-and-ped-file">Sample sheet and PED file</a></li>
-<li><a href="#checksums-and-provenance">Checksums and provenance</a></li>
+<li><a href="#step-1-check-the-copy-with-checksums">Step 1: Check the copy with checksums</a></li>
+<li><a href="#step-2-the-sample-sheet-and-the-pedigree">Step 2: The sample sheet and the pedigree</a></li>
+<li><a href="#step-3-the-reference-genome">Step 3: The reference genome</a></li>
+<li><a href="#step-4-coordinate-systems">Step 4: Coordinate systems</a></li>
+<li><a href="#step-5-what-a-fastq-record-looks-like">Step 5: What a FASTQ record looks like</a></li>
 <li><a href="#data-responsibility">Data responsibility</a></li>
 <li><a href="#downloading-from-the-source-not-run">Downloading from the source (not run)</a></li>
+<li><a href="#summary">Summary</a></li>
         </ul></div><!--/div.accordion-body-->
     </div><!--/div.accordion-collapse-->
 
@@ -398,18 +398,623 @@ coordinates.</li>
 </div>
 </div>
 </div>
-
-<section><h2 class="section-heading" id="the-ashkenazi-trio">The Ashkenazi trio<a class="anchor" aria-label="anchor" href="#the-ashkenazi-trio"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="project-layout">Project layout<a class="anchor" aria-label="anchor" href="#project-layout"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="verifying-the-staged-copy">Verifying the staged copy<a class="anchor" aria-label="anchor" href="#verifying-the-staged-copy"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="the-reference-genome">The reference genome<a class="anchor" aria-label="anchor" href="#the-reference-genome"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="contig-names-and-index-files">Contig names and index files<a class="anchor" aria-label="anchor" href="#contig-names-and-index-files"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="file-formats-fasta-fastq-bed-and-ped">File formats: FASTA, FASTQ, BED and PED<a class="anchor" aria-label="anchor" href="#file-formats-fasta-fastq-bed-and-ped"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="coordinate-systems">Coordinate systems<a class="anchor" aria-label="anchor" href="#coordinate-systems"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="sample-sheet-and-ped-file">Sample sheet and PED file<a class="anchor" aria-label="anchor" href="#sample-sheet-and-ped-file"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="checksums-and-provenance">Checksums and provenance<a class="anchor" aria-label="anchor" href="#checksums-and-provenance"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="data-responsibility">Data responsibility<a class="anchor" aria-label="anchor" href="#data-responsibility"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="downloading-from-the-source-not-run">Downloading from the source (not run)<a class="anchor" aria-label="anchor" href="#downloading-from-the-source-not-run"></a></h2>
+<section><h2 class="section-heading" id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a></h2>
+<hr class="half-width"><p>Before any analysis, we need to know exactly what the data is, where
+it came from, and that our copy is complete. In this episode we look at
+the dataset and its sample metadata, check the files with checksums, and
+get to know the reference genome and its index files. These are short
+steps, but most failed variant-calling runs trace back to one of them: a
+truncated file, a reference that does not match the reads, or a sample
+recorded under the wrong name.</p>
+<div id="before-you-start" class="callout prereq">
+<div class="callout-square">
+<i class="callout-icon" data-feather="check"></i>
+</div>
+<span class="callout-header">Prerequisite</span>
+<div id="before-you-start" class="callout-inner">
+<h3 class="callout-title">Before you start</h3>
+<div class="callout-content">
+<p>Complete the “Data setup” section of the <a href="index.html#setup">setup
+page</a>: copy the workshop data to
+<code>$SCRATCH/varcall-workshop</code> and link the reference into
+<code>ref/</code>. Every command in this episode runs on a Negishi login
+node; they are all quick.</p>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="the-ashkenazi-trio">The Ashkenazi trio<a class="anchor" aria-label="anchor" href="#the-ashkenazi-trio"></a></h2>
+<hr class="half-width"><p>The <a href="https://www.nist.gov/programs-projects/genome-bottle" class="external-link">Genome in a
+Bottle</a> (GIAB) consortium, hosted by NIST, characterizes reference
+human genomes and publishes benchmark variant calls for them. We use its
+Ashkenazi trio, a son and his parents:</p>
+<table class="table"><thead><tr><th>Sample</th>
+<th>Cell line</th>
+<th>Role</th>
+<th>Sex</th>
+</tr></thead><tbody><tr><td>HG002</td>
+<td>NA24385</td>
+<td>child</td>
+<td>male</td>
+</tr><tr><td>HG003</td>
+<td>NA24149</td>
+<td>father</td>
+<td>male</td>
+</tr><tr><td>HG004</td>
+<td>NA24143</td>
+<td>mother</td>
+<td>female</td>
+</tr></tbody></table><p>The reads come from the <a href="https://github.com/google/deepvariant/blob/r1.10/docs/deeptrio-wgs-case-study.md" class="external-link">DeepTrio
+WGS case study</a>, which provides alignments of each sample to GRCh38
+restricted to chromosome 20. We converted those alignments back to
+paired FASTQ files, so that you can align them yourself. The facts below
+were measured on the source files in this workshop’s feasibility run (<a href="https://github.com/rcac-bioinformatics/variant-calling/blob/main/maintenance/plan/feasibility.md" class="external-link">feasibility
+memo</a>):</p>
+<ul><li>
+<strong>Sequencing:</strong> Illumina NovaSeq, PCR-free library, 151
+bp paired-end reads.</li>
+<li>
+<strong>Base qualities:</strong> binned to four values (Episode
+3).</li>
+<li>
+<strong>Depth:</strong> the files are labeled 35x, but the mean
+depth on chromosome 20 is about 40x (39.2x to 39.9x in the source
+alignments).</li>
+<li>
+<strong>Duplicates:</strong> the source alignments had duplicates
+marked, not removed (about 2.0 million flagged reads per sample).
+Converting to FASTQ kept those reads, so you will mark duplicates again
+in Episode 4.</li>
+<li>
+<strong>Read pairs:</strong> HG002 9,462,450, HG003 9,480,040, HG004
+9,347,118. All six FASTQ files together are 4.85 GB.</li>
+</ul><div id="the-reads-were-selected-from-chromosome-20-alignments" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="the-reads-were-selected-from-chromosome-20-alignments" class="callout-inner">
+<h3 class="callout-title">The reads were selected from chromosome 20
+alignments</h3>
+<div class="callout-content">
+<p>Every read in our FASTQ files was aligned to chromosome 20 in the
+source data. About 330,000 reads per sample had a mate aligned elsewhere
+in the genome, and those reads were dropped, because a read without its
+mate cannot go into a paired FASTQ file.</p>
+<p>Two consequences follow. First, when we align these reads to the
+whole genome in Episode 4, almost all of them land on chromosome 20
+again. Mapping rates near 100% and almost no coverage on other
+chromosomes are artifacts of how the data was selected, not properties
+of a real whole-genome run. Second, reads that the source alignment
+placed on other chromosomes were never selected, so this data cannot
+show reads moving between chromosome 20 and similar sequences elsewhere,
+as they would in a real whole-genome run.</p>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="project-layout">Project layout<a class="anchor" aria-label="anchor" href="#project-layout"></a></h2>
+<hr class="half-width"><p>The setup page created this layout under
+<code>$SCRATCH/varcall-workshop</code>:</p>
+<table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr><th>Directory</th>
+<th>Contents</th>
+</tr></thead><tbody><tr><td><code>data/</code></td>
+<td>the six FASTQ files, <code>md5sums.txt</code>, the sample sheet
+<code>samples.tsv</code>, the pedigree <code>trio.ped</code>
+</td>
+</tr><tr><td><code>ref/</code></td>
+<td>links to the read-only reference genome, its indexes and the
+annotation database on Depot</td>
+</tr><tr><td><code>resources/</code></td>
+<td>benchmark call sets (<code>truth/</code>), population frequencies
+(<code>gnomad/</code>), region lists (<code>regions/</code>), and a
+small example VCF (<code>example/</code>)</td>
+</tr><tr><td><code>scripts/</code></td>
+<td>the SLURM job scripts for Episodes 4 to 7</td>
+</tr><tr><td><code>results/</code></td>
+<td>one folder per step: <code>qc</code>, <code>bam</code>,
+<code>qc_alignment</code>, <code>vcf</code>, <code>eval</code>,
+<code>annot</code>, <code>trio</code>
+</td>
+</tr></tbody></table><p>The reference and its indexes take more than 10 GB. Every learner
+uses the same files, so they stay in one read-only copy on Depot, and
+<code>ref/</code> holds symbolic links to them instead of copies.</p>
+</section><section><h2 class="section-heading" id="step-1-check-the-copy-with-checksums">Step 1: Check the copy with checksums<a class="anchor" aria-label="anchor" href="#step-1-check-the-copy-with-checksums"></a></h2>
+<hr class="half-width"><p>A checksum is a short fingerprint computed from a file’s contents. If
+a single byte changes, the checksum changes. <code>md5sums.txt</code>
+holds the MD5 checksum of every FASTQ file as it was staged;
+<code>md5sum -c</code> recomputes each one and compares.</p>
+<!-- kit: extra 02-setup.sh -->
+<div class="codewrapper sourceCode" id="cb1">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1" aria-label="code-block-1-1"></a><span class="bu">cd</span> <span class="va">$SCRATCH</span>/varcall-workshop</span></code></pre>
+</div>
+<!-- kit: interactive 02-setup.sh -->
+<div class="codewrapper sourceCode" id="cb2">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1" aria-label="code-block-2-1"></a><span class="bu">cd</span> data</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1" aria-label="code-block-2-2"></a><span class="fu">md5sum</span> <span class="at">-c</span> md5sums.txt</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1" aria-label="code-block-2-3"></a><span class="bu">cd</span> ..</span></code></pre>
+</div>
+<p>This reads all 4.85 GB, so give it up to a minute.</p>
+<div id="accordionSpoiler1" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler1" aria-expanded="false" aria-controls="collapseSpoiler1">
+  <h3 class="accordion-header" id="headingSpoiler1">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler1" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler1" aria-labelledby="headingSpoiler1">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code><span><span class="va">HG002_R1.fastq.gz</span><span class="op">:</span> <span class="va">OK</span></span>
+<span><span class="va">HG002_R2.fastq.gz</span><span class="op">:</span> <span class="va">OK</span></span>
+<span><span class="va">HG003_R1.fastq.gz</span><span class="op">:</span> <span class="va">OK</span></span>
+<span><span class="va">HG003_R2.fastq.gz</span><span class="op">:</span> <span class="va">OK</span></span>
+<span><span class="va">HG004_R1.fastq.gz</span><span class="op">:</span> <span class="va">OK</span></span>
+<span><span class="va">HG004_R2.fastq.gz</span><span class="op">:</span> <span class="va">OK</span></span></code></pre>
+</div>
+<p>Every file must report <code>OK</code>. A <code>FAILED</code> line
+means that file is damaged or incomplete; copy it again with the
+<code>rsync</code> command from the setup page and rerun the check.</p>
+</div>
+</div>
+</div>
+</div>
+<div id="why-checksums" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="why-checksums" class="callout-inner">
+<h3 class="callout-title">Why checksums?</h3>
+<div class="callout-content">
+<p>File sizes can match while contents differ, and a transfer that stops
+early can leave a file that looks normal until a tool fails on it hours
+later. Checksums catch both. Record them when you receive data, check
+them after every copy, and keep them with the data as part of its
+provenance. The sources we downloaded from publish checksums too, and we
+checked every download against them before staging (<a href="https://github.com/rcac-bioinformatics/variant-calling/blob/main/data-prep/sources.tsv" class="external-link"><code>data-prep/sources.tsv</code></a>
+lists each file, its size and its MD5).</p>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-2-the-sample-sheet-and-the-pedigree">Step 2: The sample sheet and the pedigree<a class="anchor" aria-label="anchor" href="#step-2-the-sample-sheet-and-the-pedigree"></a></h2>
+<hr class="half-width"><p>Two small text files describe the samples. Every later step reads
+them, so they are worth a careful look.</p>
+<!-- kit: interactive 02-setup.sh -->
+<div class="codewrapper sourceCode" id="cb4">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1" aria-label="code-block-4-1"></a><span class="fu">head</span> data/samples.tsv</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1" aria-label="code-block-4-2"></a><span class="fu">cat</span> data/trio.ped</span></code></pre>
+</div>
+<div id="accordionSpoiler2" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler2" aria-expanded="false" aria-controls="collapseSpoiler2">
+  <h3 class="accordion-header" id="headingSpoiler2">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler2" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler2" aria-labelledby="headingSpoiler2">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>sample	role	sex	family	fastq_r1	fastq_r2	rg_id	rg_lb	rg_pl
+HG002	child	1	AJ	HG002_R1.fastq.gz	HG002_R2.fastq.gz	HG002.pcr-free	HG002.pcr-free	ILLUMINA
+HG003	father	1	AJ	HG003_R1.fastq.gz	HG003_R2.fastq.gz	HG003.pcr-free	HG003.pcr-free	ILLUMINA
+HG004	mother	2	AJ	HG004_R1.fastq.gz	HG004_R2.fastq.gz	HG004.pcr-free	HG004.pcr-free	ILLUMINA
+AJ	HG002	HG003	HG004	1	0
+AJ	HG003	0	0	1	0
+AJ	HG004	0	0	2	0</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p><code>samples.tsv</code> is the sample sheet: one row per sample,
+with a header. Its columns are the sample name, its role and sex, the
+family, the two FASTQ files, and three read-group fields
+(<code>rg_id</code>, <code>rg_lb</code>, <code>rg_pl</code>) that
+Episode 4 writes into the alignments. The alignment script reads it line
+by line, so the sample names in the VCF come from this file.</p>
+<p><code>trio.ped</code> is a pedigree file in the PED format used by
+PLINK, bcftools and other tools (<a href="https://www.cog-genomics.org/plink/1.9/formats#fam" class="external-link">PLINK file
+formats</a>). It has no header and six whitespace-separated columns:</p>
+<ol style="list-style-type: decimal"><li>family ID</li>
+<li>individual ID</li>
+<li>father’s ID (<code>0</code> if not in the file)</li>
+<li>mother’s ID (<code>0</code> if not in the file)</li>
+<li>sex (<code>1</code> male, <code>2</code> female, <code>0</code>
+unknown)</li>
+<li>phenotype (<code>1</code> unaffected, <code>2</code> affected,
+<code>0</code> or <code>-9</code> missing)</li>
+</ol><p>The parents have <code>0</code> in columns 3 and 4 because their own
+parents are not part of the dataset. No phenotype is recorded for
+anyone. Episode 8 uses this file to check Mendelian inheritance.</p>
+<div id="challenge-write-a-ped-line" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-write-a-ped-line" class="callout-inner">
+<h3 class="callout-title">Challenge: write a PED line</h3>
+<div class="callout-content">
+<ol style="list-style-type: decimal"><li>Without looking at <code>trio.ped</code>, write the PED line for
+HG002. Then compare it with the file.</li>
+<li>Suppose the family had a second child, a daughter with the sample ID
+<code>KID2</code>, sequenced in the same project. Write her line.</li>
+<li>What would go wrong in a trio analysis if columns 3 and 4 of HG002’s
+line were swapped?</li>
+</ol></div>
+</div>
+</div>
+<div id="accordionSolution1" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution1" aria-expanded="false" aria-controls="collapseSolution1">
+  <h4 class="accordion-header" id="headingSolution1"> Show me the solution </h4>
+</button>
+<div id="collapseSolution1" class="accordion-collapse collapse" data-bs-parent="#accordionSolution1" aria-labelledby="headingSolution1">
+<div class="accordion-body">
+<ol style="list-style-type: decimal"><li>
+<p>The family ID in this file is <code>AJ</code>, and HG002 is male
+with no recorded phenotype:</p>
+<pre class="text"><code>AJ	HG002	HG003	HG004	1	0</code></pre>
+<p>It should match the first line of <code>trio.ped</code> shown
+above.</p>
+</li>
+<li><p><code>AJ	KID2	HG003	HG004	2	0</code>: same family, same parents, sex
+<code>2</code> for female.</p></li>
+<li><p>Swapping father and mother changes nothing for autosomal
+inheritance checks such as the ones in Episode 8, but any analysis that
+uses sex, for example of the X chromosome, would treat the father as the
+mother. Metadata errors rarely fail loudly; check this file whenever you
+build one.</p></li>
+</ol></div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-3-the-reference-genome">Step 3: The reference genome<a class="anchor" aria-label="anchor" href="#step-3-the-reference-genome"></a></h2>
+<hr class="half-width"><p>We align to GRCh38, the current human reference assembly, in a
+version prepared for read-alignment pipelines: the <strong>no-alt
+analysis set</strong> from NCBI (<a href="https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/" class="external-link">README
+in the NCBI directory</a>). According to its README, it contains:</p>
+<ul><li>the chromosomes, the mitochondrial genome, and the unlocalized and
+unplaced scaffolds of GRCh38;</li>
+<li>an Epstein-Barr virus sequence (<code>chrEBV</code>), not part of
+the human genome, included as a “sink” for reads from the virus, which
+are often present in sequencing samples;</li>
+<li>and it leaves out the <strong>alternate locus scaffolds</strong>
+(alt contigs), extra versions of highly variable regions, because many
+alignment pipelines cannot handle them. An aligner that is not alt-aware
+would split reads from those regions between near-identical copies and
+give them low mapping quality (<a href="https://github.com/lh3/bwa/blob/master/README-alt.md" class="external-link">bwa
+README-alt</a>).</li>
+</ul><p>The README also states that the two pseudoautosomal regions on
+chromosome Y, and duplicate copies of some centromeric arrays, are
+masked with <code>N</code>, for the same reason. Our copy has no decoy
+sequences (the README describes a separate set with them).</p>
+<div id="why-the-exact-reference-matters" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="why-the-exact-reference-matters" class="callout-inner">
+<h3 class="callout-title">Why the exact reference matters</h3>
+<div class="callout-content">
+<p>Reads, alignments, variant calls, benchmarks and annotation databases
+must all use the same assembly and the same sequence names. GRCh37 and
+GRCh38 coordinates differ. Even within GRCh38, sequence names differ
+between sources: this analysis set uses UCSC-style names
+(<code>chr20</code>), while some other resources name the same sequence
+<code>20</code>. A mismatch rarely fails loudly. More often a tool
+silently finds no overlap, or skips the “unknown” chromosome, and the
+result is empty or wrong. Check names first whenever you combine files
+from different sources.</p>
+</div>
+</div>
+</div>
+<p>The reference comes with index files. Each tool needs its own:</p>
+<table class="table"><colgroup><col width="25%"><col width="25%"><col width="25%"><col width="25%"></colgroup><thead><tr><th>File</th>
+<th>Made by</th>
+<th>Used by</th>
+<th>What it holds</th>
+</tr></thead><tbody><tr><td><code>GRCh38_no_alt.fa.fai</code></td>
+<td><code>samtools faidx</code></td>
+<td>samtools, bcftools, most tools</td>
+<td>name, length and byte offsets of each sequence, for fast random
+access</td>
+</tr><tr><td><code>GRCh38_no_alt.dict</code></td>
+<td><code>samtools dict</code></td>
+<td>GATK and Picard (Episode 5B)</td>
+<td>a sequence dictionary: names, lengths and MD5 checksums in SAM
+header format</td>
+</tr><tr><td><code>GRCh38_no_alt.fa.{amb,ann,bwt,pac,sa}</code></td>
+<td><code>bwa index</code></td>
+<td>bwa (Episode 4)</td>
+<td>the aligner’s index; NCBI publishes it, so we did not build it</td>
+</tr><tr><td><code>GRCh38_no_alt.sdf</code></td>
+<td><code>rtg format</code></td>
+<td>hap.py with the vcfeval engine (Episode 6)</td>
+<td>the reference in RTG’s format</td>
+</tr></tbody></table><p>Look at the FASTA index and the dictionary:</p>
+<!-- kit: extra 02-setup.sh -->
+<div class="codewrapper sourceCode" id="cb7">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" tabindex="-1" aria-label="code-block-7-1"></a><span class="fu">head</span> <span class="at">-3</span> ref/GRCh38_no_alt.fa.fai</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1" aria-label="code-block-7-2"></a><span class="fu">grep</span> <span class="at">-w</span> chr20 ref/GRCh38_no_alt.fa.fai</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1" aria-label="code-block-7-3"></a><span class="fu">wc</span> <span class="at">-l</span> ref/GRCh38_no_alt.fa.fai</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1" aria-label="code-block-7-4"></a><span class="fu">head</span> <span class="at">-3</span> ref/GRCh38_no_alt.dict</span></code></pre>
+</div>
+<div id="accordionSpoiler3" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler3" aria-expanded="false" aria-controls="collapseSpoiler3">
+  <h3 class="accordion-header" id="headingSpoiler3">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler3" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler3" aria-labelledby="headingSpoiler3">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>chr1	248956422	112	70	71
+chr2	242193529	252513167	70	71
+chr3	198295559	498166716	70	71
+chr20	64444167	2751788762	70	71
+195 ref/GRCh38_no_alt.fa.fai
+@HD	VN:1.0	SO:unsorted
+@SQ	SN:chr1	LN:248956422	M5:6aef897c3d6ff0c78aff06ac189178dd	UR:GRCh38_no_alt.fa	AS:GRCh38	SP:Homo sapiens
+@SQ	SN:chr2	LN:242193529	M5:f98db672eb0993dcfdabafe2a882905c	UR:GRCh38_no_alt.fa	AS:GRCh38	SP:Homo sapiens</code></pre>
+</div>
+<p>The <code>.fai</code> columns are the sequence name, its length, the
+byte offset of its first base in the FASTA file, the number of bases per
+line, and the number of bytes per line. The analysis set has 195
+sequences. chr20 is 64,444,167 bp long, and the same length appears in
+the headers of the source alignments. The <code>.dict</code> lines
+follow the SAM header format: <code>@SQ</code> lines with
+<code>SN</code> (name), <code>LN</code> (length), <code>M5</code> (MD5
+of the sequence), and the file, assembly and species (<code>UR</code>,
+<code>AS</code>, <code>SP</code>).</p>
+</div>
+</div>
+</div>
+</div>
+<p>With the index, <code>samtools faidx</code> extracts any region
+without reading the whole 3.1 GB file. Load samtools with its explicit
+version (the workshop pins every tool version; see the setup page):</p>
+<!-- kit: extra 02-setup.sh -->
+<div class="codewrapper sourceCode" id="cb9">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" tabindex="-1" aria-label="code-block-9-1"></a><span class="ex">module</span> load biocontainers</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1" aria-label="code-block-9-2"></a><span class="ex">module</span> load samtools/1.22.1</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1" aria-label="code-block-9-3"></a><span class="ex">samtools</span> faidx ref/GRCh38_no_alt.fa chr20:88098-88118</span></code></pre>
+</div>
+<div id="accordionSpoiler4" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler4" aria-expanded="false" aria-controls="collapseSpoiler4">
+  <h3 class="accordion-header" id="headingSpoiler4">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler4" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler4" aria-labelledby="headingSpoiler4">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>&gt;chr20:88098-88118
+ATTTCATTGTTGTGTCCTATT</code></pre>
+</div>
+<p>The first line is a message the biocontainers module prints when it
+is loaded; the region follows as a short FASTA record. The region is 21
+bases: <code>samtools faidx</code> regions are 1-based and include both
+ends (<a href="https://www.htslib.org/doc/samtools-faidx.html" class="external-link">samtools
+faidx manual</a>). Base 88,108, a <code>T</code>, sits in the middle.
+Remember this position; the child is heterozygous there, and we will
+come back to it in Episodes 4 and 5A.</p>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-4-coordinate-systems">Step 4: Coordinate systems<a class="anchor" aria-label="anchor" href="#step-4-coordinate-systems"></a></h2>
+<hr class="half-width"><p>Genomic files count positions in two different ways:</p>
+<ul><li>
+<strong>1-based, closed</strong> (VCF, SAM, <code>samtools</code>
+regions such as <code>chr20:88098-88118</code>): the first base of a
+chromosome is 1, and a range includes both its start and its end.</li>
+<li>
+<strong>0-based, half-open</strong> (BED): the first base is 0, the
+start is included, and the end is not. The BED interval
+<code>chr20 88107 88108</code> is one base long: base 88,108 in 1-based
+coordinates (<a href="https://genome.ucsc.edu/FAQ/FAQformat.html#format1" class="external-link">UCSC BED
+format</a>).</li>
+</ul><p>To convert a BED interval to 1-based coordinates, add 1 to the start
+and keep the end. The length of a BED interval is simply end minus
+start.</p>
+<p>The benchmark regions we use in Episode 6 are BED files. Look at the
+first lines of the one for HG002:</p>
+<!-- kit: extra 02-setup.sh -->
+<div class="codewrapper sourceCode" id="cb11">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" tabindex="-1" aria-label="code-block-11-1"></a><span class="fu">head</span> <span class="at">-3</span> resources/truth/HG002_v4.2.1_chr20.bed</span></code></pre>
+</div>
+<div id="accordionSpoiler5" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler5" aria-expanded="false" aria-controls="collapseSpoiler5">
+  <h3 class="accordion-header" id="headingSpoiler5">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler5" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler5" aria-labelledby="headingSpoiler5">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>chr20	81335	101267
+chr20	101308	102558
+chr20	102684	105312</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="challenge-convert-coordinates" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-convert-coordinates" class="callout-inner">
+<h3 class="callout-title">Challenge: convert coordinates</h3>
+<div class="callout-content">
+<ol style="list-style-type: decimal"><li>Write the first interval of <code>HG002_v4.2.1_chr20.bed</code> as a
+1-based <code>samtools</code> region. How many bases does it cover?</li>
+<li>A VCF record has <code>POS</code> 1000 and <code>REF</code>
+<code>CAT</code>, a deletion of <code>AT</code>. Which bases does
+<code>REF</code> span, in 1-based coordinates? Write the same span as a
+BED line.</li>
+<li>Write the region we extracted with <code>samtools faidx</code>
+(<code>chr20:88098-88118</code>) as a BED line.</li>
+</ol></div>
+</div>
+</div>
+<div id="accordionSolution2" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution2" aria-expanded="false" aria-controls="collapseSolution2">
+  <h4 class="accordion-header" id="headingSolution2"> Show me the solution </h4>
+</button>
+<div id="collapseSolution2" class="accordion-collapse collapse" data-bs-parent="#accordionSolution2" aria-labelledby="headingSolution2">
+<div class="accordion-body">
+<ol style="list-style-type: decimal"><li>The first line is <code>chr20	81335	101267</code>. Add 1 to the start
+and keep the end: <code>chr20:81336-101267</code>. Its length is end
+minus start of the BED line: 101267 - 81335 = 19,932 bp.</li>
+<li>
+<code>REF</code> spans bases 1000 to 1002 (three bases,
+<code>C</code>, <code>A</code>, <code>T</code>). As BED:
+<code>chr20	999	1002</code>.</li>
+<li>
+<code>chr20	88097	88118</code>: subtract 1 from the start, keep the
+end. The length is 88118 - 88097 = 21, as before.</li>
+</ol><p>Off-by-one errors are among the most common bugs in genomics scripts.
+When a tool accepts both formats, check which one it expects.</p>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-5-what-a-fastq-record-looks-like">Step 5: What a FASTQ record looks like<a class="anchor" aria-label="anchor" href="#step-5-what-a-fastq-record-looks-like"></a></h2>
+<hr class="half-width"><p>Each read in a FASTQ file takes four lines: a name, the sequence, a
+<code>+</code> separator, and one quality character per base.</p>
+<!-- kit: extra 02-setup.sh -->
+<div class="codewrapper sourceCode" id="cb13">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb13-1"><a href="#cb13-1" tabindex="-1" aria-label="code-block-13-1"></a><span class="fu">zcat</span> data/HG002_R1.fastq.gz <span class="kw">|</span> <span class="fu">head</span> <span class="at">-4</span></span></code></pre>
+</div>
+<div id="accordionSpoiler6" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler6" aria-expanded="false" aria-controls="collapseSpoiler6">
+  <h3 class="accordion-header" id="headingSpoiler6">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler6" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler6" aria-labelledby="headingSpoiler6">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>@A00744:46:HV3C3DSXX:2:1654:24334:32456
+GACTGGGGAATTATGAGTTCCCTGTACCAACAGCGGAATGGGCTTTTCCCCACAGAGTGACATACTCCATCAGGAAAAAGAAAATGGAATTTACAACACAAACTTTCAAATAATTTGTGATGGAATGGGGAACAGAAACTAAGGCTCACAT
++
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF:FFFFF:FFFFFFFFFFFFFFFFFFF,FFFFFF:FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF:FFFFFFFFFF,FFFFFFFFFFFFFFFFF:F</code></pre>
+</div>
+<p>The first line is the read name; it records the instrument, run, flow
+cell, lane, tile and cluster position. The fourth line encodes the base
+qualities: here mostly <code>F</code>, with a few <code>:</code> and
+<code>,</code>. Episode 3 decodes it.</p>
+</div>
+</div>
+</div>
+</div>
+<p>The files are compressed with gzip (<code>.gz</code>). Later we meet
+BGZF, the block-compressed variant made by <code>bgzip</code>: it is
+still readable by <code>zcat</code>, but it also allows an index and
+random access, which BAM and indexed VCF files need. A VCF compressed
+with plain <code>gzip</code> cannot be indexed.</p>
+</section><section><h2 class="section-heading" id="data-responsibility">Data responsibility<a class="anchor" aria-label="anchor" href="#data-responsibility"></a></h2>
+<hr class="half-width"><div id="public-data-here-controlled-data-at-home" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="public-data-here-controlled-data-at-home" class="callout-inner">
+<h3 class="callout-title">Public data here, controlled data at home</h3>
+<div class="callout-content">
+<p>The GIAB data are public. NIST allows copying and redistribution of
+its benchmark data with acknowledgment of NIST (Data Usage section of
+the GIAB v5.0q README), which is why a copy can sit on Depot for this
+workshop.</p>
+<p>Your own human sequencing data may be different. Data from patients
+or research participants often comes with consent limits, data use
+agreements, or legal protections, and may only be stored and analyzed on
+approved, access-controlled systems. Do not copy such data to scratch or
+to a shared workshop space just because the commands work there. Before
+you start, ask your data provider and RCAC (<a href="mailto:rcac-help@purdue.edu" class="email">rcac-help@purdue.edu</a>) where the data may be stored and
+processed.</p>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="downloading-from-the-source-not-run">Downloading from the source (not run)<a class="anchor" aria-label="anchor" href="#downloading-from-the-source-not-run"></a></h2>
+<hr class="half-width"><div id="accordionSpoiler7" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler7" aria-expanded="false" aria-controls="collapseSpoiler7">
+  <h3 class="accordion-header" id="headingSpoiler7">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> How was the staged data made? </h3>
+</button>
+<div id="collapseSpoiler7" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler7" aria-labelledby="headingSpoiler7">
+<div class="accordion-body">
+<p><em>Reference only: do not run these commands in the workshop. The
+downloads are more than 9 GB, and the staged copy already contains the
+results.</em></p>
+<p>The source alignments for the three samples:</p>
+<!-- kit: not-run download -->
+<div class="codewrapper sourceCode" id="cb15">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" tabindex="-1" aria-label="code-block-15-1"></a><span class="fu">wget</span> https://storage.googleapis.com/deepvariant/case-study-testdata/HG002.novaseq.pcr-free.35x.dedup.grch38_no_alt.chr20.bam</span>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1" aria-label="code-block-15-2"></a><span class="fu">wget</span> https://storage.googleapis.com/deepvariant/case-study-testdata/HG003.novaseq.pcr-free.35x.dedup.grch38_no_alt.chr20.bam</span>
+<span id="cb15-3"><a href="#cb15-3" tabindex="-1" aria-label="code-block-15-3"></a><span class="fu">wget</span> https://storage.googleapis.com/deepvariant/case-study-testdata/HG004.novaseq.pcr-free.35x.dedup.grch38_no_alt.chr20.bam</span></code></pre>
+</div>
+<p>Each alignment was converted to paired FASTQ.
+<code>samtools collate</code> groups the two reads of a pair together,
+and <code>samtools fastq</code> writes them to two files; reads whose
+mate is missing go to <code>/dev/null</code>:</p>
+<!-- kit: not-run download -->
+<div class="codewrapper sourceCode" id="cb16">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb16-1"><a href="#cb16-1" tabindex="-1" aria-label="code-block-16-1"></a><span class="ex">module</span> load biocontainers</span>
+<span id="cb16-2"><a href="#cb16-2" tabindex="-1" aria-label="code-block-16-2"></a><span class="ex">module</span> load samtools/1.22.1</span>
+<span id="cb16-3"><a href="#cb16-3" tabindex="-1" aria-label="code-block-16-3"></a><span class="ex">samtools</span> collate <span class="at">-u</span> <span class="at">-O</span> <span class="at">-T</span> collate.tmp HG002.novaseq.pcr-free.35x.dedup.grch38_no_alt.chr20.bam <span class="dt">\</span></span>
+<span id="cb16-4"><a href="#cb16-4" tabindex="-1" aria-label="code-block-16-4"></a>  <span class="kw">|</span> <span class="ex">samtools</span> fastq <span class="at">-n</span> <span class="at">-1</span> HG002_R1.fastq.gz <span class="at">-2</span> HG002_R2.fastq.gz <span class="at">-0</span> /dev/null <span class="at">-s</span> /dev/null <span class="at">-</span></span></code></pre>
+</div>
+<p>The reference FASTA, its <code>.fai</code> index and the bwa index
+from NCBI:</p>
+<!-- kit: not-run download -->
+<div class="codewrapper sourceCode" id="cb17">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb17-1"><a href="#cb17-1" tabindex="-1" aria-label="code-block-17-1"></a><span class="fu">wget</span> https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz</span>
+<span id="cb17-2"><a href="#cb17-2" tabindex="-1" aria-label="code-block-17-2"></a><span class="fu">wget</span> https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.fai</span>
+<span id="cb17-3"><a href="#cb17-3" tabindex="-1" aria-label="code-block-17-3"></a><span class="fu">wget</span> https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.bwa_index.tar.gz</span></code></pre>
+</div>
+<p>The benchmark call sets come from the GIAB release directories, for
+example the HG002 v5.0q small-variant benchmark and its regions:</p>
+<!-- kit: not-run download -->
+<div class="codewrapper sourceCode" id="cb18">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb18-1"><a href="#cb18-1" tabindex="-1" aria-label="code-block-18-1"></a><span class="fu">wget</span> https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/AshkenazimTrio/HG002_NA24385_son/latest/HG002_GRCh38_v5.0q_smvar.vcf.gz</span>
+<span id="cb18-2"><a href="#cb18-2" tabindex="-1" aria-label="code-block-18-2"></a><span class="fu">wget</span> https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/AshkenazimTrio/HG002_NA24385_son/latest/HG002_GRCh38_v5.0q_smvar.benchmark.bed</span></code></pre>
+</div>
+<p>The full list of sources, with sizes and checksums, is in <a href="https://github.com/rcac-bioinformatics/variant-calling/blob/main/data-prep/sources.tsv" class="external-link"><code>data-prep/sources.tsv</code></a>,
+and the preparation scripts are in <a href="https://github.com/rcac-bioinformatics/variant-calling/tree/main/data-prep" class="external-link"><code>data-prep/</code></a>.</p>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a></h2>
 <hr class="half-width"><div id="keypoints1" class="callout keypoints">
 <div class="callout-square">
 <i class="callout-icon" data-feather="key"></i>
@@ -417,7 +1022,22 @@ coordinates.</li>
 <span class="callout-header">Key Points</span>
 <div class="callout-inner">
 <div class="callout-content">
-<ul><li>TBD(P4)</li>
+<ul><li>The data are the GIAB Ashkenazi trio (HG002 child, HG003 father,
+HG004 mother): NovaSeq PCR-free 151 bp paired reads, about 40x on
+chromosome 20.</li>
+<li>The reads were selected from chromosome 20 alignments, so mapping
+rate and coverage outside chromosome 20 are not realistic.</li>
+<li>Check every copy with checksums (<code>md5sum -c</code>) before
+using it.</li>
+<li>The sample sheet and the PED file record sample names, roles, sex
+and relationships; later steps depend on them being right.</li>
+<li>The GRCh38 no-alt analysis set leaves out alt contigs and uses
+UCSC-style names (<code>chr20</code>); every file in an analysis must
+use the same assembly and sequence names.</li>
+<li>BED is 0-based and half-open; VCF, SAM and samtools regions are
+1-based and closed.</li>
+<li>Public reference data can be shared; your own human data may need an
+approved, controlled system.</li>
 </ul></div>
 </div>
 </div>

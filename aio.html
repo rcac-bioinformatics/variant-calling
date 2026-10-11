@@ -435,25 +435,558 @@ HG003, HG004).</li>
 </div>
 </div>
 </div>
-<section><h2 class="section-heading" id="types-of-genetic-variation">Types of genetic variation<a class="anchor" aria-label="anchor" href="#types-of-genetic-variation"></a>
+<section><h2 class="section-heading" id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="germline-and-somatic-variants">Germline and somatic variants<a class="anchor" aria-label="anchor" href="#germline-and-somatic-variants"></a>
+<hr class="half-width">
+<p>Variant calling answers a simple-sounding question: where does the
+DNA of this individual differ from a reference sequence, and what are
+the two alleles at each of those positions? The answer is never read
+directly off the sequencer. It is inferred from millions of short,
+imperfect reads, each placed on the genome by an aligner that can also
+be wrong. Every call is therefore a statistical statement with a
+confidence attached, and part of the job is deciding which statements to
+believe.</p>
+<p>In this workshop we call variants on chromosome 20 in three people: a
+child and both parents, from the Genome in a Bottle (GIAB) Ashkenazi
+trio. Their genomes have been characterized so thoroughly that public
+benchmark call sets exist for all three, so later in the day we can
+measure how many of our calls are right instead of guessing.</p>
+<p>This episode introduces the vocabulary and the reasoning. There are
+no commands to run.</p>
+</section><section><h2 class="section-heading" id="types-of-genetic-variation">Types of genetic variation<a class="anchor" aria-label="anchor" href="#types-of-genetic-variation"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="the-reference-is-a-coordinate-system">The reference is a coordinate system<a class="anchor" aria-label="anchor" href="#the-reference-is-a-coordinate-system"></a>
+<hr class="half-width">
+<p>A <strong>variant</strong> is a position, or a stretch of sequence,
+where a sample differs from the reference genome. The
+<strong>allele</strong> that matches the reference is the reference
+allele (REF); any other allele is an alternate allele (ALT).</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr>
+<th>Type</th>
+<th>What changes</th>
+<th>Example (reference &gt; sample)</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Single-nucleotide variant (SNV)</td>
+<td>One base is replaced by another</td>
+<td><code>T &gt; C</code></td>
+</tr>
+<tr>
+<td>Multi-nucleotide variant (MNV)</td>
+<td>Two or more adjacent bases change together</td>
+<td><code>AG &gt; TC</code></td>
+</tr>
+<tr>
+<td>Insertion or deletion (indel)</td>
+<td>Bases are added or removed</td>
+<td>
+<code>T &gt; TTGG</code> (insertion), <code>CAT &gt; C</code>
+(deletion)</td>
+</tr>
+<tr>
+<td>Structural variant (SV)</td>
+<td>Larger rearrangements: large deletions and insertions, inversions,
+translocations</td>
+<td>thousands of bases moved or lost</td>
+</tr>
+<tr>
+<td>Copy-number variant (CNV)</td>
+<td>A segment is present in more or fewer copies than in the
+reference</td>
+<td>a gene present three times instead of twice</td>
+</tr>
+</tbody>
+</table>
+<p>In this lesson, “small variants” means SNVs and indels shorter than
+50 bp. Structural and copy-number variants need different methods and
+are not covered (see the setup page).</p>
+<p>SNVs come in two kinds that matter later. A
+<strong>transition</strong> exchanges a purine for a purine (A and G) or
+a pyrimidine for a pyrimidine (C and T). A <strong>transversion</strong>
+exchanges a purine for a pyrimidine or the reverse. The ratio of the two
+(Ts/Tv) is a quick quality check on a call set, which Episode 6
+uses.</p>
+<div class="section level3">
+<h3 id="germline-and-somatic-variants">Germline and somatic variants<a class="anchor" aria-label="anchor" href="#germline-and-somatic-variants"></a>
+</h3>
+<p>A <strong>germline</strong> variant was inherited from a parent or
+arose in a parent’s egg or sperm, so it is present in every cell of the
+body. A <strong>somatic</strong> variant arose after conception, in some
+cells only, and is present in only a fraction of the cells sampled. A
+germline variant in a diploid individual is therefore expected in either
+half of the reads (one copy) or all of them (two copies). A somatic
+variant can be present in any fraction. This workshop calls germline
+variants; somatic calling uses different statistical models and is not
+covered.</p>
+<p>A <strong>de novo</strong> variant is a germline variant present in a
+child and absent from both parents. They are rare, and Episode 8 will
+show how hard they are to find among the many apparent de novo calls
+that are errors.</p>
+</div>
+</section><section><h2 class="section-heading" id="the-reference-is-a-coordinate-system">The reference is a coordinate system<a class="anchor" aria-label="anchor" href="#the-reference-is-a-coordinate-system"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="diploid-genotypes">Diploid genotypes<a class="anchor" aria-label="anchor" href="#diploid-genotypes"></a>
+<hr class="half-width">
+<p>The reference genome is one haploid sequence used as a shared map.
+Every position has a name (<code>chr20:88108</code> is base 88,108 of
+chromosome 20), and REF is simply the base found at that position in the
+reference. REF is not “normal”, “healthy” or “ancestral”, and ALT is not
+necessarily rare or harmful. An ALT allele only differs from the
+reference sequence; it can be the more common allele at that position in
+many populations.</p>
+<div id="two-different-frequencies" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="two-different-frequencies" class="callout-inner">
+<h3 class="callout-title">Two different frequencies</h3>
+<div class="callout-content">
+<p>Two numbers are easy to confuse:</p>
+<ul>
+<li>
+<strong>Variant allele fraction</strong> (within one sample): the
+fraction of reads at a position that carry the ALT allele, for example
+18 of 40 reads, 0.45. It tells you about the genotype of that one
+sample.</li>
+<li>
+<strong>Population allele frequency</strong>: the fraction of
+chromosomes in a population that carry the ALT allele, for example from
+gnomAD (Episode 7). It tells you how common the allele is among other
+people.</li>
+</ul>
+<p>A heterozygous call has an allele fraction near 0.5 whether the
+allele is rare or common in the population.</p>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="diploid-genotypes">Diploid genotypes<a class="anchor" aria-label="anchor" href="#diploid-genotypes"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="from-reads-to-a-genotype">From reads to a genotype<a class="anchor" aria-label="anchor" href="#from-reads-to-a-genotype"></a>
+<hr class="half-width">
+<p>Humans are diploid: each autosome is present in two copies, one from
+each parent. A <strong>genotype</strong> lists the two alleles at a
+position, written as allele numbers: 0 is REF, 1 is the first ALT, 2 the
+second ALT, and so on. This is how genotypes appear in a VCF file, the
+format Episode 5A produces (<a href="https://samtools.github.io/hts-specs/" class="external-link">VCF specification</a>).</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr>
+<th>Genotype</th>
+<th>Name</th>
+<th>Meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>0/0</code></td>
+<td>homozygous reference</td>
+<td>both copies match the reference</td>
+</tr>
+<tr>
+<td><code>0/1</code></td>
+<td>heterozygous</td>
+<td>one copy REF, one copy ALT</td>
+</tr>
+<tr>
+<td><code>1/1</code></td>
+<td>homozygous alternate</td>
+<td>both copies carry the ALT allele</td>
+</tr>
+<tr>
+<td><code>1/2</code></td>
+<td>heterozygous, two ALT alleles</td>
+<td>each copy carries a different ALT allele</td>
+</tr>
+<tr>
+<td><code>./.</code></td>
+<td>missing</td>
+<td>no genotype could be called (for example, no reads)</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>/</code> means the two alleles are unphased: we know which
+two alleles are present, not which parental chromosome carries which. A
+<code>|</code> (as in <code>0|1</code>) marks a phased genotype.</p>
+</section><section><h2 class="section-heading" id="from-reads-to-a-genotype">From reads to a genotype<a class="anchor" aria-label="anchor" href="#from-reads-to-a-genotype"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="how-many-reads-make-a-heterozygous-call">How many reads make a heterozygous call?<a class="anchor" aria-label="anchor" href="#how-many-reads-make-a-heterozygous-call"></a>
+<hr class="half-width">
+<p>A caller sees, at each position, the stack of aligned reads covering
+it: the <strong>pileup</strong>. The schematic pileups below show a 9 bp
+window. Dots are bases that match the reference; letters are
+mismatches.</p>
+<pre class="schematic"><code>SCHEMATIC, NOT DATA
+position     1 2 3 4 5 6 7 8 9
+reference    A C G T T G C A T
+read 1       . . . . C . . . .
+read 2       . . . . . . . . .
+read 3       . . . . C . . . .
+read 4       . . . . . . . . .
+read 5       . . . . C . . . .
+read 6       . . . . . . . . .
+read 7       . . . . C . . . .
+read 8       . . . . . . . . .</code></pre>
+<p>At position 5, four of eight reads carry <code>C</code> and four
+carry the reference <code>T</code>. That is what a heterozygous
+<code>T/C</code> (genotype <code>0/1</code>) is expected to look like. A
+homozygous ALT site would show <code>C</code> in nearly every read.</p>
+<p>Not every read counts equally. Two kinds of quality decide how much a
+read contributes:</p>
+<ul>
+<li>
+<strong>Base quality</strong> is the sequencer’s estimate that a
+base call is wrong, on the Phred scale: Q = -10 log10(probability of
+error). Q20 means a 1 in 100 chance of error, Q30 1 in 1,000 (<a href="https://samtools.github.io/hts-specs/SAMv1.pdf" class="external-link">SAM
+specification</a>). A mismatch on a Q2 base is weak evidence; a mismatch
+on a Q37 base is strong evidence.</li>
+<li>
+<strong>Mapping quality (MAPQ)</strong> is the aligner’s estimate,
+on the same scale, that the read is placed at the wrong position in the
+genome. A read from a repeat that occurs twice in the genome cannot be
+placed with confidence, and gets a mapping quality near 0 (Episode
+4).</li>
+</ul>
+<p>The caller then asks, for each possible genotype (<code>0/0</code>,
+<code>0/1</code>, <code>1/1</code>): how likely are these reads, with
+these qualities, if that genotype were true? Those <strong>genotype
+likelihoods</strong> are stored in the VCF as <code>PL</code>,
+Phred-scaled so that the most likely genotype gets 0. The called
+genotype is the most probable one, and two quality values summarize the
+confidence (<a href="https://samtools.github.io/hts-specs/" class="external-link">VCF
+specification</a>; <a href="https://samtools.github.io/bcftools/bcftools.html" class="external-link">bcftools
+manual</a>):</p>
+<ul>
+<li>
+<strong>QUAL</strong>, per site: how confident the caller is that
+any ALT allele is present at this position in any of the samples.</li>
+<li>
+<strong>GQ</strong> (genotype quality), per sample: how confident
+the caller is that this sample’s genotype is the right one.</li>
+</ul>
+<p>Calling, filtering and interpretation are separate steps. The caller
+writes down every site it thinks may be variant, together with these
+qualities. Filtering (Episode 6) decides which calls to trust.
+Interpretation (Episodes 7 and 8) decides what the trusted calls mean.
+Mixing them up, for example by treating every line of a raw VCF as a
+real variant, is one of the most common errors in variant analysis.</p>
+
+<div id="challenge-call-the-genotype" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-call-the-genotype" class="callout-inner">
+<h3 class="callout-title">Challenge: call the genotype</h3>
+<div class="callout-content">
+<p>Each schematic pileup shows one position in one sample. All bases
+have high base quality, and all reads have high mapping quality unless
+marked. What genotype would you call at the marked position
+(<code>*</code>), and how confident are you?</p>
+<pre class="schematic"><code>SCHEMATIC, NOT DATA        position *, reference base G
+
+Pileup A (10 reads)   G G A G A A G A G A
+Pileup B (3 reads)    A A A
+Pileup C (12 reads)   A A A A A A A A A A A A
+Pileup D (10 reads)   G G G G G G G G G A
+Pileup E (8 reads)    A A A A G G G G     (every read has mapping quality 0)</code></pre>
+</div>
+</div>
+</div>
+<div id="accordionSolution1" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution1" aria-expanded="false" aria-controls="collapseSolution1">
+  <h4 class="accordion-header" id="headingSolution1"> Show me the solution </h4>
+</button>
+<div id="collapseSolution1" class="accordion-collapse collapse" data-bs-parent="#accordionSolution1" aria-labelledby="headingSolution1">
+<div class="accordion-body">
+<ul>
+<li>
+<strong>A:</strong> 5 <code>A</code> and 5 <code>G</code>:
+heterozygous <code>0/1</code>, called with confidence.</li>
+<li>
+<strong>B:</strong> 3 <code>A</code>: most likely <code>1/1</code>,
+but only three reads. A heterozygous site shows only one allele in three
+reads one time in four (next section), so the genotype quality is
+low.</li>
+<li>
+<strong>C:</strong> 12 <code>A</code>: homozygous alternate
+<code>1/1</code>, confident.</li>
+<li>
+<strong>D:</strong> one <code>A</code> in 10 reads: most likely
+<code>0/0</code> with one sequencing error. If the <code>A</code> had
+low base quality, even more so.</li>
+<li>
+<strong>E:</strong> the allele fraction looks like a perfect
+heterozygote, but every read has mapping quality 0. The reads may come
+from another copy of a repeat, so the “variant” may be a difference
+between two copies of the repeat, not between this person’s two
+chromosomes. A careful caller gives it little or no weight. Episode 6
+filters sites like this on mapping quality.</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="how-many-reads-make-a-heterozygous-call">How many reads make a heterozygous call?<a class="anchor" aria-label="anchor" href="#how-many-reads-make-a-heterozygous-call"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="why-calls-can-be-wrong">Why calls can be wrong<a class="anchor" aria-label="anchor" href="#why-calls-can-be-wrong"></a>
+<hr class="half-width">
+<p>At a heterozygous site, each read comes from one of the two
+chromosomes with equal probability, like a coin toss. With n reads, the
+chance that all of them come from the same chromosome, so that the site
+looks homozygous, is 2 x 0.5^n. This idealized model ignores sequencing
+errors and assumes both chromosomes are sampled equally.</p>
+<table class="table">
+<thead><tr>
+<th>Reads (n)</th>
+<th>Chance a heterozygous site shows only one allele</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>3</td>
+<td>0.25 (1 in 4)</td>
+</tr>
+<tr>
+<td>5</td>
+<td>0.0625 (1 in 16)</td>
+</tr>
+<tr>
+<td>10</td>
+<td>0.002 (about 1 in 500)</td>
+</tr>
+<tr>
+<td>15</td>
+<td>0.00006 (about 1 in 16,000)</td>
+</tr>
+</tbody>
+</table>
+<div id="challenge-how-many-reads-before-you-trust-a-heterozygous-call" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-how-many-reads-before-you-trust-a-heterozygous-call" class="callout-inner">
+<h3 class="callout-title">Challenge: how many reads before you trust a
+heterozygous call?</h3>
+<div class="callout-content">
+<ol style="list-style-type: decimal">
+<li>Use the formula above. At 5 reads, how often would a true
+heterozygous site look homozygous? At 10 reads?</li>
+<li>Our samples have a mean depth of about 39x on chromosome 20 (Episode
+4). Why is the mean depth not enough to say that every heterozygous site
+will be called correctly?</li>
+<li>In Episode 6 we will set genotypes supported by fewer than 10 reads
+to missing (<code>./.</code>). What do we gain, and what do we
+lose?</li>
+</ol>
+</div>
+</div>
+</div>
+<div id="accordionSolution2" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution2" aria-expanded="false" aria-controls="collapseSolution2">
+  <h4 class="accordion-header" id="headingSolution2"> Show me the solution </h4>
+</button>
+<div id="collapseSolution2" class="accordion-collapse collapse" data-bs-parent="#accordionSolution2" aria-labelledby="headingSolution2">
+<div class="accordion-body">
+<ol style="list-style-type: decimal">
+<li>At 5 reads, 2 x 0.5^5 = 0.0625, about one heterozygous site in 16
+looks homozygous. At 10 reads, 2 x 0.5^10 = 0.002, about one in 500. The
+benchmark for the child alone lists more than 70,000 SNVs on chromosome
+20 (Episode 6), so even one in 500 of the heterozygous ones adds
+up.</li>
+<li>Depth varies along the genome. A mean of 39x includes positions with
+far fewer reads (and far more), and the low-depth positions are where
+heterozygous sites are missed or miscalled. Episode 4 measures how much
+of chromosome 20 is covered at a given depth.</li>
+<li>We gain precision: genotypes with too little evidence no longer
+count as calls. We lose recall: some true genotypes become missing.
+Episode 6 measures this trade-off against the benchmark.</li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="why-calls-can-be-wrong">Why calls can be wrong<a class="anchor" aria-label="anchor" href="#why-calls-can-be-wrong"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="what-short-reads-cannot-see">What short reads cannot see<a class="anchor" aria-label="anchor" href="#what-short-reads-cannot-see"></a>
+<hr class="half-width">
+<p>Every error source below produces calls that look real in a raw
+VCF:</p>
+<ul>
+<li>
+<strong>Sequencing errors.</strong> A wrong base on a few reads
+looks like a low-fraction ALT allele. Base quality and the number of
+supporting reads separate most of them from real variants.</li>
+<li>
+<strong>Sampling.</strong> Too few reads, or unlucky sampling, makes
+a heterozygous site look homozygous or hides it (previous section).</li>
+<li>
+<strong>Mapping errors.</strong> Reads from a repeat or a duplicated
+region can be placed at the wrong copy. Differences between the copies
+then look like variants. Mapping quality flags many of these reads, not
+all.</li>
+<li>
+<strong>Duplicates.</strong> Copies of the same original DNA
+fragment are not independent evidence. Episode 4 marks them so the
+caller can skip them.</li>
+<li>
+<strong>Reference problems.</strong> Gaps, errors or collapsed
+repeats in the reference attract misplaced reads.</li>
+<li>
+<strong>Representation.</strong> One indel can often be written in
+several equivalent ways, and two call sets can disagree only in how they
+wrote it. Episode 5A normalizes calls to remove this.</li>
+</ul></section><section><h2 class="section-heading" id="what-short-reads-cannot-see">What short reads cannot see<a class="anchor" aria-label="anchor" href="#what-short-reads-cannot-see"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="the-workflow-and-its-files">The workflow and its files<a class="anchor" aria-label="anchor" href="#the-workflow-and-its-files"></a>
+<hr class="half-width">
+<p>Our reads are 151 bases long, from DNA fragments a few hundred bases
+long. A read cannot be placed uniquely if it falls entirely inside a
+repeat longer than the fragment. In our data, about 5% of each sample’s
+reads get mapping quality 0, which means the aligner found several
+equally good places for them (Episode 4).</p>
+<p>Repeats concentrate the errors. In the reference run of this
+workshop, the centromere of chromosome 20, about 5.6% of the
+chromosome’s length, held 22% of the raw SNV calls in the child (HG002),
+with a transition/transversion ratio of 1.22, far below the 2.28 of
+calls inside the benchmark regions (<a href="https://github.com/rcac-bioinformatics/variant-calling/blob/main/maintenance/plan/reference-run.md" class="external-link">reference-run
+memo</a>, section 3). Many of those calls are almost certainly mapping
+artifacts, and Episode 6 filters most of them.</p>
+<p>Short reads also miss most structural variants, cannot resolve which
+copy of a segmental duplication a read comes from, and cannot tell which
+parental chromosome carries each allele over long distances (phasing).
+Other methods, such as long-read sequencing, are needed for these
+questions; they are outside the scope of this workshop.</p>
+</section><section><h2 class="section-heading" id="the-workflow-and-its-files">The workflow and its files<a class="anchor" aria-label="anchor" href="#the-workflow-and-its-files"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="the-workshop-question">The workshop question<a class="anchor" aria-label="anchor" href="#the-workshop-question"></a>
+<hr class="half-width">
+<table class="table">
+<colgroup>
+<col width="20%">
+<col width="20%">
+<col width="20%">
+<col width="20%">
+<col width="20%">
+</colgroup>
+<thead><tr>
+<th>Step</th>
+<th>Episode</th>
+<th>Tools</th>
+<th>Input</th>
+<th>Output</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Set up the project and check the data</td>
+<td>2</td>
+<td>
+<code>rsync</code>, <code>md5sum</code>, samtools</td>
+<td>staged copy on Depot</td>
+<td>
+<code>data/</code>, <code>ref/</code>, <code>resources/</code>,
+<code>scripts/</code>, <code>results/</code>
+</td>
+</tr>
+<tr>
+<td>Check read quality</td>
+<td>3</td>
+<td>FastQC, MultiQC</td>
+<td>FASTQ (<code>data/*.fastq.gz</code>)</td>
+<td><code>results/qc/multiqc_report.html</code></td>
+</tr>
+<tr>
+<td>Align reads, mark duplicates</td>
+<td>4</td>
+<td>bwa mem, samtools</td>
+<td>FASTQ, reference and bwa index</td>
+<td>
+<code>results/bam/&lt;sample&gt;.markdup.bam</code> and
+<code>.csi</code> index</td>
+</tr>
+<tr>
+<td>Check the alignments</td>
+<td>4</td>
+<td>samtools, mosdepth, MultiQC</td>
+<td>BAM</td>
+<td><code>results/qc_alignment/</code></td>
+</tr>
+<tr>
+<td>Call variants jointly in the trio</td>
+<td>5A</td>
+<td>bcftools</td>
+<td>three BAMs, reference</td>
+<td><code>results/vcf/trio.norm.vcf.gz</code></td>
+</tr>
+<tr>
+<td>Filter and evaluate</td>
+<td>6</td>
+<td>bcftools, hap.py</td>
+<td>VCF, GIAB benchmarks</td>
+<td>
+<code>results/vcf/trio.filtered.vcf.gz</code>,
+<code>results/eval/</code>
+</td>
+</tr>
+<tr>
+<td>Annotate</td>
+<td>7</td>
+<td>SnpEff, bcftools</td>
+<td>filtered VCF, gnomAD frequencies</td>
+<td><code>results/annot/trio.ann.vcf.gz</code></td>
+</tr>
+<tr>
+<td>Find candidate variants in the trio</td>
+<td>8</td>
+<td>bcftools</td>
+<td>annotated VCF, PED file</td>
+<td>
+<code>results/trio/funnel.tsv</code>,
+<code>results/trio/candidates.tsv</code>
+</td>
+</tr>
+</tbody>
+</table>
+<p>The file formats (FASTQ, BAM, VCF, BED, PED) are introduced in the
+episode where they first appear.</p>
+
+</section><section><h2 class="section-heading" id="the-workshop-question">The workshop question<a class="anchor" aria-label="anchor" href="#the-workshop-question"></a>
+</h2>
+<hr class="half-width">
+<p>The trio is a child (HG002) and both parents (HG003, HG004). By the
+end of the day we will ask:</p>
+<blockquote>
+<p>In the child, which variants are consistent with a de novo or a
+recessive inheritance model, are plausibly protein-altering, and are
+rare in an ancestry-matched population? How many of these candidates
+survive inspection?</p>
+</blockquote>
+<p>Answering it needs every step of the workflow: good alignments,
+trustworthy calls, filters we can justify, measured error rates, and
+annotation. It also needs restraint. These are public reference samples,
+and nothing we find says anything about anyone’s health. The goal is to
+learn how evidence accumulates, and how often an exciting-looking
+candidate turns out to be an error.</p>
+<div id="discussion-what-would-convince-you" class="callout discussion">
+<div class="callout-square">
+<i class="callout-icon" data-feather="message-circle"></i>
+</div>
+<span class="callout-header">Discussion</span>
+<div id="discussion-what-would-convince-you" class="callout-inner">
+<h3 class="callout-title">Discussion: what would convince you?</h3>
+<div class="callout-content">
+<p>Suppose the final list contains one variant that is heterozygous in
+the child and absent from both parents. Before calling it a de novo
+mutation, what evidence would you want to see? Keep your list; Episode 8
+comes back to it.</p>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a>
 </h2>
 <hr class="half-width">
 <div id="keypoints1" class="callout keypoints">
@@ -464,7 +997,20 @@ HG003, HG004).</li>
 <div class="callout-inner">
 <div class="callout-content">
 <ul>
-<li>TBD(P4)</li>
+<li>A variant is a difference from the reference sequence. The reference
+is a coordinate system, not a description of a healthy or ancestral
+genome.</li>
+<li>Diploid genotypes are written as allele numbers: <code>0/0</code>,
+<code>0/1</code>, <code>1/1</code>, and <code>./.</code> for
+missing.</li>
+<li>A caller weighs each read by its base quality and mapping quality,
+computes genotype likelihoods, and reports the most probable genotype
+with QUAL and GQ.</li>
+<li>At a heterozygous site, the chance of seeing only one allele in n
+reads is 2 x 0.5^n, so low-depth genotypes are unreliable.</li>
+<li>Sequencing errors, sampling, mapping errors in repeats, duplicates
+and representation differences all produce calls that look real.
+Calling, filtering and interpretation are separate steps.</li>
 </ul>
 </div>
 </div>
@@ -516,27 +1062,711 @@ coordinates.</li>
 </div>
 </div>
 </div>
-<section><h2 class="section-heading" id="the-ashkenazi-trio">The Ashkenazi trio<a class="anchor" aria-label="anchor" href="#the-ashkenazi-trio"></a>
+<section><h2 class="section-heading" id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="project-layout">Project layout<a class="anchor" aria-label="anchor" href="#project-layout"></a>
+<hr class="half-width">
+<p>Before any analysis, we need to know exactly what the data is, where
+it came from, and that our copy is complete. In this episode we look at
+the dataset and its sample metadata, check the files with checksums, and
+get to know the reference genome and its index files. These are short
+steps, but most failed variant-calling runs trace back to one of them: a
+truncated file, a reference that does not match the reads, or a sample
+recorded under the wrong name.</p>
+<div id="before-you-start" class="callout prereq">
+<div class="callout-square">
+<i class="callout-icon" data-feather="check"></i>
+</div>
+<span class="callout-header">Prerequisite</span>
+<div id="before-you-start" class="callout-inner">
+<h3 class="callout-title">Before you start</h3>
+<div class="callout-content">
+<p>Complete the “Data setup” section of the <a href="index.html#setup">setup
+page</a>: copy the workshop data to
+<code>$SCRATCH/varcall-workshop</code> and link the reference into
+<code>ref/</code>. Every command in this episode runs on a Negishi login
+node; they are all quick.</p>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="the-ashkenazi-trio">The Ashkenazi trio<a class="anchor" aria-label="anchor" href="#the-ashkenazi-trio"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="verifying-the-staged-copy">Verifying the staged copy<a class="anchor" aria-label="anchor" href="#verifying-the-staged-copy"></a>
+<hr class="half-width">
+<p>The <a href="https://www.nist.gov/programs-projects/genome-bottle" class="external-link">Genome in a
+Bottle</a> (GIAB) consortium, hosted by NIST, characterizes reference
+human genomes and publishes benchmark variant calls for them. We use its
+Ashkenazi trio, a son and his parents:</p>
+<table class="table">
+<thead><tr>
+<th>Sample</th>
+<th>Cell line</th>
+<th>Role</th>
+<th>Sex</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>HG002</td>
+<td>NA24385</td>
+<td>child</td>
+<td>male</td>
+</tr>
+<tr>
+<td>HG003</td>
+<td>NA24149</td>
+<td>father</td>
+<td>male</td>
+</tr>
+<tr>
+<td>HG004</td>
+<td>NA24143</td>
+<td>mother</td>
+<td>female</td>
+</tr>
+</tbody>
+</table>
+<p>The reads come from the <a href="https://github.com/google/deepvariant/blob/r1.10/docs/deeptrio-wgs-case-study.md" class="external-link">DeepTrio
+WGS case study</a>, which provides alignments of each sample to GRCh38
+restricted to chromosome 20. We converted those alignments back to
+paired FASTQ files, so that you can align them yourself. The facts below
+were measured on the source files in this workshop’s feasibility run (<a href="https://github.com/rcac-bioinformatics/variant-calling/blob/main/maintenance/plan/feasibility.md" class="external-link">feasibility
+memo</a>):</p>
+<ul>
+<li>
+<strong>Sequencing:</strong> Illumina NovaSeq, PCR-free library, 151
+bp paired-end reads.</li>
+<li>
+<strong>Base qualities:</strong> binned to four values (Episode
+3).</li>
+<li>
+<strong>Depth:</strong> the files are labeled 35x, but the mean
+depth on chromosome 20 is about 40x (39.2x to 39.9x in the source
+alignments).</li>
+<li>
+<strong>Duplicates:</strong> the source alignments had duplicates
+marked, not removed (about 2.0 million flagged reads per sample).
+Converting to FASTQ kept those reads, so you will mark duplicates again
+in Episode 4.</li>
+<li>
+<strong>Read pairs:</strong> HG002 9,462,450, HG003 9,480,040, HG004
+9,347,118. All six FASTQ files together are 4.85 GB.</li>
+</ul>
+<div id="the-reads-were-selected-from-chromosome-20-alignments" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="the-reads-were-selected-from-chromosome-20-alignments" class="callout-inner">
+<h3 class="callout-title">The reads were selected from chromosome 20
+alignments</h3>
+<div class="callout-content">
+<p>Every read in our FASTQ files was aligned to chromosome 20 in the
+source data. About 330,000 reads per sample had a mate aligned elsewhere
+in the genome, and those reads were dropped, because a read without its
+mate cannot go into a paired FASTQ file.</p>
+<p>Two consequences follow. First, when we align these reads to the
+whole genome in Episode 4, almost all of them land on chromosome 20
+again. Mapping rates near 100% and almost no coverage on other
+chromosomes are artifacts of how the data was selected, not properties
+of a real whole-genome run. Second, reads that the source alignment
+placed on other chromosomes were never selected, so this data cannot
+show reads moving between chromosome 20 and similar sequences elsewhere,
+as they would in a real whole-genome run.</p>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="project-layout">Project layout<a class="anchor" aria-label="anchor" href="#project-layout"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="the-reference-genome">The reference genome<a class="anchor" aria-label="anchor" href="#the-reference-genome"></a>
+<hr class="half-width">
+<p>The setup page created this layout under
+<code>$SCRATCH/varcall-workshop</code>:</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr>
+<th>Directory</th>
+<th>Contents</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>data/</code></td>
+<td>the six FASTQ files, <code>md5sums.txt</code>, the sample sheet
+<code>samples.tsv</code>, the pedigree <code>trio.ped</code>
+</td>
+</tr>
+<tr>
+<td><code>ref/</code></td>
+<td>links to the read-only reference genome, its indexes and the
+annotation database on Depot</td>
+</tr>
+<tr>
+<td><code>resources/</code></td>
+<td>benchmark call sets (<code>truth/</code>), population frequencies
+(<code>gnomad/</code>), region lists (<code>regions/</code>), and a
+small example VCF (<code>example/</code>)</td>
+</tr>
+<tr>
+<td><code>scripts/</code></td>
+<td>the SLURM job scripts for Episodes 4 to 7</td>
+</tr>
+<tr>
+<td><code>results/</code></td>
+<td>one folder per step: <code>qc</code>, <code>bam</code>,
+<code>qc_alignment</code>, <code>vcf</code>, <code>eval</code>,
+<code>annot</code>, <code>trio</code>
+</td>
+</tr>
+</tbody>
+</table>
+<p>The reference and its indexes take more than 10 GB. Every learner
+uses the same files, so they stay in one read-only copy on Depot, and
+<code>ref/</code> holds symbolic links to them instead of copies.</p>
+</section><section><h2 class="section-heading" id="step-1-check-the-copy-with-checksums">Step 1: Check the copy with checksums<a class="anchor" aria-label="anchor" href="#step-1-check-the-copy-with-checksums"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="contig-names-and-index-files">Contig names and index files<a class="anchor" aria-label="anchor" href="#contig-names-and-index-files"></a>
+<hr class="half-width">
+<p>A checksum is a short fingerprint computed from a file’s contents. If
+a single byte changes, the checksum changes. <code>md5sums.txt</code>
+holds the MD5 checksum of every FASTQ file as it was staged;
+<code>md5sum -c</code> recomputes each one and compares.</p>
+<!-- kit: extra 02-setup.sh -->
+<div class="codewrapper sourceCode" id="cb1">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1" aria-label="code-block-1-1"></a><span class="bu">cd</span> <span class="va">$SCRATCH</span>/varcall-workshop</span></code></pre>
+</div>
+<!-- kit: interactive 02-setup.sh -->
+<div class="codewrapper sourceCode" id="cb2">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1" aria-label="code-block-2-1"></a><span class="bu">cd</span> data</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1" aria-label="code-block-2-2"></a><span class="fu">md5sum</span> <span class="at">-c</span> md5sums.txt</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1" aria-label="code-block-2-3"></a><span class="bu">cd</span> ..</span></code></pre>
+</div>
+<p>This reads all 4.85 GB, so give it up to a minute.</p>
+<div id="accordionSpoiler1" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler1" aria-expanded="false" aria-controls="collapseSpoiler1">
+  <h3 class="accordion-header" id="headingSpoiler1">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler1" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler1" aria-labelledby="headingSpoiler1">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code><span><span class="va">HG002_R1.fastq.gz</span><span class="op">:</span> <span class="va">OK</span></span>
+<span><span class="va">HG002_R2.fastq.gz</span><span class="op">:</span> <span class="va">OK</span></span>
+<span><span class="va">HG003_R1.fastq.gz</span><span class="op">:</span> <span class="va">OK</span></span>
+<span><span class="va">HG003_R2.fastq.gz</span><span class="op">:</span> <span class="va">OK</span></span>
+<span><span class="va">HG004_R1.fastq.gz</span><span class="op">:</span> <span class="va">OK</span></span>
+<span><span class="va">HG004_R2.fastq.gz</span><span class="op">:</span> <span class="va">OK</span></span></code></pre>
+</div>
+<p>Every file must report <code>OK</code>. A <code>FAILED</code> line
+means that file is damaged or incomplete; copy it again with the
+<code>rsync</code> command from the setup page and rerun the check.</p>
+</div>
+</div>
+</div>
+</div>
+<div id="why-checksums" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="why-checksums" class="callout-inner">
+<h3 class="callout-title">Why checksums?</h3>
+<div class="callout-content">
+<p>File sizes can match while contents differ, and a transfer that stops
+early can leave a file that looks normal until a tool fails on it hours
+later. Checksums catch both. Record them when you receive data, check
+them after every copy, and keep them with the data as part of its
+provenance. The sources we downloaded from publish checksums too, and we
+checked every download against them before staging (<a href="https://github.com/rcac-bioinformatics/variant-calling/blob/main/data-prep/sources.tsv" class="external-link"><code>data-prep/sources.tsv</code></a>
+lists each file, its size and its MD5).</p>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-2-the-sample-sheet-and-the-pedigree">Step 2: The sample sheet and the pedigree<a class="anchor" aria-label="anchor" href="#step-2-the-sample-sheet-and-the-pedigree"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="file-formats-fasta-fastq-bed-and-ped">File formats: FASTA, FASTQ, BED and PED<a class="anchor" aria-label="anchor" href="#file-formats-fasta-fastq-bed-and-ped"></a>
+<hr class="half-width">
+<p>Two small text files describe the samples. Every later step reads
+them, so they are worth a careful look.</p>
+<!-- kit: interactive 02-setup.sh -->
+<div class="codewrapper sourceCode" id="cb4">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1" aria-label="code-block-4-1"></a><span class="fu">head</span> data/samples.tsv</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1" aria-label="code-block-4-2"></a><span class="fu">cat</span> data/trio.ped</span></code></pre>
+</div>
+<div id="accordionSpoiler2" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler2" aria-expanded="false" aria-controls="collapseSpoiler2">
+  <h3 class="accordion-header" id="headingSpoiler2">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler2" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler2" aria-labelledby="headingSpoiler2">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>sample	role	sex	family	fastq_r1	fastq_r2	rg_id	rg_lb	rg_pl
+HG002	child	1	AJ	HG002_R1.fastq.gz	HG002_R2.fastq.gz	HG002.pcr-free	HG002.pcr-free	ILLUMINA
+HG003	father	1	AJ	HG003_R1.fastq.gz	HG003_R2.fastq.gz	HG003.pcr-free	HG003.pcr-free	ILLUMINA
+HG004	mother	2	AJ	HG004_R1.fastq.gz	HG004_R2.fastq.gz	HG004.pcr-free	HG004.pcr-free	ILLUMINA
+AJ	HG002	HG003	HG004	1	0
+AJ	HG003	0	0	1	0
+AJ	HG004	0	0	2	0</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p><code>samples.tsv</code> is the sample sheet: one row per sample,
+with a header. Its columns are the sample name, its role and sex, the
+family, the two FASTQ files, and three read-group fields
+(<code>rg_id</code>, <code>rg_lb</code>, <code>rg_pl</code>) that
+Episode 4 writes into the alignments. The alignment script reads it line
+by line, so the sample names in the VCF come from this file.</p>
+<p><code>trio.ped</code> is a pedigree file in the PED format used by
+PLINK, bcftools and other tools (<a href="https://www.cog-genomics.org/plink/1.9/formats#fam" class="external-link">PLINK file
+formats</a>). It has no header and six whitespace-separated columns:</p>
+<ol style="list-style-type: decimal">
+<li>family ID</li>
+<li>individual ID</li>
+<li>father’s ID (<code>0</code> if not in the file)</li>
+<li>mother’s ID (<code>0</code> if not in the file)</li>
+<li>sex (<code>1</code> male, <code>2</code> female, <code>0</code>
+unknown)</li>
+<li>phenotype (<code>1</code> unaffected, <code>2</code> affected,
+<code>0</code> or <code>-9</code> missing)</li>
+</ol>
+<p>The parents have <code>0</code> in columns 3 and 4 because their own
+parents are not part of the dataset. No phenotype is recorded for
+anyone. Episode 8 uses this file to check Mendelian inheritance.</p>
+<div id="challenge-write-a-ped-line" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-write-a-ped-line" class="callout-inner">
+<h3 class="callout-title">Challenge: write a PED line</h3>
+<div class="callout-content">
+<ol style="list-style-type: decimal">
+<li>Without looking at <code>trio.ped</code>, write the PED line for
+HG002. Then compare it with the file.</li>
+<li>Suppose the family had a second child, a daughter with the sample ID
+<code>KID2</code>, sequenced in the same project. Write her line.</li>
+<li>What would go wrong in a trio analysis if columns 3 and 4 of HG002’s
+line were swapped?</li>
+</ol>
+</div>
+</div>
+</div>
+<div id="accordionSolution1" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution1" aria-expanded="false" aria-controls="collapseSolution1">
+  <h4 class="accordion-header" id="headingSolution1"> Show me the solution </h4>
+</button>
+<div id="collapseSolution1" class="accordion-collapse collapse" data-bs-parent="#accordionSolution1" aria-labelledby="headingSolution1">
+<div class="accordion-body">
+<ol style="list-style-type: decimal">
+<li>
+<p>The family ID in this file is <code>AJ</code>, and HG002 is male
+with no recorded phenotype:</p>
+<pre class="text"><code>AJ	HG002	HG003	HG004	1	0</code></pre>
+<p>It should match the first line of <code>trio.ped</code> shown
+above.</p>
+</li>
+<li><p><code>AJ	KID2	HG003	HG004	2	0</code>: same family, same parents, sex
+<code>2</code> for female.</p></li>
+<li><p>Swapping father and mother changes nothing for autosomal
+inheritance checks such as the ones in Episode 8, but any analysis that
+uses sex, for example of the X chromosome, would treat the father as the
+mother. Metadata errors rarely fail loudly; check this file whenever you
+build one.</p></li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-3-the-reference-genome">Step 3: The reference genome<a class="anchor" aria-label="anchor" href="#step-3-the-reference-genome"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="coordinate-systems">Coordinate systems<a class="anchor" aria-label="anchor" href="#coordinate-systems"></a>
+<hr class="half-width">
+<p>We align to GRCh38, the current human reference assembly, in a
+version prepared for read-alignment pipelines: the <strong>no-alt
+analysis set</strong> from NCBI (<a href="https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/" class="external-link">README
+in the NCBI directory</a>). According to its README, it contains:</p>
+<ul>
+<li>the chromosomes, the mitochondrial genome, and the unlocalized and
+unplaced scaffolds of GRCh38;</li>
+<li>an Epstein-Barr virus sequence (<code>chrEBV</code>), not part of
+the human genome, included as a “sink” for reads from the virus, which
+are often present in sequencing samples;</li>
+<li>and it leaves out the <strong>alternate locus scaffolds</strong>
+(alt contigs), extra versions of highly variable regions, because many
+alignment pipelines cannot handle them. An aligner that is not alt-aware
+would split reads from those regions between near-identical copies and
+give them low mapping quality (<a href="https://github.com/lh3/bwa/blob/master/README-alt.md" class="external-link">bwa
+README-alt</a>).</li>
+</ul>
+<p>The README also states that the two pseudoautosomal regions on
+chromosome Y, and duplicate copies of some centromeric arrays, are
+masked with <code>N</code>, for the same reason. Our copy has no decoy
+sequences (the README describes a separate set with them).</p>
+<div id="why-the-exact-reference-matters" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="why-the-exact-reference-matters" class="callout-inner">
+<h3 class="callout-title">Why the exact reference matters</h3>
+<div class="callout-content">
+<p>Reads, alignments, variant calls, benchmarks and annotation databases
+must all use the same assembly and the same sequence names. GRCh37 and
+GRCh38 coordinates differ. Even within GRCh38, sequence names differ
+between sources: this analysis set uses UCSC-style names
+(<code>chr20</code>), while some other resources name the same sequence
+<code>20</code>. A mismatch rarely fails loudly. More often a tool
+silently finds no overlap, or skips the “unknown” chromosome, and the
+result is empty or wrong. Check names first whenever you combine files
+from different sources.</p>
+</div>
+</div>
+</div>
+<p>The reference comes with index files. Each tool needs its own:</p>
+<table class="table">
+<colgroup>
+<col width="25%">
+<col width="25%">
+<col width="25%">
+<col width="25%">
+</colgroup>
+<thead><tr>
+<th>File</th>
+<th>Made by</th>
+<th>Used by</th>
+<th>What it holds</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>GRCh38_no_alt.fa.fai</code></td>
+<td><code>samtools faidx</code></td>
+<td>samtools, bcftools, most tools</td>
+<td>name, length and byte offsets of each sequence, for fast random
+access</td>
+</tr>
+<tr>
+<td><code>GRCh38_no_alt.dict</code></td>
+<td><code>samtools dict</code></td>
+<td>GATK and Picard (Episode 5B)</td>
+<td>a sequence dictionary: names, lengths and MD5 checksums in SAM
+header format</td>
+</tr>
+<tr>
+<td><code>GRCh38_no_alt.fa.{amb,ann,bwt,pac,sa}</code></td>
+<td><code>bwa index</code></td>
+<td>bwa (Episode 4)</td>
+<td>the aligner’s index; NCBI publishes it, so we did not build it</td>
+</tr>
+<tr>
+<td><code>GRCh38_no_alt.sdf</code></td>
+<td><code>rtg format</code></td>
+<td>hap.py with the vcfeval engine (Episode 6)</td>
+<td>the reference in RTG’s format</td>
+</tr>
+</tbody>
+</table>
+<p>Look at the FASTA index and the dictionary:</p>
+<!-- kit: extra 02-setup.sh -->
+<div class="codewrapper sourceCode" id="cb7">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" tabindex="-1" aria-label="code-block-7-1"></a><span class="fu">head</span> <span class="at">-3</span> ref/GRCh38_no_alt.fa.fai</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1" aria-label="code-block-7-2"></a><span class="fu">grep</span> <span class="at">-w</span> chr20 ref/GRCh38_no_alt.fa.fai</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1" aria-label="code-block-7-3"></a><span class="fu">wc</span> <span class="at">-l</span> ref/GRCh38_no_alt.fa.fai</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1" aria-label="code-block-7-4"></a><span class="fu">head</span> <span class="at">-3</span> ref/GRCh38_no_alt.dict</span></code></pre>
+</div>
+<div id="accordionSpoiler3" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler3" aria-expanded="false" aria-controls="collapseSpoiler3">
+  <h3 class="accordion-header" id="headingSpoiler3">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler3" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler3" aria-labelledby="headingSpoiler3">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>chr1	248956422	112	70	71
+chr2	242193529	252513167	70	71
+chr3	198295559	498166716	70	71
+chr20	64444167	2751788762	70	71
+195 ref/GRCh38_no_alt.fa.fai
+@HD	VN:1.0	SO:unsorted
+@SQ	SN:chr1	LN:248956422	M5:6aef897c3d6ff0c78aff06ac189178dd	UR:GRCh38_no_alt.fa	AS:GRCh38	SP:Homo sapiens
+@SQ	SN:chr2	LN:242193529	M5:f98db672eb0993dcfdabafe2a882905c	UR:GRCh38_no_alt.fa	AS:GRCh38	SP:Homo sapiens</code></pre>
+</div>
+<p>The <code>.fai</code> columns are the sequence name, its length, the
+byte offset of its first base in the FASTA file, the number of bases per
+line, and the number of bytes per line. The analysis set has 195
+sequences. chr20 is 64,444,167 bp long, and the same length appears in
+the headers of the source alignments. The <code>.dict</code> lines
+follow the SAM header format: <code>@SQ</code> lines with
+<code>SN</code> (name), <code>LN</code> (length), <code>M5</code> (MD5
+of the sequence), and the file, assembly and species (<code>UR</code>,
+<code>AS</code>, <code>SP</code>).</p>
+</div>
+</div>
+</div>
+</div>
+<p>With the index, <code>samtools faidx</code> extracts any region
+without reading the whole 3.1 GB file. Load samtools with its explicit
+version (the workshop pins every tool version; see the setup page):</p>
+<!-- kit: extra 02-setup.sh -->
+<div class="codewrapper sourceCode" id="cb9">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" tabindex="-1" aria-label="code-block-9-1"></a><span class="ex">module</span> load biocontainers</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1" aria-label="code-block-9-2"></a><span class="ex">module</span> load samtools/1.22.1</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1" aria-label="code-block-9-3"></a><span class="ex">samtools</span> faidx ref/GRCh38_no_alt.fa chr20:88098-88118</span></code></pre>
+</div>
+<div id="accordionSpoiler4" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler4" aria-expanded="false" aria-controls="collapseSpoiler4">
+  <h3 class="accordion-header" id="headingSpoiler4">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler4" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler4" aria-labelledby="headingSpoiler4">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>&gt;chr20:88098-88118
+ATTTCATTGTTGTGTCCTATT</code></pre>
+</div>
+<p>The first line is a message the biocontainers module prints when it
+is loaded; the region follows as a short FASTA record. The region is 21
+bases: <code>samtools faidx</code> regions are 1-based and include both
+ends (<a href="https://www.htslib.org/doc/samtools-faidx.html" class="external-link">samtools
+faidx manual</a>). Base 88,108, a <code>T</code>, sits in the middle.
+Remember this position; the child is heterozygous there, and we will
+come back to it in Episodes 4 and 5A.</p>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-4-coordinate-systems">Step 4: Coordinate systems<a class="anchor" aria-label="anchor" href="#step-4-coordinate-systems"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="sample-sheet-and-ped-file">Sample sheet and PED file<a class="anchor" aria-label="anchor" href="#sample-sheet-and-ped-file"></a>
+<hr class="half-width">
+<p>Genomic files count positions in two different ways:</p>
+<ul>
+<li>
+<strong>1-based, closed</strong> (VCF, SAM, <code>samtools</code>
+regions such as <code>chr20:88098-88118</code>): the first base of a
+chromosome is 1, and a range includes both its start and its end.</li>
+<li>
+<strong>0-based, half-open</strong> (BED): the first base is 0, the
+start is included, and the end is not. The BED interval
+<code>chr20 88107 88108</code> is one base long: base 88,108 in 1-based
+coordinates (<a href="https://genome.ucsc.edu/FAQ/FAQformat.html#format1" class="external-link">UCSC BED
+format</a>).</li>
+</ul>
+<p>To convert a BED interval to 1-based coordinates, add 1 to the start
+and keep the end. The length of a BED interval is simply end minus
+start.</p>
+<p>The benchmark regions we use in Episode 6 are BED files. Look at the
+first lines of the one for HG002:</p>
+<!-- kit: extra 02-setup.sh -->
+<div class="codewrapper sourceCode" id="cb11">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" tabindex="-1" aria-label="code-block-11-1"></a><span class="fu">head</span> <span class="at">-3</span> resources/truth/HG002_v4.2.1_chr20.bed</span></code></pre>
+</div>
+<div id="accordionSpoiler5" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler5" aria-expanded="false" aria-controls="collapseSpoiler5">
+  <h3 class="accordion-header" id="headingSpoiler5">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler5" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler5" aria-labelledby="headingSpoiler5">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>chr20	81335	101267
+chr20	101308	102558
+chr20	102684	105312</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="challenge-convert-coordinates" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-convert-coordinates" class="callout-inner">
+<h3 class="callout-title">Challenge: convert coordinates</h3>
+<div class="callout-content">
+<ol style="list-style-type: decimal">
+<li>Write the first interval of <code>HG002_v4.2.1_chr20.bed</code> as a
+1-based <code>samtools</code> region. How many bases does it cover?</li>
+<li>A VCF record has <code>POS</code> 1000 and <code>REF</code>
+<code>CAT</code>, a deletion of <code>AT</code>. Which bases does
+<code>REF</code> span, in 1-based coordinates? Write the same span as a
+BED line.</li>
+<li>Write the region we extracted with <code>samtools faidx</code>
+(<code>chr20:88098-88118</code>) as a BED line.</li>
+</ol>
+</div>
+</div>
+</div>
+<div id="accordionSolution2" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution2" aria-expanded="false" aria-controls="collapseSolution2">
+  <h4 class="accordion-header" id="headingSolution2"> Show me the solution </h4>
+</button>
+<div id="collapseSolution2" class="accordion-collapse collapse" data-bs-parent="#accordionSolution2" aria-labelledby="headingSolution2">
+<div class="accordion-body">
+<ol style="list-style-type: decimal">
+<li>The first line is <code>chr20	81335	101267</code>. Add 1 to the start
+and keep the end: <code>chr20:81336-101267</code>. Its length is end
+minus start of the BED line: 101267 - 81335 = 19,932 bp.</li>
+<li>
+<code>REF</code> spans bases 1000 to 1002 (three bases,
+<code>C</code>, <code>A</code>, <code>T</code>). As BED:
+<code>chr20	999	1002</code>.</li>
+<li>
+<code>chr20	88097	88118</code>: subtract 1 from the start, keep the
+end. The length is 88118 - 88097 = 21, as before.</li>
+</ol>
+<p>Off-by-one errors are among the most common bugs in genomics scripts.
+When a tool accepts both formats, check which one it expects.</p>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-5-what-a-fastq-record-looks-like">Step 5: What a FASTQ record looks like<a class="anchor" aria-label="anchor" href="#step-5-what-a-fastq-record-looks-like"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="checksums-and-provenance">Checksums and provenance<a class="anchor" aria-label="anchor" href="#checksums-and-provenance"></a>
+<hr class="half-width">
+<p>Each read in a FASTQ file takes four lines: a name, the sequence, a
+<code>+</code> separator, and one quality character per base.</p>
+<!-- kit: extra 02-setup.sh -->
+<div class="codewrapper sourceCode" id="cb13">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb13-1"><a href="#cb13-1" tabindex="-1" aria-label="code-block-13-1"></a><span class="fu">zcat</span> data/HG002_R1.fastq.gz <span class="kw">|</span> <span class="fu">head</span> <span class="at">-4</span></span></code></pre>
+</div>
+<div id="accordionSpoiler6" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler6" aria-expanded="false" aria-controls="collapseSpoiler6">
+  <h3 class="accordion-header" id="headingSpoiler6">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler6" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler6" aria-labelledby="headingSpoiler6">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>@A00744:46:HV3C3DSXX:2:1654:24334:32456
+GACTGGGGAATTATGAGTTCCCTGTACCAACAGCGGAATGGGCTTTTCCCCACAGAGTGACATACTCCATCAGGAAAAAGAAAATGGAATTTACAACACAAACTTTCAAATAATTTGTGATGGAATGGGGAACAGAAACTAAGGCTCACAT
++
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF:FFFFF:FFFFFFFFFFFFFFFFFFF,FFFFFF:FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF:FFFFFFFFFF,FFFFFFFFFFFFFFFFF:F</code></pre>
+</div>
+<p>The first line is the read name; it records the instrument, run, flow
+cell, lane, tile and cluster position. The fourth line encodes the base
+qualities: here mostly <code>F</code>, with a few <code>:</code> and
+<code>,</code>. Episode 3 decodes it.</p>
+</div>
+</div>
+</div>
+</div>
+<p>The files are compressed with gzip (<code>.gz</code>). Later we meet
+BGZF, the block-compressed variant made by <code>bgzip</code>: it is
+still readable by <code>zcat</code>, but it also allows an index and
+random access, which BAM and indexed VCF files need. A VCF compressed
+with plain <code>gzip</code> cannot be indexed.</p>
+</section><section><h2 class="section-heading" id="data-responsibility">Data responsibility<a class="anchor" aria-label="anchor" href="#data-responsibility"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="data-responsibility">Data responsibility<a class="anchor" aria-label="anchor" href="#data-responsibility"></a>
+<hr class="half-width">
+<div id="public-data-here-controlled-data-at-home" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="public-data-here-controlled-data-at-home" class="callout-inner">
+<h3 class="callout-title">Public data here, controlled data at home</h3>
+<div class="callout-content">
+<p>The GIAB data are public. NIST allows copying and redistribution of
+its benchmark data with acknowledgment of NIST (Data Usage section of
+the GIAB v5.0q README), which is why a copy can sit on Depot for this
+workshop.</p>
+<p>Your own human sequencing data may be different. Data from patients
+or research participants often comes with consent limits, data use
+agreements, or legal protections, and may only be stored and analyzed on
+approved, access-controlled systems. Do not copy such data to scratch or
+to a shared workshop space just because the commands work there. Before
+you start, ask your data provider and RCAC (<a href="mailto:rcac-help@purdue.edu" class="email">rcac-help@purdue.edu</a>) where the data may be stored and
+processed.</p>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="downloading-from-the-source-not-run">Downloading from the source (not run)<a class="anchor" aria-label="anchor" href="#downloading-from-the-source-not-run"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="downloading-from-the-source-not-run">Downloading from the source (not run)<a class="anchor" aria-label="anchor" href="#downloading-from-the-source-not-run"></a>
+<hr class="half-width">
+<div id="accordionSpoiler7" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler7" aria-expanded="false" aria-controls="collapseSpoiler7">
+  <h3 class="accordion-header" id="headingSpoiler7">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> How was the staged data made? </h3>
+</button>
+<div id="collapseSpoiler7" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler7" aria-labelledby="headingSpoiler7">
+<div class="accordion-body">
+<p><em>Reference only: do not run these commands in the workshop. The
+downloads are more than 9 GB, and the staged copy already contains the
+results.</em></p>
+<p>The source alignments for the three samples:</p>
+<!-- kit: not-run download -->
+<div class="codewrapper sourceCode" id="cb15">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" tabindex="-1" aria-label="code-block-15-1"></a><span class="fu">wget</span> https://storage.googleapis.com/deepvariant/case-study-testdata/HG002.novaseq.pcr-free.35x.dedup.grch38_no_alt.chr20.bam</span>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1" aria-label="code-block-15-2"></a><span class="fu">wget</span> https://storage.googleapis.com/deepvariant/case-study-testdata/HG003.novaseq.pcr-free.35x.dedup.grch38_no_alt.chr20.bam</span>
+<span id="cb15-3"><a href="#cb15-3" tabindex="-1" aria-label="code-block-15-3"></a><span class="fu">wget</span> https://storage.googleapis.com/deepvariant/case-study-testdata/HG004.novaseq.pcr-free.35x.dedup.grch38_no_alt.chr20.bam</span></code></pre>
+</div>
+<p>Each alignment was converted to paired FASTQ.
+<code>samtools collate</code> groups the two reads of a pair together,
+and <code>samtools fastq</code> writes them to two files; reads whose
+mate is missing go to <code>/dev/null</code>:</p>
+<!-- kit: not-run download -->
+<div class="codewrapper sourceCode" id="cb16">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb16-1"><a href="#cb16-1" tabindex="-1" aria-label="code-block-16-1"></a><span class="ex">module</span> load biocontainers</span>
+<span id="cb16-2"><a href="#cb16-2" tabindex="-1" aria-label="code-block-16-2"></a><span class="ex">module</span> load samtools/1.22.1</span>
+<span id="cb16-3"><a href="#cb16-3" tabindex="-1" aria-label="code-block-16-3"></a><span class="ex">samtools</span> collate <span class="at">-u</span> <span class="at">-O</span> <span class="at">-T</span> collate.tmp HG002.novaseq.pcr-free.35x.dedup.grch38_no_alt.chr20.bam <span class="dt">\</span></span>
+<span id="cb16-4"><a href="#cb16-4" tabindex="-1" aria-label="code-block-16-4"></a>  <span class="kw">|</span> <span class="ex">samtools</span> fastq <span class="at">-n</span> <span class="at">-1</span> HG002_R1.fastq.gz <span class="at">-2</span> HG002_R2.fastq.gz <span class="at">-0</span> /dev/null <span class="at">-s</span> /dev/null <span class="at">-</span></span></code></pre>
+</div>
+<p>The reference FASTA, its <code>.fai</code> index and the bwa index
+from NCBI:</p>
+<!-- kit: not-run download -->
+<div class="codewrapper sourceCode" id="cb17">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb17-1"><a href="#cb17-1" tabindex="-1" aria-label="code-block-17-1"></a><span class="fu">wget</span> https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz</span>
+<span id="cb17-2"><a href="#cb17-2" tabindex="-1" aria-label="code-block-17-2"></a><span class="fu">wget</span> https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.fai</span>
+<span id="cb17-3"><a href="#cb17-3" tabindex="-1" aria-label="code-block-17-3"></a><span class="fu">wget</span> https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.bwa_index.tar.gz</span></code></pre>
+</div>
+<p>The benchmark call sets come from the GIAB release directories, for
+example the HG002 v5.0q small-variant benchmark and its regions:</p>
+<!-- kit: not-run download -->
+<div class="codewrapper sourceCode" id="cb18">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb18-1"><a href="#cb18-1" tabindex="-1" aria-label="code-block-18-1"></a><span class="fu">wget</span> https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/AshkenazimTrio/HG002_NA24385_son/latest/HG002_GRCh38_v5.0q_smvar.vcf.gz</span>
+<span id="cb18-2"><a href="#cb18-2" tabindex="-1" aria-label="code-block-18-2"></a><span class="fu">wget</span> https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/AshkenazimTrio/HG002_NA24385_son/latest/HG002_GRCh38_v5.0q_smvar.benchmark.bed</span></code></pre>
+</div>
+<p>The full list of sources, with sizes and checksums, is in <a href="https://github.com/rcac-bioinformatics/variant-calling/blob/main/data-prep/sources.tsv" class="external-link"><code>data-prep/sources.tsv</code></a>,
+and the preparation scripts are in <a href="https://github.com/rcac-bioinformatics/variant-calling/tree/main/data-prep" class="external-link"><code>data-prep/</code></a>.</p>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a>
 </h2>
 <hr class="half-width">
 <div id="keypoints1" class="callout keypoints">
@@ -547,7 +1777,22 @@ coordinates.</li>
 <div class="callout-inner">
 <div class="callout-content">
 <ul>
-<li>TBD(P4)</li>
+<li>The data are the GIAB Ashkenazi trio (HG002 child, HG003 father,
+HG004 mother): NovaSeq PCR-free 151 bp paired reads, about 40x on
+chromosome 20.</li>
+<li>The reads were selected from chromosome 20 alignments, so mapping
+rate and coverage outside chromosome 20 are not realistic.</li>
+<li>Check every copy with checksums (<code>md5sum -c</code>) before
+using it.</li>
+<li>The sample sheet and the PED file record sample names, roles, sex
+and relationships; later steps depend on them being right.</li>
+<li>The GRCh38 no-alt analysis set leaves out alt contigs and uses
+UCSC-style names (<code>chr20</code>); every file in an analysis must
+use the same assembly and sequence names.</li>
+<li>BED is 0-based and half-open; VCF, SAM and samtools regions are
+1-based and closed.</li>
+<li>Public reference data can be shared; your own human data may need an
+approved, controlled system.</li>
 </ul>
 </div>
 </div>
@@ -593,19 +1838,451 @@ variants?</li>
 </div>
 </div>
 </div>
-<section><h2 class="section-heading" id="phred-scores-and-binned-qualities">Phred scores and binned qualities<a class="anchor" aria-label="anchor" href="#phred-scores-and-binned-qualities"></a>
+<section><h2 class="section-heading" id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="running-fastqc-and-multiqc">Running FastQC and MultiQC<a class="anchor" aria-label="anchor" href="#running-fastqc-and-multiqc"></a>
+<hr class="half-width">
+<p>Before aligning, we check that the reads are what we expect: the
+right length, good base qualities, few adapters, and nothing strange in
+their composition. FastQC writes one report per FASTQ file, and MultiQC
+combines all of them into one page so the samples can be compared side
+by side.</p>
+<p>For variant calling, read QC answers one practical question: is
+anything wrong with the reads that alignment and calling will not handle
+by themselves? With modern Illumina data the answer is usually no, and
+the main risk is the opposite one: removing good data because a QC plot
+looks unfamiliar.</p>
+<div id="before-you-start" class="callout prereq">
+<div class="callout-square">
+<i class="callout-icon" data-feather="check"></i>
+</div>
+<span class="callout-header">Prerequisite</span>
+<div id="before-you-start" class="callout-inner">
+<h3 class="callout-title">Before you start</h3>
+<div class="callout-content">
+<p>You need the workshop copy from the setup page and Episode 2
+(<code>$SCRATCH/varcall-workshop/data/</code> with six FASTQ files).</p>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="phred-scores-and-binned-qualities">Phred scores and binned qualities<a class="anchor" aria-label="anchor" href="#phred-scores-and-binned-qualities"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="reading-the-reports">Reading the reports<a class="anchor" aria-label="anchor" href="#reading-the-reports"></a>
+<hr class="half-width">
+<p>The fourth line of each FASTQ record (Episode 2) holds one character
+per base. Each character encodes the base quality as a Phred score:
+subtract 33 from the character’s ASCII code (<a href="https://samtools.github.io/hts-specs/SAMv1.pdf" class="external-link">SAM
+specification</a>, which uses the same encoding). A Phred score Q means
+an estimated error probability of 10^(-Q/10).</p>
+<p>Our NovaSeq reads use only four different quality values, a scheme
+called quality binning. In the first 200,000 reads of the source data we
+found exactly these characters (<a href="https://github.com/rcac-bioinformatics/variant-calling/blob/main/maintenance/plan/feasibility.md" class="external-link">feasibility
+memo</a>):</p>
+<table class="table">
+<thead><tr>
+<th>Character</th>
+<th>ASCII code</th>
+<th>Phred score</th>
+<th>Estimated error probability</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>#</code></td>
+<td>35</td>
+<td>2</td>
+<td>0.63</td>
+</tr>
+<tr>
+<td><code>,</code></td>
+<td>44</td>
+<td>11</td>
+<td>0.08</td>
+</tr>
+<tr>
+<td><code>:</code></td>
+<td>58</td>
+<td>25</td>
+<td>0.003</td>
+</tr>
+<tr>
+<td><code>F</code></td>
+<td>70</td>
+<td>37</td>
+<td>0.0002</td>
+</tr>
+</tbody>
+</table>
+<div id="why-base-quality-matters-for-variant-calling" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="why-base-quality-matters-for-variant-calling" class="callout-inner">
+<h3 class="callout-title">Why base quality matters for variant
+calling</h3>
+<div class="callout-content">
+<p>The caller uses base qualities directly. In the genotype likelihoods
+of Episode 1, a mismatching base with Q37 counts as strong evidence for
+an ALT allele, and a mismatching base with Q2 counts as almost none.
+bcftools also adjusts base qualities near indels before calling (base
+alignment quality, BAQ), so that mismatches caused by misaligned indels
+count less (<a href="https://samtools.github.io/bcftools/bcftools.html#mpileup" class="external-link">bcftools
+manual, <code>mpileup</code></a>). Low-quality bases do not need to be
+removed for calling to work; they need to be reported honestly, and that
+is what the quality string does.</p>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-1-run-fastqc-in-an-interactive-session">Step 1: Run FastQC in an interactive session<a class="anchor" aria-label="anchor" href="#step-1-run-fastqc-in-an-interactive-session"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="adapters-soft-clipping-and-trimming">Adapters, soft-clipping and trimming<a class="anchor" aria-label="anchor" href="#adapters-soft-clipping-and-trimming"></a>
+<hr class="half-width">
+<p>FastQC reads every base of every file, which is too much work for a
+login node. Start an interactive session on a compute node with 4 cores,
+then run FastQC on all six files, 4 at a time (<code>-t 4</code>):</p>
+<!-- kit: interactive 03-qc.sh -->
+<div class="codewrapper sourceCode" id="cb1">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1" aria-label="code-block-1-1"></a><span class="ex">sinteractive</span> <span class="at">-A</span> rcac <span class="at">-q</span> standby <span class="at">-p</span> cpu <span class="at">-N</span> 1 <span class="at">-n</span> 4 <span class="at">--time</span><span class="op">=</span>1:00:00</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1" aria-label="code-block-1-2"></a><span class="ex">module</span> load biocontainers</span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1" aria-label="code-block-1-3"></a><span class="ex">module</span> load fastqc/0.12.1</span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1" aria-label="code-block-1-4"></a><span class="ex">module</span> load multiqc/1.23</span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1" aria-label="code-block-1-5"></a><span class="bu">cd</span> <span class="va">$SCRATCH</span>/varcall-workshop</span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1" aria-label="code-block-1-6"></a><span class="ex">fastqc</span> <span class="at">-t</span> 4 <span class="at">-o</span> results/qc data/<span class="pp">*</span>.fastq.gz</span></code></pre>
+</div>
+<p>Starting the session can take a few minutes when the standby queue is
+busy. FastQC prints its progress for each file; in the workshop’s test
+run, FastQC and MultiQC together took about 4 minutes on 4 cores.</p>
+</section><section><h2 class="section-heading" id="step-2-combine-the-reports-with-multiqc">Step 2: Combine the reports with MultiQC<a class="anchor" aria-label="anchor" href="#step-2-combine-the-reports-with-multiqc"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="duplicates">Duplicates<a class="anchor" aria-label="anchor" href="#duplicates"></a>
+<hr class="half-width">
+<p>In the same session, run MultiQC on the FastQC output folder and list
+what was written:</p>
+<!-- kit: interactive 03-qc.sh -->
+<div class="codewrapper sourceCode" id="cb2">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1" aria-label="code-block-2-1"></a><span class="ex">multiqc</span> <span class="at">-o</span> results/qc results/qc</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1" aria-label="code-block-2-2"></a><span class="fu">ls</span> results/qc</span></code></pre>
+</div>
+<div id="accordionSpoiler1" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler1" aria-expanded="false" aria-controls="collapseSpoiler1">
+  <h3 class="accordion-header" id="headingSpoiler1">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler1" class="accordion-collapse collapse" aria-labelledby="headingSpoiler1" data-bs-parent="#accordionSpoiler1">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>       file_search | Search path: /scratch/negishi/aseethar/varcall-kit/kit-runs/kit-2026-10-11/scratch/varcall-workshop/results/qc
+            fastqc | Found 6 reports
+     write_results | Data        : results/qc/multiqc_data
+     write_results | Report      : results/qc/multiqc_report.html
+           multiqc | MultiQC complete
+HG002_R1_fastqc.html
+HG002_R1_fastqc.zip
+HG002_R2_fastqc.html
+HG002_R2_fastqc.zip
+HG003_R1_fastqc.html
+HG003_R1_fastqc.zip
+HG003_R2_fastqc.html
+HG003_R2_fastqc.zip
+HG004_R1_fastqc.html
+HG004_R1_fastqc.zip
+HG004_R2_fastqc.html
+HG004_R2_fastqc.zip
+multiqc_data
+multiqc_report.html</code></pre>
+</div>
+<p>MultiQC reports what it found (six FastQC reports) and where it wrote
+its output. The listing shows one <code>_fastqc.html</code> report and
+one <code>_fastqc.zip</code> archive per FASTQ file, plus
+<code>multiqc_report.html</code> and its data folder
+<code>multiqc_data/</code>.</p>
+</div>
+</div>
+</div>
+</div>
+<p>Type <code>exit</code> to leave the interactive session when you are
+done. To read the report, copy
+<code>results/qc/multiqc_report.html</code> to your computer (for
+example with <code>scp</code>, or the file browser in MobaXterm) and
+open it in a web browser.</p>
+<div id="short-on-time" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="short-on-time" class="callout-inner">
+<h3 class="callout-title">Short on time?</h3>
+<div class="callout-content">
+<p>If your FastQC session did not finish, the completed reports are in
+the results copy. Open the MultiQC report from there instead of your
+own:</p>
+<!-- kit: not-run fallback -->
+<div class="codewrapper sourceCode" id="cb4">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1" aria-label="code-block-4-1"></a><span class="fu">cp</span> /depot/workshop/data/varcall-workshop_results/results/qc/multiqc_report.html <span class="va">$SCRATCH</span>/varcall-workshop/results/qc/</span></code></pre>
+</div>
+<p>Nothing later in the workshop reads the QC reports, so you can
+continue with Episode 4 either way.</p>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-3-read-the-report">Step 3: Read the report<a class="anchor" aria-label="anchor" href="#step-3-read-the-report"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="why-base-quality-matters-for-genotype-likelihoods">Why base quality matters for genotype likelihoods<a class="anchor" aria-label="anchor" href="#why-base-quality-matters-for-genotype-likelihoods"></a>
+<hr class="half-width">
+<p>FastQC marks each module with a pass, warning or fail. These marks
+come from thresholds designed for a generic whole-genome library (<a href="https://www.bioinformatics.babraham.ac.uk/projects/fastqc/" class="external-link">FastQC
+documentation</a>); read the plots, not only the colors. Below, each
+module is described with what to expect from this dataset, followed by a
+schematic cartoon that shows what a problem looks like. The cartoons are
+not this workshop’s data.</p>
+<div class="section level3">
+<h3 id="per-base-sequence-quality">Per base sequence quality<a class="anchor" aria-label="anchor" href="#per-base-sequence-quality"></a>
+</h3>
+<p>The distribution of base qualities at each position along the read.
+With binned qualities, the box plots in each FastQC report look blocky:
+medians, quartiles and percentiles can only take the four values (2, 11,
+25, 37). That is binning, not a failure. In our files the median and
+both quartiles are 37 at every position; only the 10th percentile drops
+to 25 near the end of the read. MultiQC plots the mean, which stays near
+35 to 36 and falls slightly over the last cycles.</p>
+<figure style="text-align: center"><img src="fig/03/multiqc_per_base_quality.png" alt="MultiQC line plot of mean Phred score against read position for six files; all lines lie close together near 35 to 36 in the green zone and dip slightly over the last cycles" class="figure mx-auto d-block"><figcaption>
+Your output: mean base quality at each position of the six workshop
+FASTQ files (MultiQC). The means stay between about Q34 and Q36 along
+the whole 151 bp read.
+</figcaption></figure><figure style="text-align: center"><img src="fig/03/contrast_sequence_quality_histogram.png" alt="Three cartoon quality plots: read 2 quality collapsing while read 1 stays high, a short quality bump followed by a drop, and a stable high profile" class="figure mx-auto d-block"><figcaption>
+Contrast example, schematic and not data: one read of a pair failing, a
+chemistry problem during the run, and a good profile. Cartoon by Zandra
+Selina, CC BY 4.0.
+</figcaption></figure>
+</div>
+<div class="section level3">
+<h3 id="per-sequence-quality-scores">Per sequence quality scores<a class="anchor" aria-label="anchor" href="#per-sequence-quality-scores"></a>
+</h3>
+<p>The mean quality of each read, as a histogram. A good run has one
+sharp peak at high quality.</p>
+<figure style="text-align: center"><img src="fig/03/multiqc_per_sequence_quality.png" alt="MultiQC line plot of read counts against mean read quality for six files; the curves are flat near zero below 30 and rise to a single sharp peak of 5 to 6 million reads at quality 36" class="figure mx-auto d-block"><figcaption>
+Your output: mean quality per read for the six workshop FASTQ files
+(MultiQC). Most reads have a high mean quality, with a sharp peak at 36.
+</figcaption></figure><figure style="text-align: center"><img src="fig/03/contrast_per_sequence_quality_score.png" alt="Three cartoon histograms of per read quality: a single peak at low quality, two peaks, and one sharp peak at high quality" class="figure mx-auto d-block"><figcaption>
+Contrast example, schematic and not data: most reads of low quality (a
+bad run), a bimodal distribution (often a flowcell location artifact),
+and a good single peak at high quality. Cartoon by Zandra Selina, CC BY
+4.0.
+</figcaption></figure>
+</div>
+<div class="section level3">
+<h3 id="per-sequence-gc-content">Per sequence GC content<a class="anchor" aria-label="anchor" href="#per-sequence-gc-content"></a>
+</h3>
+<p>The GC fraction of each read, compared with a theoretical
+distribution. Two separate peaks, or a sharp spike, can mean
+contamination from another organism or an overrepresented sequence.
+FastQC warns when the curve departs from the smooth normal shape it
+expects. Our six files peak near 40% GC with a shoulder near 50%, and
+FastQC warns for all six. The curves are the same in every file, which
+points to the composition of the sequenced region (all reads come from
+chromosome 20) rather than to contamination, which would differ between
+samples or add a separate peak.</p>
+<figure style="text-align: center"><img src="fig/03/multiqc_gc_content.png" alt="MultiQC line plot of the percentage of reads against GC content for six files; the curves overlap almost perfectly, rising to a peak of about 4% of reads at 40% GC, with a shoulder around 45 to 50% GC, and falling to near zero by 70% GC" class="figure mx-auto d-block"><figcaption>
+Your output: GC content per read for the six workshop FASTQ files
+(MultiQC). All six curves overlap: a peak near 40% GC with a shoulder
+near 50%.
+</figcaption></figure><figure style="text-align: center"><img src="fig/03/contrast_per_sequence_GC_content.png" alt="Three cartoon GC content plots: two shifted peaks, one skewed peak, and an observed peak matching the expected curve" class="figure mx-auto d-block"><figcaption>
+Contrast example, schematic and not data: libraries with different GC
+content (fine across species, a warning within one), a non-normal
+distribution that suggests a lab artifact, and a good match to the
+expected curve. Cartoon by Zandra Selina, CC BY 4.0.
+</figcaption></figure>
+</div>
+<div class="section level3">
+<h3 id="per-base-n-content">Per base N content<a class="anchor" aria-label="anchor" href="#per-base-n-content"></a>
+</h3>
+<p>The fraction of bases the sequencer could not call (<code>N</code>)
+at each position. It should be near zero everywhere.</p>
+<figure style="text-align: center"><img src="fig/03/contrast_per_base_n_content.png" alt="Three cartoon N content plots: a curve rising at the end of the read, a flat line above zero, and a flat line at zero" class="figure mx-auto d-block"><figcaption>
+Contrast example, schematic and not data: N bases rising toward the end
+of the read (chemistry running out), a constant N level (a failed lane
+or masked reads), and no N bases. Cartoon by Zandra Selina, CC BY 4.0.
+</figcaption></figure>
+</div>
+<div class="section level3">
+<h3 id="sequence-duplication-levels">Sequence duplication levels<a class="anchor" aria-label="anchor" href="#sequence-duplication-levels"></a>
+</h3>
+<p>How many reads have exactly the same sequence as another read. FastQC
+estimates this from the first reads of each file and from read 1 or read
+2 alone, so it is only a rough guide. The duplicate rate that matters
+for calling is measured after alignment, from read pairs, in Episode
+4.</p>
+<p>Duplicates have two main sources: PCR amplification during library
+preparation, and the sequencer itself, when one DNA fragment is read in
+more than one cluster (optical duplicates; the <a href="https://www.htslib.org/doc/samtools-markdup.html" class="external-link">samtools markdup
+manual</a> describes how they are detected). Our libraries are PCR-free,
+which removes most of the first kind, but not the second.</p>
+<figure style="text-align: center"><img src="fig/03/multiqc_duplication.png" alt="MultiQC line plot of the percentage of the library against duplication level for six files; all curves start at about 73 to 75% at level 1, drop to about 17 to 18% at level 2 and 3% at level 3, and stay near zero after that" class="figure mx-auto d-block"><figcaption>
+Your output: sequence duplication levels for the six workshop FASTQ
+files (MultiQC). About three quarters of the reads occur once, and most
+of the rest twice.
+</figcaption></figure><figure style="text-align: center"><img src="fig/03/contrast_sequence_duplication_level.png" alt="Three cartoon duplication plots: a slowly decaying curve, a wavy pattern, and a single spike at duplication level one" class="figure mx-auto d-block"><figcaption>
+Contrast example, schematic and not data: high duplication from a
+low-complexity or over-amplified library, a periodic pattern that can be
+fine for amplicon data, and a library dominated by unique reads. Cartoon
+by Zandra Selina, CC BY 4.0.
+</figcaption></figure>
+</div>
+<div class="section level3">
+<h3 id="adapter-content">Adapter content<a class="anchor" aria-label="anchor" href="#adapter-content"></a>
+</h3>
+<p>The fraction of reads that contain adapter sequence at each position.
+Adapters appear when a DNA fragment is shorter than the read length, so
+the sequencer reads past the end of the fragment into the adapter. Our
+fragments average about 400 bp (the insert sizes of the source
+alignments were 399.5 to 417.9 bp on average; feasibility memo), well
+above the 151 bp read length, so few reads should reach the adapter.
+FastQC 0.12 also counts poly-A and poly-G stretches in this module, and
+reports each adapter type as its own line.</p>
+<figure style="text-align: center"><img src="fig/03/multiqc_adapter_content.png" alt="MultiQC line plot of the percentage of reads containing adapter sequence against read position; one group of lines rises steadily to about 1.5% at position 140, a second group stays near zero and rises to about 0.5% over the last 30 positions, all within the green pass zone" class="figure mx-auto d-block"><figcaption>
+Your output: adapter content for the six workshop FASTQ files (MultiQC).
+Every line stays below 1.5% of reads; the highest lines are FastQC’s
+poly-A series, and the Illumina Universal Adapter stays at or below
+0.54%.
+</figcaption></figure><figure style="text-align: center"><img src="fig/03/contrast_adapter_content.png" alt="Two cartoon adapter content plots: a curve rising toward the end of the read, and a flat line at zero" class="figure mx-auto d-block"><figcaption>
+Contrast example, schematic and not data: adapter content rising toward
+the read end (short inserts, acceptable only for fragmented ancient DNA)
+and a flat line near zero. Cartoon by Zandra Selina, CC BY 4.0.
+</figcaption></figure><div id="challenge-interpret-the-qc-report" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-interpret-the-qc-report" class="callout-inner">
+<h3 class="callout-title">Challenge: interpret the QC report</h3>
+<div class="callout-content">
+<p>Using your MultiQC report (or the one from the results copy):</p>
+<ol style="list-style-type: decimal">
+<li>How many reads does each file have, and are R1 and R2 of each sample
+equal?</li>
+<li>Which FastQC modules are not marked “pass” in at least one file? For
+each, decide whether it points to a problem for variant calling.</li>
+<li>Is there enough adapter sequence to justify trimming?</li>
+<li>What does FastQC report for duplication, and how does that compare
+with the duplicate rate after alignment that Episode 4 reports?</li>
+</ol>
+</div>
+</div>
+</div>
+<div id="accordionSolution1" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution1" aria-expanded="false" aria-controls="collapseSolution1">
+  <h4 class="accordion-header" id="headingSolution1"> Show me the solution </h4>
+</button>
+<div id="collapseSolution1" class="accordion-collapse collapse" aria-labelledby="headingSolution1" data-bs-parent="#accordionSolution1">
+<div class="accordion-body">
+<ol style="list-style-type: decimal">
+<li>HG002 has 9,462,450 reads in R1 and in R2, HG003 9,480,040 and HG004
+9,347,118. R1 and R2 of a sample must have the same number of reads,
+because each read pair contributes one read to each file.</li>
+<li>Only one module is not marked pass: Per sequence GC content, a
+warning in all six files. The curves have a shoulder near 50% GC and are
+identical across files, so this reflects the sequence of chromosome 20,
+not a problem with the libraries. It is not a reason to change anything
+for variant calling.</li>
+<li>No. Adapter Content passes in all six files. The Illumina Universal
+Adapter reaches at most 0.37% to 0.54% of reads per file, at the read
+end; the highest lines, 1.43% to 1.49%, are FastQC’s poly-A series. With
+fragments averaging about 400 bp and 151 bp reads, adapter read-through
+is rare, and the aligner handles the few reads that have it (next
+section). No trimming is needed.</li>
+<li>FastQC reports that 84.3% to 85.3% of reads would remain after
+removing duplicates (“Total Deduplicated Percentage”), so it estimates
+14.7% to 15.7% duplicates per file. After alignment,
+<code>samtools markdup</code> flags 10.4% to 11.0% of the reads as
+duplicates (Episode 4). The two numbers measure different things: FastQC
+compares single reads by sequence, <code>markdup</code> compares read
+pairs by alignment position.</li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-4-decide-whether-to-trim">Step 4: Decide whether to trim<a class="anchor" aria-label="anchor" href="#step-4-decide-whether-to-trim"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="trimming-with-fastp-reference-only">Trimming with fastp (reference only)<a class="anchor" aria-label="anchor" href="#trimming-with-fastp-reference-only"></a>
+<hr class="half-width">
+<p>Trimming removes adapter sequence and low-quality ends from reads
+before alignment. For variant calling with <code>bwa mem</code>, it is
+usually unnecessary:</p>
+<ul>
+<li>
+<strong><code>bwa mem</code> performs local alignment.</strong> It
+aligns the part of a read that matches the genome and
+<strong>soft-clips</strong> the rest: the clipped bases stay in the file
+but are not aligned and do not count as mismatches (<a href="https://bio-bwa.sourceforge.net/bwa.shtml" class="external-link">bwa manual</a>).
+Adapter sequence at a read end is clipped this way.</li>
+<li>
+<strong>Base qualities already carry the uncertainty.</strong> The
+caller down-weights low-quality bases (callout above), so cutting them
+off gains little.</li>
+<li>
+<strong>Trimming has costs.</strong> Shorter reads map less
+uniquely, uneven trimming creates differences between samples, and it
+adds parameters that must be recorded to reproduce the analysis.</li>
+</ul>
+<p>Trim when QC shows a real problem that the aligner cannot absorb:
+many short inserts with adapter in a large fraction of reads, a failed
+stretch of cycles, or a library type that needs it (for example, some
+amplicon and small-RNA protocols).</p>
+<div id="discussion-when-would-you-trim" class="callout discussion">
+<div class="callout-square">
+<i class="callout-icon" data-feather="message-circle"></i>
+</div>
+<span class="callout-header">Discussion</span>
+<div id="discussion-when-would-you-trim" class="callout-inner">
+<h3 class="callout-title">Discussion: when would you trim?</h3>
+<div class="callout-content">
+<p>Your own data shows adapter content rising to 30% of reads at the 3’
+end, and a median insert size of 120 bp with 150 bp reads. Would you
+trim before running <code>bwa mem</code>? What would you check after
+alignment to confirm your choice?</p>
+</div>
+</div>
+</div>
+<div id="accordionSpoiler2" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler2" aria-expanded="false" aria-controls="collapseSpoiler2">
+  <h3 class="accordion-header" id="headingSpoiler2">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> Trimming with fastp (reference only) </h3>
+</button>
+<div id="collapseSpoiler2" class="accordion-collapse collapse" aria-labelledby="headingSpoiler2" data-bs-parent="#accordionSpoiler2">
+<div class="accordion-body">
+<p><em>Optional reference: not part of the hands-on, and not tested by
+the workshop’s run kit.</em> If your data does need trimming, <a href="https://github.com/OpenGene/fastp" class="external-link">fastp</a> detects and removes
+adapters, trims low-quality ends, keeps read pairs in sync and writes a
+QC report:</p>
+<!-- kit: not-run reference -->
+<div class="codewrapper sourceCode" id="cb5">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" tabindex="-1" aria-label="code-block-5-1"></a><span class="ex">module</span> load biocontainers</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1" aria-label="code-block-5-2"></a><span class="ex">module</span> load fastp/0.23.2</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1" aria-label="code-block-5-3"></a><span class="ex">fastp</span> <span class="dt">\</span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1" aria-label="code-block-5-4"></a>  <span class="at">-i</span> sample_R1.fastq.gz <span class="dt">\</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1" aria-label="code-block-5-5"></a>  <span class="at">-I</span> sample_R2.fastq.gz <span class="dt">\</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1" aria-label="code-block-5-6"></a>  <span class="at">-o</span> sample_R1.trimmed.fastq.gz <span class="dt">\</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1" aria-label="code-block-5-7"></a>  <span class="at">-O</span> sample_R2.trimmed.fastq.gz <span class="dt">\</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1" aria-label="code-block-5-8"></a>  <span class="at">--detect_adapter_for_pe</span> <span class="dt">\</span></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1" aria-label="code-block-5-9"></a>  <span class="at">--thread</span> 8 <span class="dt">\</span></span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1" aria-label="code-block-5-10"></a>  <span class="at">--html</span> sample.fastp.html <span class="dt">\</span></span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1" aria-label="code-block-5-11"></a>  <span class="at">--json</span> sample.fastp.json</span></code></pre>
+</div>
+<p>Run it in a batch job or an interactive session, never on a login
+node. Rerun FastQC on the trimmed files, and record the fastp version
+and options with your results.</p>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a>
 </h2>
 <hr class="half-width">
 <div id="keypoints1" class="callout keypoints">
@@ -616,7 +2293,18 @@ variants?</li>
 <div class="callout-inner">
 <div class="callout-content">
 <ul>
-<li>TBD(P4)</li>
+<li>Base qualities are Phred scores; our NovaSeq reads use only four
+binned values (2, 11, 25, 37), which makes quality plots look blocky
+without indicating a problem.</li>
+<li>FastQC and MultiQC summarize read quality; run them in an
+interactive job, not on a login node.</li>
+<li>Pass, warn and fail marks come from generic thresholds; interpret
+each plot for your data type.</li>
+<li>The caller uses base qualities directly, so low-quality bases are
+down-weighted rather than removed.</li>
+<li>
+<code>bwa mem</code> soft-clips adapters and poor read ends, so
+trimming is usually unnecessary for these data.</li>
 </ul>
 </div>
 </div>
@@ -667,27 +2355,1204 @@ metrics.</li>
 </div>
 </div>
 </div>
-<section><h2 class="section-heading" id="how-short-read-alignment-works">How short-read alignment works<a class="anchor" aria-label="anchor" href="#how-short-read-alignment-works"></a>
+<section><h2 class="section-heading" id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="mapping-quality-and-multi-mapping-reads">Mapping quality and multi-mapping reads<a class="anchor" aria-label="anchor" href="#mapping-quality-and-multi-mapping-reads"></a>
+<hr class="half-width">
+<p>A caller can only be as good as the alignments it reads. In this
+episode we align the reads of all three samples to GRCh38 with
+<code>bwa mem</code>, mark duplicate reads, and write sorted, indexed
+BAM files. Then we check the alignments: how many reads mapped, how many
+in proper pairs, how many duplicates, how deep the coverage is, and what
+the reads look like at one variant.</p>
+<p>Alignment is the longest job of the day, so we start it first and
+take the script apart while it runs.</p>
+<div id="before-you-start" class="callout prereq">
+<div class="callout-square">
+<i class="callout-icon" data-feather="check"></i>
+</div>
+<span class="callout-header">Prerequisite</span>
+<div id="before-you-start" class="callout-inner">
+<h3 class="callout-title">Before you start</h3>
+<div class="callout-content">
+<p>You need the workshop copy from Episode 2: the FASTQ files in
+<code>data/</code>, the sample sheet <code>data/samples.tsv</code>, the
+reference links in <code>ref/</code>, and the script
+<code>scripts/align.sh</code>. Episode 3 is not required.</p>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-1-submit-the-alignment-job">Step 1: Submit the alignment job<a class="anchor" aria-label="anchor" href="#step-1-submit-the-alignment-job"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="the-reference-index">The reference index<a class="anchor" aria-label="anchor" href="#the-reference-index"></a>
+<hr class="half-width">
+<p>The alignment script is already in your <code>scripts/</code> folder.
+Submit it now from that folder; the next sections explain every line
+while it runs:</p>
+<!-- kit: submit align.sh -->
+<div class="codewrapper sourceCode" id="cb1">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1" aria-label="code-block-1-1"></a><span class="bu">cd</span> <span class="va">$SCRATCH</span>/varcall-workshop/scripts</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1" aria-label="code-block-1-2"></a><span class="ex">sbatch</span> align.sh</span></code></pre>
+</div>
+<p><code>sbatch</code> prints a job ID. The script is an array job with
+three tasks, one per sample, and each task uses 16 cores. In the
+workshop’s test runs each task took 10 to 14 minutes, plus the time
+waiting in the standby queue. Check on it with:</p>
+<!-- kit: not-run monitoring -->
+<div class="codewrapper sourceCode" id="cb2">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1" aria-label="code-block-2-1"></a><span class="ex">squeue</span> <span class="at">-u</span> <span class="va">$USER</span></span></code></pre>
+</div>
+<p>Each task writes its log to
+<code>scripts/cluster-align.&lt;jobid&gt;.out</code> and
+<code>.err</code>. When <code>squeue</code> no longer lists the job, it
+has finished.</p>
+
+<div id="short-on-time" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="short-on-time" class="callout-inner">
+<h3 class="callout-title">Short on time?</h3>
+<div class="callout-content">
+<p>If your alignment job fails or is still waiting when we reach Step 3,
+copy the finished BAM files, their indexes and the duplicate statistics
+from the results copy into your own <code>results/bam/</code> (about 3.2
+GB):</p>
+<!-- kit: not-run fallback -->
+<div class="codewrapper sourceCode" id="cb3">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1" aria-label="code-block-3-1"></a><span class="fu">cp</span> /depot/workshop/data/varcall-workshop_results/results/bam/HG00<span class="pp">?</span>.markdup.bam<span class="pp">*</span> <span class="va">$SCRATCH</span>/varcall-workshop/results/bam/</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1" aria-label="code-block-3-2"></a><span class="fu">cp</span> /depot/workshop/data/varcall-workshop_results/results/bam/HG00<span class="pp">?</span>.markdup.stats.txt <span class="va">$SCRATCH</span>/varcall-workshop/results/bam/</span></code></pre>
+</div>
+<p>Cancel your own job first (<code>scancel &lt;jobid&gt;</code>), so it
+does not overwrite the copies. Episodes 5A onward work the same with
+either set of BAMs.</p>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="how-short-read-alignment-works">How short-read alignment works<a class="anchor" aria-label="anchor" href="#how-short-read-alignment-works"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="read-groups">Read groups<a class="anchor" aria-label="anchor" href="#read-groups"></a>
+<hr class="half-width">
+<p>An aligner has to find, for each of millions of reads, the place in a
+3.1 Gb genome where it fits best, allowing for sequencing errors and
+real variants. Checking every position for every read would take far too
+long, so <code>bwa mem</code> uses <strong>seed and extend</strong>: it
+first finds exact matches between the read and the genome (seeds) using
+an index of the reference, and then extends the best seeds into a full
+alignment that may contain mismatches and gaps (<a href="https://bio-bwa.sourceforge.net/bwa.shtml" class="external-link">bwa manual</a>).</p>
+<p><code>bwa mem</code> aligns locally: if the end of a read does not
+match, for example because it runs into adapter sequence or crosses a
+structural variant, that end is <strong>soft-clipped</strong>, kept in
+the file but not aligned. With paired reads, it also uses the expected
+distance and orientation of the two mates to choose between candidate
+positions and to rescue a mate that did not align well on its own.</p>
+<div class="section level3">
+<h3 id="mapping-quality-and-multi-mapping-reads">Mapping quality and multi-mapping reads<a class="anchor" aria-label="anchor" href="#mapping-quality-and-multi-mapping-reads"></a>
+</h3>
+<p>Some reads fit equally well in several places, for example inside a
+repeat. The aligner then picks one of the equally good positions and
+reports how unsure it is as the <strong>mapping quality</strong> (MAPQ):
+the Phred-scaled probability that the position is wrong (<a href="https://samtools.github.io/hts-specs/SAMv1.pdf" class="external-link">SAM
+specification</a>). A read with several equally good positions gets MAPQ
+0: the position written in the file is one guess among them.</p>
+<p>This is why mapping quality matters for calling. If a read from one
+copy of a repeat is placed on another copy, every difference between the
+two copies looks like a variant at the wrong place. Callers down-weight
+or skip low-MAPQ reads, and Episode 6 filters sites whose reads have low
+average mapping quality.</p>
+</div>
+</section><section><h2 class="section-heading" id="the-reference-index">The reference index<a class="anchor" aria-label="anchor" href="#the-reference-index"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="aligning-the-trio-with-an-array-job">Aligning the trio with an array job<a class="anchor" aria-label="anchor" href="#aligning-the-trio-with-an-array-job"></a>
+<hr class="half-width">
+<p><code>bwa mem</code> needs the reference in its own index format: the
+five files <code>GRCh38_no_alt.fa.amb</code>, <code>.ann</code>,
+<code>.bwt</code>, <code>.pac</code> and <code>.sa</code> in
+<code>ref/</code>. NCBI publishes this index for the no-alt analysis
+set, and it loads in bwa 0.7.17, so we did not build it (<a href="https://github.com/rcac-bioinformatics/variant-calling/blob/main/maintenance/plan/feasibility.md" class="external-link">feasibility
+memo</a>). Unpacked, it is 5.42 GB.</p>
+<p>The index is loaded into memory by every alignment task. On Negishi,
+memory comes with the cores you request, about 1.9 GB per core; there is
+no separate memory request in our scripts. The 16 cores of each task
+bring enough memory for the index and the sorting step: in the reference
+run, the largest task used 13.5 GiB.</p>
+<div id="accordionSpoiler1" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler1" aria-expanded="false" aria-controls="collapseSpoiler1">
+  <h3 class="accordion-header" id="headingSpoiler1">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> How would I build an index for another genome? </h3>
+</button>
+<div id="collapseSpoiler1" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler1" aria-labelledby="headingSpoiler1">
+<div class="accordion-body">
+<p><em>Reference only: do not run this on the workshop
+reference.</em></p>
+<p>For your own organism, build the index once from its FASTA file, in a
+batch job, and keep it with the reference:</p>
+<!-- kit: not-run reference -->
+<div class="codewrapper sourceCode" id="cb4">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1" aria-label="code-block-4-1"></a><span class="ex">module</span> load biocontainers</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1" aria-label="code-block-4-2"></a><span class="ex">module</span> load bwa/0.7.17</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1" aria-label="code-block-4-3"></a><span class="ex">bwa</span> index my_genome.fa</span></code></pre>
+</div>
+<p>This writes the same five files next to <code>my_genome.fa</code>.
+For a genome the size of human it is a long, memory-hungry job, which is
+why we use the published index. Index files only work with the FASTA
+they were built from: if you change the FASTA (for example, rename a
+sequence), build the index again.</p>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-2-the-alignment-script-line-by-line">Step 2: The alignment script, line by line<a class="anchor" aria-label="anchor" href="#step-2-the-alignment-script-line-by-line"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="duplicate-marking">Duplicate marking<a class="anchor" aria-label="anchor" href="#duplicate-marking"></a>
+<hr class="half-width">
+<p>This is <code>scripts/align.sh</code> as you submitted it:</p>
+<!-- kit: script align.sh -->
+<div class="codewrapper sourceCode" id="cb5">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" tabindex="-1" aria-label="code-block-5-1"></a><span class="co">#!/bin/bash</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1" aria-label="code-block-5-2"></a><span class="co">#SBATCH --nodes=1</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1" aria-label="code-block-5-3"></a><span class="co">#SBATCH --ntasks=1</span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1" aria-label="code-block-5-4"></a><span class="co">#SBATCH --cpus-per-task=16</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1" aria-label="code-block-5-5"></a><span class="co">#SBATCH --account=rcac</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1" aria-label="code-block-5-6"></a><span class="co">#SBATCH --qos=standby</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1" aria-label="code-block-5-7"></a><span class="co">#SBATCH --partition=cpu</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1" aria-label="code-block-5-8"></a><span class="co">#SBATCH --time=01:00:00</span></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1" aria-label="code-block-5-9"></a><span class="co">#SBATCH --job-name=align</span></span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1" aria-label="code-block-5-10"></a><span class="co">#SBATCH --array=1-3</span></span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1" aria-label="code-block-5-11"></a><span class="co">#SBATCH --output=cluster-%x.%j.out</span></span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1" aria-label="code-block-5-12"></a><span class="co">#SBATCH --error=cluster-%x.%j.err</span></span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1" aria-label="code-block-5-13"></a></span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1" aria-label="code-block-5-14"></a><span class="ex">module</span> load biocontainers</span>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1" aria-label="code-block-5-15"></a><span class="ex">module</span> load bwa/0.7.17</span>
+<span id="cb5-16"><a href="#cb5-16" tabindex="-1" aria-label="code-block-5-16"></a><span class="ex">module</span> load samtools/1.22.1</span>
+<span id="cb5-17"><a href="#cb5-17" tabindex="-1" aria-label="code-block-5-17"></a></span>
+<span id="cb5-18"><a href="#cb5-18" tabindex="-1" aria-label="code-block-5-18"></a><span class="va">WORK</span><span class="op">=</span><span class="va">$SCRATCH</span>/varcall-workshop</span>
+<span id="cb5-19"><a href="#cb5-19" tabindex="-1" aria-label="code-block-5-19"></a><span class="va">REF</span><span class="op">=</span><span class="va">$WORK</span>/ref/GRCh38_no_alt.fa</span>
+<span id="cb5-20"><a href="#cb5-20" tabindex="-1" aria-label="code-block-5-20"></a><span class="va">OUTDIR</span><span class="op">=</span><span class="va">$WORK</span>/results/bam</span>
+<span id="cb5-21"><a href="#cb5-21" tabindex="-1" aria-label="code-block-5-21"></a><span class="fu">mkdir</span> <span class="at">-p</span> <span class="va">$OUTDIR</span></span>
+<span id="cb5-22"><a href="#cb5-22" tabindex="-1" aria-label="code-block-5-22"></a></span>
+<span id="cb5-23"><a href="#cb5-23" tabindex="-1" aria-label="code-block-5-23"></a><span class="co"># One sample per array task: task N reads line N+1 of samples.tsv (line 1 is the header)</span></span>
+<span id="cb5-24"><a href="#cb5-24" tabindex="-1" aria-label="code-block-5-24"></a><span class="va">LINE</span><span class="op">=</span><span class="va">$(</span><span class="fu">sed</span> <span class="at">-n</span> <span class="st">"</span><span class="va">$((SLURM_ARRAY_TASK_ID</span> <span class="op">+</span> <span class="dv">1</span><span class="va">))</span><span class="st">p"</span> <span class="va">$WORK</span>/data/samples.tsv<span class="va">)</span></span>
+<span id="cb5-25"><a href="#cb5-25" tabindex="-1" aria-label="code-block-5-25"></a><span class="va">IFS</span><span class="op">=</span><span class="st">$'</span><span class="dt">\t</span><span class="st">'</span> <span class="bu">read</span> <span class="at">-r</span> <span class="va">SAMPLE</span> <span class="va">ROLE</span> <span class="va">SEX</span> <span class="va">FAMILY</span> <span class="va">FASTQ_R1</span> <span class="va">FASTQ_R2</span> <span class="va">RG_ID</span> <span class="va">RG_LB</span> <span class="va">RG_PL</span> <span class="op">&lt;&lt;&lt;</span> <span class="st">"</span><span class="va">$LINE</span><span class="st">"</span></span>
+<span id="cb5-26"><a href="#cb5-26" tabindex="-1" aria-label="code-block-5-26"></a></span>
+<span id="cb5-27"><a href="#cb5-27" tabindex="-1" aria-label="code-block-5-27"></a><span class="co"># Read group: SM becomes the sample name in the VCF. Keep \t as typed; bwa turns it into tabs.</span></span>
+<span id="cb5-28"><a href="#cb5-28" tabindex="-1" aria-label="code-block-5-28"></a><span class="va">RG</span><span class="op">=</span><span class="st">"@RG\tID:</span><span class="va">${RG_ID}</span><span class="st">\tSM:</span><span class="va">${SAMPLE}</span><span class="st">\tLB:</span><span class="va">${RG_LB}</span><span class="st">\tPL:</span><span class="va">${RG_PL}</span><span class="st">"</span></span>
+<span id="cb5-29"><a href="#cb5-29" tabindex="-1" aria-label="code-block-5-29"></a></span>
+<span id="cb5-30"><a href="#cb5-30" tabindex="-1" aria-label="code-block-5-30"></a><span class="co"># -K 100000000 makes the alignments identical for any number of threads</span></span>
+<span id="cb5-31"><a href="#cb5-31" tabindex="-1" aria-label="code-block-5-31"></a><span class="ex">bwa</span> mem <span class="at">-K</span> 100000000 <span class="at">-t</span> <span class="va">$SLURM_CPUS_PER_TASK</span> <span class="at">-R</span> <span class="st">"</span><span class="va">$RG</span><span class="st">"</span> <span class="va">$REF</span> <span class="dt">\</span></span>
+<span id="cb5-32"><a href="#cb5-32" tabindex="-1" aria-label="code-block-5-32"></a>    <span class="va">$WORK</span>/data/<span class="va">$FASTQ_R1</span> <span class="va">$WORK</span>/data/<span class="va">$FASTQ_R2</span> <span class="dt">\</span></span>
+<span id="cb5-33"><a href="#cb5-33" tabindex="-1" aria-label="code-block-5-33"></a>  <span class="kw">|</span> <span class="ex">samtools</span> fixmate <span class="at">-m</span> <span class="at">-u</span> <span class="at">-</span> <span class="at">-</span> <span class="dt">\</span></span>
+<span id="cb5-34"><a href="#cb5-34" tabindex="-1" aria-label="code-block-5-34"></a>  <span class="kw">|</span> <span class="ex">samtools</span> sort <span class="at">-u</span> <span class="at">-@</span> 4 <span class="at">-m</span> 1500M <span class="at">-T</span> <span class="va">$OUTDIR</span>/<span class="va">${SAMPLE}</span>.sorttmp <span class="at">-</span> <span class="dt">\</span></span>
+<span id="cb5-35"><a href="#cb5-35" tabindex="-1" aria-label="code-block-5-35"></a>  <span class="kw">|</span> <span class="ex">samtools</span> markdup <span class="at">-@</span> 4 <span class="at">--write-index</span> <span class="at">-f</span> <span class="va">$OUTDIR</span>/<span class="va">${SAMPLE}</span>.markdup.stats.txt <span class="dt">\</span></span>
+<span id="cb5-36"><a href="#cb5-36" tabindex="-1" aria-label="code-block-5-36"></a>      <span class="at">-T</span> <span class="va">$OUTDIR</span>/<span class="va">${SAMPLE}</span>.mdtmp <span class="at">-</span> <span class="va">$OUTDIR</span>/<span class="va">${SAMPLE}</span>.markdup.bam</span></code></pre>
+</div>
+<div class="section level3">
+<h3 id="the-slurm-header">The SLURM header<a class="anchor" aria-label="anchor" href="#the-slurm-header"></a>
+</h3>
+<p>The <code>#SBATCH</code> lines request one node, 16 cores
+(<code>--cpus-per-task=16</code>) and one hour, on the <code>cpu</code>
+partition with the standby QoS, under the workshop account.
+<code>--array=1-3</code> turns the script into three tasks, numbered 1,
+2 and 3, that run independently; inside each task,
+<code>$SLURM_ARRAY_TASK_ID</code> holds its number. Logs go to
+<code>cluster-&lt;jobname&gt;.&lt;jobid&gt;.out</code> and
+<code>.err</code> in the folder you submitted from.</p>
+</div>
+<div class="section level3">
+<h3 id="one-sample-per-task">One sample per task<a class="anchor" aria-label="anchor" href="#one-sample-per-task"></a>
+</h3>
+<p><code>sed -n "$((SLURM_ARRAY_TASK_ID + 1))p"</code> prints one line
+of <code>samples.tsv</code>: line 2 for task 1, because line 1 is the
+header. <code>IFS=$'\t' read -r ...</code> then splits that line at tabs
+into named variables, one per column. Task 1 aligns the first sample in
+the sheet, task 2 the second, and so on, so the sheet decides which
+sample each task processes.</p>
+<p>The path to the sheet is absolute
+(<code>$WORK/data/samples.tsv</code>). A script that reads
+<code>samples.tsv</code> relative to the current folder works only when
+it is submitted from the folder that contains the sheet, and fails, or
+reads the wrong file, from anywhere else.</p>
+</div>
+<div class="section level3">
+<h3 id="read-groups">Read groups<a class="anchor" aria-label="anchor" href="#read-groups"></a>
+</h3>
+<p>A <strong>read group</strong> labels a set of reads that were
+sequenced together. <code>bwa mem -R</code> adds a header line
+(<code>@RG</code>) to the BAM file and tags every read with its ID. The
+fields we set are defined in the <a href="https://samtools.github.io/hts-specs/SAMv1.pdf" class="external-link">SAM
+specification</a>:</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr>
+<th>Field</th>
+<th>Meaning</th>
+<th>Value here</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>ID</code></td>
+<td>unique identifier of the read group</td>
+<td>
+<code>rg_id</code> from the sample sheet</td>
+</tr>
+<tr>
+<td><code>SM</code></td>
+<td>sample name</td>
+<td>the sample, for example <code>HG002</code>
+</td>
+</tr>
+<tr>
+<td><code>LB</code></td>
+<td>library</td>
+<td>
+<code>rg_lb</code> from the sample sheet</td>
+</tr>
+<tr>
+<td><code>PL</code></td>
+<td>sequencing platform</td>
+<td><code>ILLUMINA</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>SM</code> matters most: bcftools takes the sample names of the
+VCF from the <code>SM</code> field of the read groups, so every BAM must
+carry the right one. Reads with the same <code>SM</code> are treated as
+one sample, even if they are in different files.</p>
+<p>The <code>\t</code> in the <code>RG=</code> line is typed as a
+backslash and a <code>t</code>, not as a real tab. <code>bwa</code>
+converts each <code>\t</code> into a tab when it writes the header. Real
+tab characters in the <code>-R</code> argument, or a missing
+<code>ID</code> or <code>SM</code>, make <code>bwa</code> stop with an
+error.</p>
+</div>
+<div class="section level3">
+<h3 id="bwa-mem">
+<code>bwa mem</code><a class="anchor" aria-label="anchor" href="#bwa-mem"></a>
+</h3>
+<ul>
+<li>
+<code>-K 100000000</code> makes <code>bwa mem</code> process input
+in batches of a fixed size (100 million bases) regardless of the number
+of threads. Without it, the batch size depends on the thread count, and
+so can the results (<a href="https://bio-bwa.sourceforge.net/bwa.shtml" class="external-link">bwa manual</a>). The
+reference run checked this: HG002 aligned at 16 and at 32 cores gave
+identical alignments.</li>
+<li>
+<code>-t $SLURM_CPUS_PER_TASK</code> uses all 16 cores of the
+task.</li>
+<li>The output is SAM text, written to standard output and piped
+(<code>|</code>) straight into the next command. No large intermediate
+file is written.</li>
+</ul>
+</div>
+<div class="section level3">
+<h3 id="samtools-fixmate--m-then-sort-then-markdup">
+<code>samtools fixmate -m</code>, then <code>sort</code>, then
+<code>markdup</code>
+<a class="anchor" aria-label="anchor" href="#samtools-fixmate--m-then-sort-then-markdup"></a>
+</h3>
+<p>The three samtools steps follow the order the <a href="https://www.htslib.org/doc/samtools-markdup.html" class="external-link">samtools markdup
+manual</a> requires:</p>
+<ol style="list-style-type: decimal">
+<li>
+<strong><code>samtools fixmate -m</code></strong> fills in
+information about each read’s mate, including the mate score tag that
+<code>markdup</code> needs (added by <code>-m</code>). It must see the
+two reads of a pair next to each other. <code>bwa mem</code> writes
+pairs together, so its output can go straight into <code>fixmate</code>;
+a coordinate-sorted file would first need
+<code>samtools collate</code>.</li>
+<li>
+<strong><code>samtools sort</code></strong> sorts by position on the
+genome, which callers and viewers need. <code>-@ 4</code> adds 4
+threads, <code>-m 1500M</code> lets each thread use up to 1.5 GB of
+memory before writing temporary files, and <code>-T</code> names those
+temporary files.</li>
+<li>
+<strong><code>samtools markdup</code></strong> finds duplicates in
+the sorted file, flags them, writes the final BAM, and, with
+<code>--write-index</code>, its index. <code>-f</code> writes a short
+statistics file.</li>
+</ol>
+<p><code>-u</code> passes uncompressed data between the steps, which
+saves the time of compressing and decompressing data that is read again
+immediately. The <code>-</code> arguments mean standard input or
+standard output. Sorting before <code>fixmate</code> is a common
+mistake: <code>fixmate</code> needs the two reads of each pair next to
+each other, and in a position-sorted file it cannot pair them, so the
+mate information <code>markdup</code> relies on is missing or wrong.</p>
+<div id="why-mark-duplicates-and-why-not-remove-them" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="why-mark-duplicates-and-why-not-remove-them" class="callout-inner">
+<h3 class="callout-title">Why mark duplicates, and why not remove
+them?</h3>
+<div class="callout-content">
+<p>Duplicates are copies of one original DNA fragment. If one fragment
+carries a sequencing error and is read several times, the error appears
+in several reads and looks like independent support for a variant.
+Marking duplicates lets the caller count each fragment once.</p>
+<p><code>samtools markdup</code> flags duplicates (FLAG bit 1024) and
+keeps them in the file. bcftools skips flagged duplicates by default (<a href="https://samtools.github.io/bcftools/bcftools.html#mpileup" class="external-link">bcftools
+manual, <code>mpileup</code></a>), and the reads are still there if you
+need them, for example to inspect a site or recount. The old
+<code>samtools rmdup</code> command removes reads instead; use
+<code>markdup</code> (<a href="https://www.htslib.org/doc/samtools.html" class="external-link">samtools
+manual</a>).</p>
+</div>
+</div>
+</div>
+<div id="challenge-what-if-the-read-groups-are-wrong" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-what-if-the-read-groups-are-wrong" class="callout-inner">
+<h3 class="callout-title">Challenge: what if the read groups are
+wrong?</h3>
+<div class="callout-content">
+<ol style="list-style-type: decimal">
+<li>Suppose <code>samples.tsv</code> listed <code>HG002</code> in the
+<code>sample</code> column of all three rows. The script would still run
+without error. What would the VCF in Episode 5A look like?</li>
+<li>Why does the script write the read group from the sample sheet
+instead of having you type it for each sample?</li>
+</ol>
+</div>
+</div>
+</div>
+<div id="accordionSolution1" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution1" aria-expanded="false" aria-controls="collapseSolution1">
+  <h4 class="accordion-header" id="headingSolution1"> Show me the solution </h4>
+</button>
+<div id="collapseSolution1" class="accordion-collapse collapse" data-bs-parent="#accordionSolution1" aria-labelledby="headingSolution1">
+<div class="accordion-body">
+<ol style="list-style-type: decimal">
+<li>All three BAMs would carry <code>SM:HG002</code>, so bcftools would
+treat all reads as one sample. The VCF would have one sample column,
+<code>HG002</code>, with the reads of three people pooled: about 116x of
+mixed evidence and genotypes that belong to nobody. Nothing would fail,
+which is what makes this error dangerous. Check the <code>@RG</code>
+lines after alignment (Step 3 does).</li>
+<li>One source of truth: the sample name, file names and read group come
+from the same row, so they cannot disagree, and the sheet is a record of
+what was done. Typing them per sample is where mistakes come from.</li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="sam-and-bam">SAM and BAM<a class="anchor" aria-label="anchor" href="#sam-and-bam"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="sam-and-bam-anatomy">SAM and BAM anatomy<a class="anchor" aria-label="anchor" href="#sam-and-bam-anatomy"></a>
+<hr class="half-width">
+<p>The aligner writes <strong>SAM</strong>, a tab-separated text format
+with a header (lines starting with <code>@</code>) and one line per
+alignment. <strong>BAM</strong> is the same content, compressed in
+blocks so it can be indexed for fast access to any region; that is what
+we keep. <strong>CRAM</strong> compresses further by storing only
+differences from the reference, and so needs the exact reference FASTA
+to be read back (<a href="https://samtools.github.io/hts-specs/" class="external-link">htslib
+file formats</a>).</p>
+<p>Each alignment line has 11 mandatory columns (<a href="https://samtools.github.io/hts-specs/SAMv1.pdf" class="external-link">SAM
+specification</a>):</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr>
+<th>Column</th>
+<th>Name</th>
+<th>Meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>QNAME</td>
+<td>read name (both reads of a pair share it)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>FLAG</td>
+<td>properties of the read, as a sum of bit values</td>
+</tr>
+<tr>
+<td>3</td>
+<td>RNAME</td>
+<td>reference sequence name, for example <code>chr20</code>
+</td>
+</tr>
+<tr>
+<td>4</td>
+<td>POS</td>
+<td>1-based position of the leftmost aligned base</td>
+</tr>
+<tr>
+<td>5</td>
+<td>MAPQ</td>
+<td>mapping quality</td>
+</tr>
+<tr>
+<td>6</td>
+<td>CIGAR</td>
+<td>how the read aligns: <code>M</code> aligned (match or mismatch),
+<code>I</code> insertion, <code>D</code> deletion, <code>S</code> soft
+clip, <code>H</code> hard clip</td>
+</tr>
+<tr>
+<td>7</td>
+<td>RNEXT</td>
+<td>reference name of the mate (<code>=</code> for the same)</td>
+</tr>
+<tr>
+<td>8</td>
+<td>PNEXT</td>
+<td>position of the mate</td>
+</tr>
+<tr>
+<td>9</td>
+<td>TLEN</td>
+<td>observed template (fragment) length</td>
+</tr>
+<tr>
+<td>10</td>
+<td>SEQ</td>
+<td>read sequence</td>
+</tr>
+<tr>
+<td>11</td>
+<td>QUAL</td>
+<td>base qualities, as in FASTQ</td>
+</tr>
+</tbody>
+</table>
+<p>For example, the CIGAR <code>100M2D51M</code> means 100 aligned
+bases, a 2 bp deletion in the read relative to the reference, then 51
+aligned bases. <code>20S131M</code> means the first 20 bases are
+soft-clipped.</p>
+<p>The FLAG is a sum of bits, each with a meaning. The ones you meet
+most often:</p>
+<table class="table">
+<thead><tr>
+<th>Bit</th>
+<th>Meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>read is paired</td>
+</tr>
+<tr>
+<td>2</td>
+<td>read is in a proper pair</td>
+</tr>
+<tr>
+<td>4</td>
+<td>read is unmapped</td>
+</tr>
+<tr>
+<td>16</td>
+<td>read is reverse-complemented</td>
+</tr>
+<tr>
+<td>32</td>
+<td>mate is reverse-complemented</td>
+</tr>
+<tr>
+<td>64</td>
+<td>first read of the pair</td>
+</tr>
+<tr>
+<td>128</td>
+<td>second read of the pair</td>
+</tr>
+<tr>
+<td>256</td>
+<td>secondary alignment</td>
+</tr>
+<tr>
+<td>1024</td>
+<td>duplicate</td>
+</tr>
+<tr>
+<td>2048</td>
+<td>supplementary alignment</td>
+</tr>
+</tbody>
+</table></section><section><h2 class="section-heading" id="step-3-check-the-alignments">Step 3: Check the alignments<a class="anchor" aria-label="anchor" href="#step-3-check-the-alignments"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="alignment-metrics">Alignment metrics<a class="anchor" aria-label="anchor" href="#alignment-metrics"></a>
+<hr class="half-width">
+<p>When <code>squeue</code> shows that your alignment job has finished,
+start an interactive session and load the QC tools. List the output
+files first:</p>
+<!-- kit: interactive 04-alignment-qc.sh -->
+<div class="codewrapper sourceCode" id="cb6">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" tabindex="-1" aria-label="code-block-6-1"></a><span class="ex">sinteractive</span> <span class="at">-A</span> rcac <span class="at">-q</span> standby <span class="at">-p</span> cpu <span class="at">-N</span> 1 <span class="at">-n</span> 4 <span class="at">--time</span><span class="op">=</span>1:00:00</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1" aria-label="code-block-6-2"></a><span class="ex">module</span> load biocontainers</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1" aria-label="code-block-6-3"></a><span class="ex">module</span> load samtools/1.22.1</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1" aria-label="code-block-6-4"></a><span class="ex">module</span> load mosdepth/0.3.3</span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1" aria-label="code-block-6-5"></a><span class="ex">module</span> load multiqc/1.23</span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1" aria-label="code-block-6-6"></a><span class="bu">cd</span> <span class="va">$SCRATCH</span>/varcall-workshop</span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1" aria-label="code-block-6-7"></a><span class="fu">ls</span> <span class="at">-lh</span> results/bam</span></code></pre>
+</div>
+<div id="accordionSpoiler2" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler2" aria-expanded="false" aria-controls="collapseSpoiler2">
+  <h3 class="accordion-header" id="headingSpoiler2">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler2" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler2" aria-labelledby="headingSpoiler2">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>total 3.1G
+-rw-r--r-- 1 aseethar workshop  1.1G Oct 10 21:35 HG002.markdup.bam
+-rw-r--r-- 1 aseethar workshop  249K Oct 10 21:35 HG002.markdup.bam.csi
+-rw-r--r-- 1 aseethar workshop   769 Oct 10 21:35 HG002.markdup.stats.txt
+-rw-r--r-- 1 aseethar workshop  1.1G Oct 10 21:32 HG003.markdup.bam
+-rw-r--r-- 1 aseethar workshop  248K Oct 10 21:32 HG003.markdup.bam.csi
+-rw-r--r-- 1 aseethar workshop   770 Oct 10 21:32 HG003.markdup.stats.txt
+-rw-r--r-- 1 aseethar workshop 1015M Oct 10 21:31 HG004.markdup.bam
+-rw-r--r-- 1 aseethar workshop  247K Oct 10 21:31 HG004.markdup.bam.csi
+-rw-r--r-- 1 aseethar workshop   769 Oct 10 21:31 HG004.markdup.stats.txt</code></pre>
+</div>
+<p>The first two lines are the message the biocontainers module prints
+when it is loaded. Each sample has a BAM file (about 1 GB), its
+<code>.csi</code> index and the duplicate statistics from
+<code>markdup</code>. <code>samtools markdup --write-index</code> writes
+a CSI index rather than the older <code>.bai</code> format; samtools,
+bcftools and mosdepth read both.</p>
+</div>
+</div>
+</div>
+</div>
+<p>Now compute three sets of metrics for each sample:
+<code>samtools flagstat</code> (counts by FLAG),
+<code>samtools stats</code> (detailed statistics) and
+<code>mosdepth</code> (coverage). This takes about 3 minutes for the
+three samples:</p>
+<!-- kit: interactive 04-alignment-qc.sh -->
+<div class="codewrapper sourceCode" id="cb8">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" tabindex="-1" aria-label="code-block-8-1"></a><span class="cf">for</span> SAMPLE <span class="kw">in</span> HG002 HG003 HG004<span class="kw">;</span> <span class="cf">do</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1" aria-label="code-block-8-2"></a>    <span class="ex">samtools</span> flagstat <span class="at">-@</span> 4 results/bam/<span class="va">$SAMPLE</span>.markdup.bam <span class="op">&gt;</span> results/qc_alignment/<span class="va">$SAMPLE</span>.flagstat.txt</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1" aria-label="code-block-8-3"></a>    <span class="ex">samtools</span> stats <span class="at">-@</span> 4 results/bam/<span class="va">$SAMPLE</span>.markdup.bam <span class="op">&gt;</span> results/qc_alignment/<span class="va">$SAMPLE</span>.stats.txt</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1" aria-label="code-block-8-4"></a>    <span class="ex">mosdepth</span> <span class="at">-t</span> 4 <span class="at">-n</span> <span class="at">--fast-mode</span> <span class="at">-c</span> chr20 results/qc_alignment/<span class="va">$SAMPLE</span> results/bam/<span class="va">$SAMPLE</span>.markdup.bam</span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1" aria-label="code-block-8-5"></a><span class="cf">done</span></span></code></pre>
+</div>
+<p>For <code>mosdepth</code>, <code>-c chr20</code> restricts the
+calculation to chromosome 20, <code>-n</code> skips the per-base output
+file, and <code>--fast-mode</code> skips the correction for overlapping
+mates and the details of each CIGAR, which the <a href="https://github.com/brentp/mosdepth" class="external-link">mosdepth documentation</a>
+recommends for most uses.</p>
+<div id="short-on-time-1" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="short-on-time-1" class="callout-inner">
+<h3 class="callout-title">Short on time?</h3>
+<div class="callout-content">
+<p>If the metrics are not ready, copy them from the results copy:</p>
+<!-- kit: not-run fallback -->
+<div class="codewrapper sourceCode" id="cb9">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" tabindex="-1" aria-label="code-block-9-1"></a><span class="fu">cp</span> /depot/workshop/data/varcall-workshop_results/results/qc_alignment/HG00<span class="pp">?</span>.<span class="pp">*</span> <span class="va">$SCRATCH</span>/varcall-workshop/results/qc_alignment/</span></code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="section level3">
+<h3 id="read-counts-by-flag">Read counts by flag<a class="anchor" aria-label="anchor" href="#read-counts-by-flag"></a>
+</h3>
+<!-- kit: interactive 04-alignment-qc.sh -->
+<div class="codewrapper sourceCode" id="cb10">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" tabindex="-1" aria-label="code-block-10-1"></a><span class="fu">cat</span> results/qc_alignment/HG002.flagstat.txt</span></code></pre>
+</div>
+<div id="accordionSpoiler3" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler3" aria-expanded="false" aria-controls="collapseSpoiler3">
+  <h3 class="accordion-header" id="headingSpoiler3">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler3" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler3" aria-labelledby="headingSpoiler3">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>18980761 + 0 in total (QC-passed reads + QC-failed reads)
+18924900 + 0 primary
+0 + 0 secondary
+55861 + 0 supplementary
+1975897 + 0 duplicates
+1975897 + 0 primary duplicates
+18944359 + 0 mapped (99.81% : N/A)
+18888498 + 0 primary mapped (99.81% : N/A)
+18924900 + 0 paired in sequencing
+9462450 + 0 read1
+9462450 + 0 read2
+18759278 + 0 properly paired (99.12% : N/A)
+18852096 + 0 with itself and mate mapped
+36402 + 0 singletons (0.19% : N/A)
+6198 + 0 with mate mapped to a different chr
+1177 + 0 with mate mapped to a different chr (mapQ&gt;=5)</code></pre>
+</div>
+<p>Each line counts reads that pass QC and reads that fail it (always 0
+here). “primary” counts each read once (18,924,900, the same as the
+FASTQ files); the total also includes 55,861 supplementary alignments,
+the extra records written when parts of one read align to different
+places. “singletons” are the 36,402 reads whose mate did not map.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="section level3">
+<h3 id="detailed-statistics">Detailed statistics<a class="anchor" aria-label="anchor" href="#detailed-statistics"></a>
+</h3>
+<p>The <code>SN</code> (summary numbers) section of
+<code>samtools stats</code> holds most of what we need:</p>
+<!-- kit: interactive 04-alignment-qc.sh -->
+<div class="codewrapper sourceCode" id="cb12">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" tabindex="-1" aria-label="code-block-12-1"></a><span class="fu">grep</span> ^SN results/qc_alignment/HG002.stats.txt <span class="kw">|</span> <span class="fu">cut</span> <span class="at">-f2-</span> <span class="kw">|</span> <span class="fu">head</span> <span class="at">-40</span></span></code></pre>
+</div>
+<div id="accordionSpoiler4" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler4" aria-expanded="false" aria-controls="collapseSpoiler4">
+  <h3 class="accordion-header" id="headingSpoiler4">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler4" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler4" aria-labelledby="headingSpoiler4">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>raw total sequences:	18924900	# excluding supplementary and secondary reads
+filtered sequences:	0
+sequences:	18924900
+is sorted:	1	# sorted by coordinate
+1st fragments:	9462450
+last fragments:	9462450
+reads mapped:	18888498
+reads mapped and paired:	18852096	# paired-end technology bit set + both mates mapped
+reads unmapped:	36402
+reads properly paired:	18759278	# proper-pair bit set
+reads paired:	18924900	# paired-end technology bit set
+reads duplicated:	1975897	# PCR or optical duplicate bit set
+reads MQ0:	983436	# mapped and MQ=0
+reads QC failed:	0
+non-primary alignments:	0
+supplementary alignments:	55861
+total length:	2857659900	# ignores clipping
+total first fragment length:	1428829950	# ignores clipping
+total last fragment length:	1428829950	# ignores clipping
+bases mapped:	2852163198	# ignores clipping
+bases mapped (cigar):	2820427153	# more accurate
+bases trimmed:	0
+bases duplicated:	298360447
+mismatches:	18104874	# from NM fields
+error rate:	6.419195e-03	# mismatches / bases mapped (cigar)
+average length:	151
+average first fragment length:	151
+average last fragment length:	151
+maximum length:	151
+maximum first fragment length:	151
+maximum last fragment length:	151
+average quality:	35.5
+insert size average:	410.1
+insert size standard deviation:	171.2
+inward oriented pairs:	9356092
+outward oriented pairs:	62584
+pairs with other orientation:	4273
+pairs on different chromosomes:	3099
+percentage of properly paired reads (%):	99.1</code></pre>
+</div>
+<p>The lines to read first: <code>raw total sequences</code> (reads in
+the file), <code>reads mapped</code>,
+<code>reads properly paired</code>, <code>reads duplicated</code>,
+<code>reads MQ0</code> (mapped reads with mapping quality 0),
+<code>insert size average</code> and <code>error rate</code> (mismatches
+per aligned base, which includes real variants).</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="section level3">
+<h3 id="coverage">Coverage<a class="anchor" aria-label="anchor" href="#coverage"></a>
+</h3>
+<!-- kit: interactive 04-alignment-qc.sh -->
+<div class="codewrapper sourceCode" id="cb14">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb14-1"><a href="#cb14-1" tabindex="-1" aria-label="code-block-14-1"></a><span class="fu">cat</span> results/qc_alignment/HG002.mosdepth.summary.txt</span></code></pre>
+</div>
+<div id="accordionSpoiler5" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler5" aria-expanded="false" aria-controls="collapseSpoiler5">
+  <h3 class="accordion-header" id="headingSpoiler5">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler5" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler5" aria-labelledby="headingSpoiler5">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>chrom	length	bases	mean	min	max
+chr20	64444167	2518794994	39.08	0	13784
+total	64444167	2518794994	39.08	0	13784</code></pre>
+</div>
+<p>The columns are the chromosome, its length, the number of aligned
+bases counted, and the mean, minimum and maximum depth. The
+<code>total</code> row repeats chr20 because we restricted the
+calculation to it.</p>
+</div>
+</div>
+</div>
+</div>
+<p>The mean is only a summary.
+<code>results/qc_alignment/HG002.mosdepth.global.dist.txt</code> lists,
+for each depth, the fraction of chromosome 20 covered at least that
+deeply, which shows how uniform the coverage is. The MultiQC report
+below plots it.</p>
+</div>
+<div class="section level3">
+<h3 id="mapping-quality-0-and-read-groups">Mapping quality 0 and read groups<a class="anchor" aria-label="anchor" href="#mapping-quality-0-and-read-groups"></a>
+</h3>
+<p>Count the reads with mapping quality 0, and check the read group the
+script wrote:</p>
+<!-- kit: interactive 04-alignment-qc.sh -->
+<div class="codewrapper sourceCode" id="cb16">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb16-1"><a href="#cb16-1" tabindex="-1" aria-label="code-block-16-1"></a><span class="ex">samtools</span> view <span class="at">-c</span> <span class="at">-e</span> <span class="st">'mapq==0'</span> results/bam/HG002.markdup.bam</span>
+<span id="cb16-2"><a href="#cb16-2" tabindex="-1" aria-label="code-block-16-2"></a><span class="ex">samtools</span> view <span class="at">-H</span> results/bam/HG002.markdup.bam <span class="kw">|</span> <span class="fu">grep</span> <span class="st">'^@RG'</span></span></code></pre>
+</div>
+<div id="accordionSpoiler6" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler6" aria-expanded="false" aria-controls="collapseSpoiler6">
+  <h3 class="accordion-header" id="headingSpoiler6">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler6" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler6" aria-labelledby="headingSpoiler6">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>1054357
+@RG	ID:HG002.pcr-free	SM:HG002	LB:HG002.pcr-free	PL:ILLUMINA</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p><code>-e 'mapq==0'</code> is a filter expression:
+<code>samtools view</code> keeps only records for which it is true, and
+<code>-c</code> counts them instead of printing them (<a href="https://www.htslib.org/doc/samtools-view.html" class="external-link">samtools view
+manual</a>).</p>
+</div>
+<div class="section level3">
+<h3 id="summarize-with-multiqc">Summarize with MultiQC<a class="anchor" aria-label="anchor" href="#summarize-with-multiqc"></a>
+</h3>
+<p>MultiQC finds the <code>flagstat</code>, <code>stats</code> and
+<code>mosdepth</code> outputs and puts all samples side by side:</p>
+<!-- kit: interactive 04-alignment-qc.sh -->
+<div class="codewrapper sourceCode" id="cb18">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb18-1"><a href="#cb18-1" tabindex="-1" aria-label="code-block-18-1"></a><span class="ex">multiqc</span> <span class="at">-o</span> results/qc_alignment results/qc_alignment results/bam</span></code></pre>
+</div>
+<p>Copy <code>results/qc_alignment/multiqc_report.html</code> to your
+computer and open it, as in Episode 3.</p>
+<figure style="text-align: center"><img src="fig/04/multiqc_samtools_alignment.png" alt="MultiQC stacked horizontal bar chart, one bar per sample (HG002, HG003, HG004); each bar is about 95% blue for reads mapped with MQ above 0, about 5% orange for MQ0 reads, and a barely visible red sliver for unmapped reads" class="figure mx-auto d-block"><figcaption>
+Your output: alignment summary from samtools stats for the three samples
+(MultiQC). In each sample about 95% of reads are mapped with mapping
+quality above 0, about 5% have mapping quality 0, and a thin sliver is
+unmapped.
+</figcaption></figure><figure style="text-align: center"><img src="fig/04/multiqc_mosdepth_cumcoverage.png" alt="MultiQC line plot of the percentage of chromosome 20 covered by at least X reads against X for three samples; the three curves overlap, stay near 98 to 99% up to about 20x, fall steeply between 30x and 45x, and drop to a few percent by about 55x" class="figure mx-auto d-block"><figcaption>
+Your output: cumulative coverage of chromosome 20 for the three samples
+(mosdepth, MultiQC). About 98% of the chromosome is covered by at least
+10 reads, and the curves fall steeply between 30x and 45x, around the
+mean of about 39x.
+</figcaption></figure><div id="challenge-interpret-the-alignment-metrics" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-interpret-the-alignment-metrics" class="callout-inner">
+<h3 class="callout-title">Challenge: interpret the alignment
+metrics</h3>
+<div class="callout-content">
+<p>Using the <code>samtools stats</code> output and the MultiQC
+report:</p>
+<ol style="list-style-type: decimal">
+<li>What fraction of HG002’s reads mapped, and what fraction are in
+proper pairs? Would you expect the same in a real whole-genome run?</li>
+<li>What fraction of reads are marked as duplicates in each sample?</li>
+<li>What is the average insert size, and how does it compare with the
+read length?</li>
+<li>What is the mean depth on chromosome 20 in each sample, and what
+fraction of chromosome 20 is covered by at least 10 reads in HG002?</li>
+</ol>
+</div>
+</div>
+</div>
+<div id="accordionSolution2" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution2" aria-expanded="false" aria-controls="collapseSolution2">
+  <h4 class="accordion-header" id="headingSolution2"> Show me the solution </h4>
+</button>
+<div id="collapseSolution2" class="accordion-collapse collapse" data-bs-parent="#accordionSolution2" aria-labelledby="headingSolution2">
+<div class="accordion-body">
+<ol style="list-style-type: decimal">
+<li>HG002 has 18,924,900 reads; 18,888,498 mapped (99.81%) and
+18,759,278 are properly paired (99.12%). HG003 and HG004 are similar
+(99.77% and 99.82% mapped). In a real whole-genome run you would not see
+this: our reads were selected because they aligned to chromosome 20
+before (Episode 2), so nearly all of them align again.</li>
+<li>HG002 10.44% (1,975,897 reads), HG003 10.98% (2,082,305), HG004
+10.99% (2,053,967). PCR-free libraries still have duplicates (Episode
+3). They stay in the files, flagged, and the caller skips them.</li>
+<li>The average insert size is 410.1 bp in HG002, 417.8 bp in HG003 and
+399.4 bp in HG004, with standard deviations of 162 to 173 bp. The
+fragments are longer than two reads (2 x 151 = 302 bp), so the two reads
+of most pairs do not overlap, and adapter read-through is rare (Episode
+3).</li>
+<li>Mean depth: HG002 39.08x, HG003 38.90x, HG004 38.42x. In HG002,
+98.0% of chromosome 20 is covered by at least 10 reads. Part of the rest
+is sequence that no read can cover: chromosome 20 contains stretches of
+<code>N</code> in the reference.</li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+<div id="challenge-how-many-reads-have-mapping-quality-0" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-how-many-reads-have-mapping-quality-0" class="callout-inner">
+<h3 class="callout-title">Challenge: how many reads have mapping quality
+0?</h3>
+<div class="callout-content">
+<ol style="list-style-type: decimal">
+<li>How many of HG002’s reads have mapping quality 0, as a fraction of
+all reads? Compare the count from
+<code>samtools view -c -e 'mapq==0'</code> with <code>reads MQ0</code>
+from <code>samtools stats</code>.</li>
+<li>Where in the genome do you expect these reads?</li>
+<li>Why should a caller give these reads little or no weight?</li>
+</ol>
+</div>
+</div>
+</div>
+<div id="accordionSolution3" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution3" aria-expanded="false" aria-controls="collapseSolution3">
+  <h4 class="accordion-header" id="headingSolution3"> Show me the solution </h4>
+</button>
+<div id="collapseSolution3" class="accordion-collapse collapse" data-bs-parent="#accordionSolution3" aria-labelledby="headingSolution3">
+<div class="accordion-body">
+<ol style="list-style-type: decimal">
+<li>
+<code>samtools stats</code> reports 983,436 mapped reads with MAPQ 0
+in HG002, 5.20% of 18,924,900 reads (HG003 5.28%, HG004 4.82%).
+<code>samtools view -c</code> counted 1,054,357, which is 70,921 more.
+<code>samtools stats</code> counts only mapped reads (its comment says
+“mapped and MQ=0”) and leaves out supplementary alignments, while
+<code>samtools view -c</code> counts every record whose MAPQ is 0. The
+36,402 unmapped reads also have MAPQ 0 in the file, and supplementary
+records (55,861 in all) can account for the rest.</li>
+<li>In repeats and duplicated sequence: segmental duplications, the
+centromere, and other regions where a 151 bp read, or even a read pair,
+matches several places equally well.</li>
+<li>A MAPQ 0 read may come from another copy of the repeat. Differences
+between the copies would look like variants. Episode 6 shows that the
+raw calls in the centromere have a much lower transition/transversion
+ratio than calls elsewhere, the signature of many false calls.</li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-4-read-individual-alignments">Step 4: Read individual alignments<a class="anchor" aria-label="anchor" href="#step-4-read-individual-alignments"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="coverage">Coverage<a class="anchor" aria-label="anchor" href="#coverage"></a>
+<hr class="half-width">
+<p>Look at a few alignments at the heterozygous site from Episode 2,
+chr20:88,108. <code>samtools view</code> with a region prints the reads
+overlapping it; we cut the output to the first nine columns, leaving out
+the sequence and qualities:</p>
+<!-- kit: extra 04-alignment-qc.sh -->
+<div class="codewrapper sourceCode" id="cb19">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb19-1"><a href="#cb19-1" tabindex="-1" aria-label="code-block-19-1"></a><span class="ex">samtools</span> view results/bam/HG002.markdup.bam chr20:88108-88108 <span class="kw">|</span> <span class="fu">head</span> <span class="at">-3</span> <span class="kw">|</span> <span class="fu">cut</span> <span class="at">-f1-9</span></span></code></pre>
+</div>
+<div id="accordionSpoiler7" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler7" aria-expanded="false" aria-controls="collapseSpoiler7">
+  <h3 class="accordion-header" id="headingSpoiler7">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler7" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler7" aria-labelledby="headingSpoiler7">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>A00744:46:HV3C3DSXX:2:1441:32533:3443	163	chr20	87958	60	151M	=	88080	273
+A00744:46:HV3C3DSXX:2:2505:30581:31125	1171	chr20	87961	60	151M	=	87802	-310
+A00744:46:HV3C3DSXX:2:2505:29134:25895	147	chr20	87961	60	151M	=	87802	-310</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p><code>samtools flags</code> translates FLAG values into names (<a href="https://www.htslib.org/doc/samtools-flags.html" class="external-link">samtools flags
+manual</a>):</p>
+<!-- kit: extra 04-alignment-qc.sh -->
+<div class="codewrapper sourceCode" id="cb21">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb21-1"><a href="#cb21-1" tabindex="-1" aria-label="code-block-21-1"></a><span class="ex">samtools</span> flags 99 1123</span></code></pre>
+</div>
+<div id="accordionSpoiler8" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler8" aria-expanded="false" aria-controls="collapseSpoiler8">
+  <h3 class="accordion-header" id="headingSpoiler8">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler8" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler8" aria-labelledby="headingSpoiler8">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>0x63	99	PAIRED,PROPER_PAIR,MREVERSE,READ1
+0x463	1123	PAIRED,PROPER_PAIR,MREVERSE,READ1,DUP</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="challenge-decode-a-flag" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-decode-a-flag" class="callout-inner">
+<h3 class="callout-title">Challenge: decode a FLAG</h3>
+<div class="callout-content">
+<ol style="list-style-type: decimal">
+<li>Decode FLAG 99 by hand with the bit table above. Which read of the
+pair is it, on which strand, and is the pair proper?</li>
+<li>FLAG 1123 differs from 99 by one bit. Which one, and what does it
+mean for variant calling?</li>
+<li>Pick one read from the <code>samtools view</code> output above and
+decode its FLAG and CIGAR.</li>
+</ol>
+</div>
+</div>
+</div>
+<div id="accordionSolution4" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution4" aria-expanded="false" aria-controls="collapseSolution4">
+  <h4 class="accordion-header" id="headingSolution4"> Show me the solution </h4>
+</button>
+<div id="collapseSolution4" class="accordion-collapse collapse" data-bs-parent="#accordionSolution4" aria-labelledby="headingSolution4">
+<div class="accordion-body">
+<ol style="list-style-type: decimal">
+<li>99 = 64 + 32 + 2 + 1: paired (1), in a proper pair (2), mate
+reverse-complemented (32), first read of the pair (64). Bit 16 is not
+set, so this read is on the forward strand and its mate on the reverse
+strand: the usual orientation of a proper Illumina pair.</li>
+<li>1123 = 1024 + 99: the same read, marked as a duplicate. bcftools
+skips it when calling.</li>
+<li>In the output above, the first read has FLAG 163 = 128 + 32 + 2 + 1:
+the second read of a proper pair, on the forward strand, with its mate
+on the reverse strand. The second read has FLAG 1171 = 1024 + 128 + 16 +
+2 + 1: the second read of a proper pair, on the reverse strand, marked
+as a duplicate. The third read (FLAG 147) has the same position, mate
+position and template length as the second, which is why
+<code>markdup</code> flagged one of the two. All three have the CIGAR
+<code>151M</code>: all 151 bases aligned without gaps or clipping.</li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-5-view-a-locus">Step 5: View a locus<a class="anchor" aria-label="anchor" href="#step-5-view-a-locus"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="viewing-a-locus">Viewing a locus<a class="anchor" aria-label="anchor" href="#viewing-a-locus"></a>
+<hr class="half-width">
+<p>A text view of the pileup shows what the caller will see.
+<code>samtools tview</code> normally runs as an interactive full-screen
+viewer; with <code>-d T</code> it prints a text snapshot instead,
+<code>-p</code> sets the first position shown, <code>-w</code> the width
+in columns, and <code>-i</code> hides insertions, so that each column is
+one reference position (<a href="https://www.htslib.org/doc/samtools-tview.html" class="external-link">samtools tview
+manual</a>). Starting 20 bases before chr20:88,108 puts the variant in
+column 21:</p>
+<!-- kit: extra 04-alignment-qc.sh -->
+<div class="codewrapper sourceCode" id="cb23">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb23-1"><a href="#cb23-1" tabindex="-1" aria-label="code-block-23-1"></a><span class="ex">samtools</span> tview <span class="at">-d</span> T <span class="at">-i</span> <span class="at">-w</span> 41 <span class="at">-p</span> chr20:88088 results/bam/HG002.markdup.bam ref/GRCh38_no_alt.fa</span></code></pre>
+</div>
+<div id="accordionSpoiler9" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler9" aria-expanded="false" aria-controls="collapseSpoiler9">
+  <h3 class="accordion-header" id="headingSpoiler9">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler9" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler9" aria-labelledby="headingSpoiler9">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>   88091     88101     88111
+TGTTGTATCTATTTCATTGTTGTGTCCTATTAGTTCTCCTA
+....................Y....................
+,,,g,,,,,,,,,,,,,,,,c,,,,,,,c,,,,,,,,,,,,
+.......  ................................
+,,,,,,,,,,,,,,              ,,,,,,,,,,,,,
+....................C          ..........
+,,,,,,,,,,,,,,,,,,,,,,,,       ..........
+,,,,,,,,,,,,,,,,,,,,,,,,       ..........
+.........................................
+....................................... ,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,a,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+....................C....................
+.........................................
+.........................................
+,,,,,,,,,,,,,,,,,,,,c,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,c,,,,,,,,,,,,,,,,,,,,
+.........................................
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+.........................................
+.........................................
+,t,,,,,,a,,,,,,,,,,,ct,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+.........................................
+,,,,,,,,,,,,,,,,,,,,c,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,c,,,,,,,,,,,,,,,,,,,,
+....................C....................
+.........................................
+,t,,t,t,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+............A............................
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,c,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,c,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+....................C....................
+,,,,,,,,,,,,,,,,,,,,c,,,,,,,,,,,,,,,,,,,,
+.........................................
+    ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+           ,,,,,,,,,c,,,,,,,,,,,,,,,,,,,,
+                                .........
+                                .........
+                                       ..</code></pre>
+</div>
+<p>The first three lines are a position ruler, the reference sequence,
+and a consensus of the reads, which shows an ambiguity code where the
+reads disagree (for example <code>Y</code> for C or T). Below them, each
+line holds one or more reads: <code>.</code> is a base matching the
+reference on the forward strand, <code>,</code> on the reverse strand,
+and a letter is a mismatch (upper case forward, lower case reverse).
+<code>*</code> marks a deleted base.</p>
+</div>
+</div>
+</div>
+</div>
+<div id="challenge-read-the-pileup" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-read-the-pileup" class="callout-inner">
+<h3 class="callout-title">Challenge: read the pileup</h3>
+<div class="callout-content">
+<ol style="list-style-type: decimal">
+<li>In the text view, count the reads that show <code>C</code> (or
+<code>c</code>) in column 21, and the reads that match the reference
+there. What genotype do you expect the caller to report for HG002?</li>
+<li>The benchmark says HG002 is homozygous for the ALT allele
+<code>A</code> at chr20:85,259 (reference <code>G</code>). Write the
+<code>tview</code> command that shows this site in column 21, and
+predict what you will see before you run it.</li>
+</ol>
+</div>
+</div>
+</div>
+<div id="accordionSolution5" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution5" aria-expanded="false" aria-controls="collapseSolution5">
+  <h4 class="accordion-header" id="headingSolution5"> Show me the solution </h4>
+</button>
+<div id="collapseSolution5" class="accordion-collapse collapse" data-bs-parent="#accordionSolution5" aria-labelledby="headingSolution5">
+<div class="accordion-body">
+<ol style="list-style-type: decimal">
+<li><p>Column 21 holds 39 reads: 14 show <code>C</code> or
+<code>c</code> and 25 match the reference <code>T</code>, and the
+consensus line shows <code>Y</code>. That is 36% <code>C</code>, fewer
+than half, but not unusual for a heterozygous site: with 39 reads, a
+perfectly balanced site gives 14 or fewer reads of one particular allele
+about 5% of the time (binomial, Episode 1). Expect the caller to report
+<code>0/1</code>. The benchmark for HG002 agrees: <code>0/1</code> at
+this position.</p></li>
+<li>
+<p>Start 20 bases earlier, at 85,239:</p>
+<!-- kit: extra 04-alignment-qc.sh -->
+<div class="codewrapper sourceCode" id="cb25">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb25-1"><a href="#cb25-1" tabindex="-1" aria-label="code-block-25-1"></a><span class="ex">samtools</span> tview <span class="at">-d</span> T <span class="at">-i</span> <span class="at">-w</span> 41 <span class="at">-p</span> chr20:85239 results/bam/HG002.markdup.bam ref/GRCh38_no_alt.fa</span></code></pre>
+</div>
+<p>Nearly every read should show <code>A</code> or <code>a</code> in
+column 21, and the consensus line shows <code>A</code>: a homozygous ALT
+site. In the test run, all 50 reads in column 21 show <code>A</code> or
+<code>a</code> and none matches the reference <code>G</code>.</p>
+</li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+
+</section><section><h2 class="section-heading" id="base-quality-recalibration-concept-only">Base quality recalibration (concept only)<a class="anchor" aria-label="anchor" href="#base-quality-recalibration-concept-only"></a>
 </h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="base-quality-recalibration-concept-only">Base quality recalibration (concept only)<a class="anchor" aria-label="anchor" href="#base-quality-recalibration-concept-only"></a>
+<hr class="half-width">
+<p>Sequencers can be systematically over- or under-confident in their
+base qualities, for example in certain sequence contexts or late in a
+read. <strong>Base quality score recalibration</strong> (BQSR) in GATK
+models these errors from mismatches at positions that are not known
+variant sites, and rewrites the qualities (<a href="https://gatk.broadinstitute.org/hc/en-us/articles/360035890531-Base-Quality-Score-Recalibration-BQSR" class="external-link">GATK
+documentation</a>). It needs a database of known variants for the
+organism.</p>
+<p>We do not recalibrate in this workshop. bcftools does not require it,
+and many organisms have no database of known variants. GATK’s own
+pipeline uses it; Episode 5B, self-paced, discusses where it
+applies.</p>
+</section><section><h2 class="section-heading" id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a>
 </h2>
 <hr class="half-width">
 <div id="keypoints1" class="callout keypoints">
@@ -698,7 +3563,25 @@ metrics.</li>
 <div class="callout-inner">
 <div class="callout-content">
 <ul>
-<li>TBD(P4)</li>
+<li>
+<code>bwa mem</code> finds seeds with an index of the reference,
+extends them into local alignments, and soft-clips ends that do not
+match.</li>
+<li>Mapping quality is the Phred-scaled probability that a read is
+placed wrongly; reads that fit several places equally well get MAPQ 0
+and can create false variants.</li>
+<li>Read groups label reads by sample; <code>SM</code> becomes the
+sample name in the VCF, so it must come from the sample sheet.</li>
+<li>The order is <code>bwa mem</code>, <code>samtools fixmate -m</code>,
+<code>samtools sort</code>, <code>samtools markdup</code>; duplicates
+are flagged, not removed, and the caller skips them.</li>
+<li>
+<code>-K</code> makes <code>bwa mem</code> results independent of
+the number of threads.</li>
+<li>Check every alignment with <code>flagstat</code>, <code>stats</code>
+and <code>mosdepth</code>, and compare samples in MultiQC. Here about
+99.8% of reads mapped, about 11% are duplicates, and mean depth is about
+39x on chromosome 20.</li>
 </ul>
 </div>
 </div>

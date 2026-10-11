@@ -396,19 +396,76 @@
 <section id="01-intro-to-variant-calling"><h2 class="section-heading"><a href="01-intro-to-variant-calling.html">1. Introduction to genetic variation and variant calling</a></h2>
 <hr class="half-width">
 <ul>
-<li>TBD(P4)</li>
+<li>A variant is a difference from the reference sequence. The reference
+is a coordinate system, not a description of a healthy or ancestral
+genome.</li>
+<li>Diploid genotypes are written as allele numbers: <code>0/0</code>,
+<code>0/1</code>, <code>1/1</code>, and <code>./.</code> for
+missing.</li>
+<li>A caller weighs each read by its base quality and mapping quality,
+computes genotype likelihoods, and reports the most probable genotype
+with QUAL and GQ.</li>
+<li>At a heterozygous site, the chance of seeing only one allele in n
+reads is 2 x 0.5^n, so low-depth genotypes are unreliable.</li>
+<li>Sequencing errors, sampling, mapping errors in repeats, duplicates
+and representation differences all produce calls that look real.
+Calling, filtering and interpretation are separate steps.</li>
 </ul></section><section id="02-data-and-project-setup"><h2 class="section-heading"><a href="02-data-and-project-setup.html">2. Data, reference genomes, and project setup</a></h2>
 <hr class="half-width">
 <ul>
-<li>TBD(P4)</li>
+<li>The data are the GIAB Ashkenazi trio (HG002 child, HG003 father,
+HG004 mother): NovaSeq PCR-free 151 bp paired reads, about 40x on
+chromosome 20.</li>
+<li>The reads were selected from chromosome 20 alignments, so mapping
+rate and coverage outside chromosome 20 are not realistic.</li>
+<li>Check every copy with checksums (<code>md5sum -c</code>) before
+using it.</li>
+<li>The sample sheet and the PED file record sample names, roles, sex
+and relationships; later steps depend on them being right.</li>
+<li>The GRCh38 no-alt analysis set leaves out alt contigs and uses
+UCSC-style names (<code>chr20</code>); every file in an analysis must
+use the same assembly and sequence names.</li>
+<li>BED is 0-based and half-open; VCF, SAM and samtools regions are
+1-based and closed.</li>
+<li>Public reference data can be shared; your own human data may need an
+approved, controlled system.</li>
 </ul></section><section id="03-read-qc"><h2 class="section-heading"><a href="03-read-qc.html">3. Read quality control</a></h2>
 <hr class="half-width">
 <ul>
-<li>TBD(P4)</li>
+<li>Base qualities are Phred scores; our NovaSeq reads use only four
+binned values (2, 11, 25, 37), which makes quality plots look blocky
+without indicating a problem.</li>
+<li>FastQC and MultiQC summarize read quality; run them in an
+interactive job, not on a login node.</li>
+<li>Pass, warn and fail marks come from generic thresholds; interpret
+each plot for your data type.</li>
+<li>The caller uses base qualities directly, so low-quality bases are
+down-weighted rather than removed.</li>
+<li>
+<code>bwa mem</code> soft-clips adapters and poor read ends, so
+trimming is usually unnecessary for these data.</li>
 </ul></section><section id="04-alignment-and-alignment-qc"><h2 class="section-heading"><a href="04-alignment-and-alignment-qc.html">4. Read alignment and alignment QC</a></h2>
 <hr class="half-width">
 <ul>
-<li>TBD(P4)</li>
+<li>
+<code>bwa mem</code> finds seeds with an index of the reference,
+extends them into local alignments, and soft-clips ends that do not
+match.</li>
+<li>Mapping quality is the Phred-scaled probability that a read is
+placed wrongly; reads that fit several places equally well get MAPQ 0
+and can create false variants.</li>
+<li>Read groups label reads by sample; <code>SM</code> becomes the
+sample name in the VCF, so it must come from the sample sheet.</li>
+<li>The order is <code>bwa mem</code>, <code>samtools fixmate -m</code>,
+<code>samtools sort</code>, <code>samtools markdup</code>; duplicates
+are flagged, not removed, and the caller skips them.</li>
+<li>
+<code>-K</code> makes <code>bwa mem</code> results independent of
+the number of threads.</li>
+<li>Check every alignment with <code>flagstat</code>, <code>stats</code>
+and <code>mosdepth</code>, and compare samples in MultiQC. Here about
+99.8% of reads mapped, about 11% are duplicates, and mean depth is about
+39x on chromosome 20.</li>
 </ul></section><section id="05a-calling-with-bcftools"><h2 class="section-heading"><a href="05a-calling-with-bcftools.html">5A. Calling variants with bcftools</a></h2>
 <hr class="half-width">
 <ul>
