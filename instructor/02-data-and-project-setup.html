@@ -355,7 +355,7 @@
       </div>
       <hr></nav><main id="main-content" class="main-content"><div class="container lesson-content">
         <h1>2. Data, reference genomes, and project setup</h1>
-        <p>Last updated on 2026-10-13 |
+        <p>Last updated on 2026-10-14 |
 
         <a href="https://github.com/rcac-bioinformatics/variant-calling/edit/main/episodes/02-data-and-project-setup.Rmd" class="external-link">Edit this page <i aria-hidden="true" data-feather="edit"></i></a></p>
 
@@ -804,13 +804,15 @@ version (the workshop pins every tool version; see the setup page):</p>
 <pre class="output" tabindex="0"><code>&gt;chr20:88098-88118
 ATTTCATTGTTGTGTCCTATT</code></pre>
 </div>
-<p>The first line is a message the biocontainers module prints when it
-is loaded; the region follows as a short FASTA record. The region is 21
-bases: <code>samtools faidx</code> regions are 1-based and include both
-ends (<a href="https://www.htslib.org/doc/samtools-faidx.html" class="external-link">samtools
-faidx manual</a>). Base 88,108, a <code>T</code>, sits in the middle.
-Remember this position; the child is heterozygous there, and we will
-come back to it in Episodes 4 and 5A.</p>
+<p>Loading the <code>biocontainers</code> module also prints a notice
+with a link to the RCAC biocontainers user guides; you will see it after
+every <code>module load biocontainers</code>, and the outputs in these
+episodes leave it out. The region is a short FASTA record. The region is
+21 bases: <code>samtools faidx</code> regions are 1-based and include
+both ends (<a href="https://www.htslib.org/doc/samtools-faidx.html" class="external-link">samtools faidx
+manual</a>). Base 88,108, a <code>T</code>, sits in the middle. Remember
+this position; the child is heterozygous there, and we will come back to
+it in Episodes 4 and 5A.</p>
 </div>
 </div>
 </div>
@@ -1107,8 +1109,8 @@ any links that you are not going to use.
   "url": "https://rcac-bioinformatics.github.io/variant-calling/instructor/02-data-and-project-setup.html",
   "identifier": "https://rcac-bioinformatics.github.io/variant-calling/instructor/02-data-and-project-setup.html",
   "dateCreated": "2026-10-09",
-  "dateModified": "2026-10-13",
-  "datePublished": "2026-10-13"
+  "dateModified": "2026-10-14",
+  "datePublished": "2026-10-14"
 }
 
   </script><script>

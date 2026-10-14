@@ -262,15 +262,19 @@
 
     <div id="flush-collapsecurrent" class="accordion-collapse collapse show" data-bs-parent="#accordionFlushcurrent">
       <div class="accordion-body">
-        <ul><li><a href="#summarizing-a-call-set">Summarizing a call set</a></li>
-<li><a href="#choosing-thresholds-from-the-data">Choosing thresholds from the data</a></li>
-<li><a href="#site-level-and-genotype-level-filters">Site-level and genotype-level filters</a></li>
-<li><a href="#benchmarking-against-giab">Benchmarking against GIAB</a></li>
-<li><a href="#precision-recall-and-f1">Precision, recall and F1</a></li>
-<li><a href="#reading-hap.py-output">Reading hap.py output</a></li>
-<li><a href="#the-precision-recall-trade-off">The precision-recall trade-off</a></li>
-<li><a href="#difficult-regions-and-stratifications">Difficult regions and stratifications</a></li>
-<li><a href="#proxy-measures-without-a-truth-set">Proxy measures without a truth set</a></li>
+        <ul><li><a href="#introduction">Introduction</a></li>
+<li><a href="#step-1-look-at-the-distributions">Step 1: Look at the distributions</a></li>
+<li><a href="#step-2-choose-thresholds-from-the-data">Step 2: Choose thresholds from the data</a></li>
+<li><a href="#step-3-site-level-and-genotype-level-filters">Step 3: Site-level and genotype-level filters</a></li>
+<li><a href="#benchmarking-against-genome-in-a-bottle">Benchmarking against Genome in a Bottle</a></li>
+<li><a href="#step-4-evaluate-with-hap.py">Step 4: Evaluate with hap.py</a></li>
+<li><a href="#step-5-read-the-hap.py-summary">Step 5: Read the hap.py summary</a></li>
+<li><a href="#step-6-predict-then-test-a-threshold">Step 6: Predict, then test a threshold</a></li>
+<li><a href="#same-calls-two-benchmarks">Same calls, two benchmarks</a></li>
+<li><a href="#difficult-regions-and-stratification">Difficult regions and stratification</a></li>
+<li><a href="#proxy-measures-when-there-is-no-truth-set">Proxy measures when there is no truth set</a></li>
+<li><a href="#common-problems">Common problems</a></li>
+<li><a href="#summary">Summary</a></li>
         </ul></div><!--/div.accordion-body-->
     </div><!--/div.accordion-collapse-->
 
@@ -353,7 +357,7 @@
       </div>
       <hr></nav><main id="main-content" class="main-content"><div class="container lesson-content">
         <h1>6. Filtering and evaluating variant calls</h1>
-        <p>Last updated on 2026-10-13 |
+        <p>Last updated on 2026-10-14 |
 
         <a href="https://github.com/rcac-bioinformatics/variant-calling/edit/main/episodes/06-filtering-and-evaluation.Rmd" class="external-link">Edit this page <i aria-hidden="true" data-feather="edit"></i></a></p>
 
@@ -396,16 +400,1208 @@ and difficult regions do worse.</li>
 </div>
 </div>
 </div>
+<section><h2 class="section-heading" id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a></h2>
+<hr class="half-width"><p>The caller reports every site where the evidence favors a variant,
+including many that are wrong. In this episode we decide which calls to
+trust. We look at the distributions of the quality measures, choose
+thresholds from them, and label the calls that fail. Then we measure how
+good the calls are, before and after filtering, against the Genome in a
+Bottle benchmark for HG002, and look at what we can measure when no
+benchmark exists.</p>
+<p>The order matters: <strong>thresholds come from the call set, and the
+benchmark only evaluates them.</strong> Choosing a threshold because it
+scores best against the benchmark would tune the filters to the answer
+key, and the score would no longer tell us how well they work on other
+data.</p>
+<div id="before-you-start" class="callout prereq">
+<div class="callout-square">
+<i class="callout-icon" data-feather="check"></i>
+</div>
+<span class="callout-header">Prerequisite</span>
+<div id="before-you-start" class="callout-inner">
+<h3 class="callout-title">Before you start</h3>
+<div class="callout-content">
+<p>You need <code>results/vcf/trio.norm.vcf.gz</code> and its index from
+Episode 5A, and the script <code>scripts/evaluate.sh</code>. If you do
+not have them, use the “Short on time?” copy at the end of Episode
+5A.</p>
+</div>
+</div>
+</div>
 
-<section><h2 class="section-heading" id="summarizing-a-call-set">Summarizing a call set<a class="anchor" aria-label="anchor" href="#summarizing-a-call-set"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="choosing-thresholds-from-the-data">Choosing thresholds from the data<a class="anchor" aria-label="anchor" href="#choosing-thresholds-from-the-data"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="site-level-and-genotype-level-filters">Site-level and genotype-level filters<a class="anchor" aria-label="anchor" href="#site-level-and-genotype-level-filters"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="benchmarking-against-giab">Benchmarking against GIAB<a class="anchor" aria-label="anchor" href="#benchmarking-against-giab"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="precision-recall-and-f1">Precision, recall and F1<a class="anchor" aria-label="anchor" href="#precision-recall-and-f1"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="reading-hap-py-output">Reading hap.py output<a class="anchor" aria-label="anchor" href="#reading-hap-py-output"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="the-precision-recall-trade-off">The precision-recall trade-off<a class="anchor" aria-label="anchor" href="#the-precision-recall-trade-off"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="difficult-regions-and-stratifications">Difficult regions and stratifications<a class="anchor" aria-label="anchor" href="#difficult-regions-and-stratifications"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="proxy-measures-without-a-truth-set">Proxy measures without a truth set<a class="anchor" aria-label="anchor" href="#proxy-measures-without-a-truth-set"></a></h2>
+</section><section><h2 class="section-heading" id="step-1-look-at-the-distributions">Step 1: Look at the distributions<a class="anchor" aria-label="anchor" href="#step-1-look-at-the-distributions"></a></h2>
+<hr class="half-width"><p>Start an interactive session and write two tables: the site-level
+QUAL, depth (<code>INFO/DP</code>) and mean mapping quality
+(<code>INFO/MQ</code>) of every record, and the depth and GQ of every
+genotype:</p>
+<!-- kit: interactive 06-filter.sh -->
+<div class="codewrapper sourceCode" id="cb1">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1" aria-label="code-block-1-1"></a><span class="ex">sinteractive</span> <span class="at">-A</span> rcac <span class="at">-q</span> standby <span class="at">-p</span> cpu <span class="at">-N</span> 1 <span class="at">-n</span> 4 <span class="at">--time</span><span class="op">=</span>1:00:00</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1" aria-label="code-block-1-2"></a><span class="ex">module</span> load biocontainers</span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1" aria-label="code-block-1-3"></a><span class="ex">module</span> load bcftools/1.24</span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1" aria-label="code-block-1-4"></a><span class="bu">cd</span> <span class="va">$SCRATCH</span>/varcall-workshop</span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1" aria-label="code-block-1-5"></a><span class="va">VCF</span><span class="op">=</span>results/vcf/trio.norm.vcf.gz</span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1" aria-label="code-block-1-6"></a><span class="fu">mkdir</span> <span class="at">-p</span> results/vcf/stats</span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1" aria-label="code-block-1-7"></a><span class="ex">bcftools</span> query <span class="at">-f</span> <span class="st">'%QUAL\t%INFO/DP\t%INFO/MQ\n'</span> <span class="va">$VCF</span> <span class="op">&gt;</span> results/vcf/stats/site_qual_dp_mq.tsv</span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1" aria-label="code-block-1-8"></a><span class="ex">bcftools</span> query <span class="at">-f</span> <span class="st">'[%SAMPLE\t%GT\t%DP\t%GQ\n]'</span> <span class="va">$VCF</span> <span class="op">&gt;</span> results/vcf/stats/genotype_dp_gq.tsv</span></code></pre>
+</div>
+<p>The <code>[...]</code> in the second format repeats for each sample,
+so that table has one line per sample per record. Summarize the site
+table with a few percentiles: sort one column, then print the values 1%,
+5%, 50%, 95% and 99% of the way through:</p>
+<!-- kit: extra 06-filter.sh -->
+<div class="codewrapper sourceCode" id="cb2">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1" aria-label="code-block-2-1"></a><span class="fu">cut</span> <span class="at">-f1</span> results/vcf/stats/site_qual_dp_mq.tsv <span class="kw">|</span> <span class="fu">sort</span> <span class="at">-g</span> <span class="kw">|</span> <span class="fu">awk</span> <span class="st">'{ v[NR] = $1 } END { print "QUAL", "p01", v[int(NR * 0.01)], "p05", v[int(NR * 0.05)], "p50", v[int(NR * 0.5)], "p95", v[int(NR * 0.95)], "p99", v[int(NR * 0.99)] }'</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1" aria-label="code-block-2-2"></a><span class="fu">cut</span> <span class="at">-f2</span> results/vcf/stats/site_qual_dp_mq.tsv <span class="kw">|</span> <span class="fu">sort</span> <span class="at">-g</span> <span class="kw">|</span> <span class="fu">awk</span> <span class="st">'{ v[NR] = $1 } END { print "DP", "p01", v[int(NR * 0.01)], "p05", v[int(NR * 0.05)], "p50", v[int(NR * 0.5)], "p95", v[int(NR * 0.95)], "p99", v[int(NR * 0.99)] }'</span></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1" aria-label="code-block-2-3"></a><span class="fu">cut</span> <span class="at">-f3</span> results/vcf/stats/site_qual_dp_mq.tsv <span class="kw">|</span> <span class="fu">sort</span> <span class="at">-g</span> <span class="kw">|</span> <span class="fu">awk</span> <span class="st">'{ v[NR] = $1 } END { print "MQ", "p01", v[int(NR * 0.01)], "p05", v[int(NR * 0.05)], "p50", v[int(NR * 0.5)], "p95", v[int(NR * 0.95)], "p99", v[int(NR * 0.99)] }'</span></span></code></pre>
+</div>
+<div id="accordionSpoiler1" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler1" aria-expanded="false" aria-controls="collapseSpoiler1">
+  <h3 class="accordion-header" id="headingSpoiler1">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler1" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler1" aria-labelledby="headingSpoiler1">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>QUAL p01 6.9928 p05 38.8882 p50 469.376 p95 739.009 p99 741.877
+DP p01 19 p05 69 p50 113 p95 358 p99 668
+MQ p01 11 p05 35 p50 60 p95 60 p99 60</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Read each line as a shape:</p>
+<ul><li>
+<strong>QUAL</strong> has a long low tail: most sites are far above
+30, but the lowest few percent are not (p05 is 38.9 and p01 7.0).</li>
+<li>
+<strong>Depth</strong> has a long high tail: the median site depth
+(all three samples together) is close to three times the 39x of each
+sample, but p95 and p99 are several times the median (median 113, p95
+358, p99 668). Sites with far more reads than the genome has copies are
+typical of reads from several places piled onto one, as in collapsed
+repeats (Episode 5A).</li>
+<li>
+<strong>MQ</strong>, the mean mapping quality of the reads at a
+site, sits at 60 for most sites and has a low tail where reads may come
+from elsewhere in the genome (Episode 4).</li>
+</ul></section><section><h2 class="section-heading" id="step-2-choose-thresholds-from-the-data">Step 2: Choose thresholds from the data<a class="anchor" aria-label="anchor" href="#step-2-choose-thresholds-from-the-data"></a></h2>
+<hr class="half-width"><p>Each filter targets one of those tails, with a threshold set by a
+rule or a convention, not by the benchmark:</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Filter</th>
+<th>Rule</th>
+<th>Why this value</th>
+</tr></thead><tbody><tr><td>
+<code>LowQual</code>: <code>QUAL &lt; 30</code>
+</td>
+<td>a convention</td>
+<td>QUAL is Phred-scaled (Episode 5A): 30 means a 1 in 1,000 chance that
+the site is not variant at all. It cuts the low tail</td>
+</tr><tr><td>
+<code>HighDP</code>: <code>INFO/DP</code> above twice the median
+site depth</td>
+<td>a rule, computed from your own calls</td>
+<td>at twice the expected depth, more reads arrive than two copies of
+the sequence explain. The value adapts to any depth, so the rule carries
+over to other data</td>
+</tr><tr><td>
+<code>LowMQ</code>: <code>INFO/MQ &lt; 30</code>
+</td>
+<td>a convention</td>
+<td>MAPQ is Phred-scaled (<a href="https://samtools.github.io/hts-specs/SAMv1.pdf" class="external-link">SAM
+specification</a>): MAPQ 30 means a 1 in 1,000 chance that a read is
+misplaced. A site whose reads average below 30 has many reads placed
+with little confidence</td>
+</tr><tr><td>genotype mask: <code>FMT/DP &lt; 10</code> or
+<code>FMT/GQ &lt; 20</code>
+</td>
+<td>conventions</td>
+<td>with fewer than 10 reads, a heterozygous site looks homozygous about
+0.2% of the time (2 x 0.5^10 = 0.195%, Episode 1); GQ 20 is a 1% chance
+that the genotype is wrong</td>
+</tr></tbody></table><p>The depth threshold is computed in the next block: sort the site
+depths, take the middle value, double it.</p>
+<!-- kit: interactive 06-filter.sh -->
+<div class="codewrapper sourceCode" id="cb4">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1" aria-label="code-block-4-1"></a><span class="co"># The depth cutoff follows a rule, not the benchmark: flag sites deeper than twice the median</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1" aria-label="code-block-4-2"></a><span class="va">MEDIAN_DP</span><span class="op">=</span><span class="va">$(</span><span class="fu">cut</span> <span class="at">-f2</span> results/vcf/stats/site_qual_dp_mq.tsv <span class="kw">|</span> <span class="fu">sort</span> <span class="at">-n</span> <span class="kw">|</span> <span class="fu">awk</span> <span class="st">'{ d[NR] = $1 } END { print d[int((NR + 1) / 2)] }'</span><span class="va">)</span></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1" aria-label="code-block-4-3"></a><span class="va">MAX_DP</span><span class="op">=</span><span class="va">$((</span><span class="dv">2</span> <span class="op">*</span> <span class="va">MEDIAN_DP))</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1" aria-label="code-block-4-4"></a><span class="bu">echo</span> <span class="st">"median site depth </span><span class="va">$MEDIAN_DP</span><span class="st">; sites above </span><span class="va">$MAX_DP</span><span class="st"> are flagged HighDP"</span></span></code></pre>
+</div>
+<div id="accordionSpoiler2" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler2" aria-expanded="false" aria-controls="collapseSpoiler2">
+  <h3 class="accordion-header" id="headingSpoiler2">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler2" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler2" aria-labelledby="headingSpoiler2">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>median site depth 113; sites above 226 are flagged HighDP</code></pre>
+</div>
+<p>In the reference run the median site depth was 113, so
+<code>MAX_DP</code> was 226. Yours is computed from your own calls, so
+if your calls differ, so does the threshold.</p>
+</div>
+</div>
+</div>
+</div>
+<div id="challenge-predict-the-filters" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-predict-the-filters" class="callout-inner">
+<h3 class="callout-title">Challenge: predict the filters</h3>
+<div class="callout-content">
+<p>Before applying the filters, count how many sites each site filter
+will flag, and how many genotypes the mask will set to missing in each
+sample:</p>
+<!-- kit: extra 06-filter.sh -->
+<div class="codewrapper sourceCode" id="cb6">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" tabindex="-1" aria-label="code-block-6-1"></a><span class="fu">awk</span> <span class="st">'$1 &lt; 30'</span> results/vcf/stats/site_qual_dp_mq.tsv <span class="kw">|</span> <span class="fu">wc</span> <span class="at">-l</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1" aria-label="code-block-6-2"></a><span class="fu">awk</span> <span class="at">-v</span> max=<span class="va">$MAX_DP</span> <span class="st">'$2 &gt; max'</span> results/vcf/stats/site_qual_dp_mq.tsv <span class="kw">|</span> <span class="fu">wc</span> <span class="at">-l</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1" aria-label="code-block-6-3"></a><span class="fu">awk</span> <span class="st">'$3 &lt; 30'</span> results/vcf/stats/site_qual_dp_mq.tsv <span class="kw">|</span> <span class="fu">wc</span> <span class="at">-l</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1" aria-label="code-block-6-4"></a><span class="fu">awk</span> <span class="st">'$3 &lt; 10 || $4 &lt; 20'</span> results/vcf/stats/genotype_dp_gq.tsv <span class="kw">|</span> <span class="fu">cut</span> <span class="at">-f1</span> <span class="kw">|</span> <span class="fu">sort</span> <span class="kw">|</span> <span class="fu">uniq</span> <span class="at">-c</span></span></code></pre>
+</div>
+<ol style="list-style-type: decimal"><li>Which site filter flags the most sites?</li>
+<li>Will the three site filters together flag the sum of the three
+counts? Why or why not?</li>
+<li>The last command counts genotypes with low depth or low GQ. Will the
+mask set exactly these genotypes to missing?</li>
+</ol></div>
+</div>
+</div>
+<div id="accordionSolution1" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution1" aria-expanded="false" aria-controls="collapseSolution1">
+  <h4 class="accordion-header" id="headingSolution1"> Show me the solution </h4>
+</button>
+<div id="collapseSolution1" class="accordion-collapse collapse" data-bs-parent="#accordionSolution1" aria-labelledby="headingSolution1">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>7622
+17821
+6407
+  11564 HG002
+  10934 HG003
+  11167 HG004</code></pre>
+</div>
+<ol style="list-style-type: decimal"><li>
+<code>HighDP</code>: 17,821 sites, against 7,622 with QUAL below 30
+and 6,407 with MQ below 30.</li>
+<li>No. A site can fail more than one filter, and it is counted once in
+each list. Step 3 shows the combinations.</li>
+<li>Yes. Compare with the <code>nMissing</code> counts in Step 3: they
+are the same numbers (HG002 11,564, HG003 10,934, HG004 11,167). The
+count includes the genotypes that were already missing before filtering
+(Episode 5A; 298 in HG002), which have low depth too; the mask sets the
+others to missing. In the workshop’s test run, most of HG002’s newly
+masked genotypes failed on GQ alone (7,639 of 11,266), 1,920 on depth
+alone and 1,707 on both.</li>
+</ol></div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-3-site-level-and-genotype-level-filters">Step 3: Site-level and genotype-level filters<a class="anchor" aria-label="anchor" href="#step-3-site-level-and-genotype-level-filters"></a></h2>
+<hr class="half-width"><p>Apply the filters. The first three commands label sites; the last one
+masks genotypes:</p>
+<!-- kit: interactive 06-filter.sh -->
+<div class="codewrapper sourceCode" id="cb8">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" tabindex="-1" aria-label="code-block-8-1"></a><span class="co"># 2. Site filters add a label to FILTER and keep the record; the genotype filter sets</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1" aria-label="code-block-8-2"></a><span class="co">#    genotypes with DP &lt; 10 or GQ &lt; 20 to missing (./.)</span></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1" aria-label="code-block-8-3"></a><span class="ex">bcftools</span> filter <span class="at">-m+</span> <span class="at">-s</span> LowQual <span class="at">-e</span> <span class="st">'QUAL&lt;30'</span> <span class="at">-Ou</span> <span class="va">$VCF</span> <span class="dt">\</span></span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1" aria-label="code-block-8-4"></a>  <span class="kw">|</span> <span class="ex">bcftools</span> filter <span class="at">-m+</span> <span class="at">-s</span> HighDP <span class="at">-e</span> <span class="st">"INFO/DP&gt;</span><span class="va">$MAX_DP</span><span class="st">"</span> <span class="at">-Ou</span> <span class="dt">\</span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1" aria-label="code-block-8-5"></a>  <span class="kw">|</span> <span class="ex">bcftools</span> filter <span class="at">-m+</span> <span class="at">-s</span> LowMQ <span class="at">-e</span> <span class="st">'INFO/MQ&lt;30'</span> <span class="at">-Ou</span> <span class="dt">\</span></span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1" aria-label="code-block-8-6"></a>  <span class="kw">|</span> <span class="ex">bcftools</span> filter <span class="at">-S</span> . <span class="at">-e</span> <span class="st">'FMT/DP&lt;10 | FMT/GQ&lt;20'</span> <span class="at">-Oz</span> <span class="at">-W</span> <span class="at">-o</span> results/vcf/trio.filtered.vcf.gz</span></code></pre>
+</div>
+<p>What each part does (<a href="https://samtools.github.io/bcftools/bcftools.html#filter" class="external-link">bcftools
+manual, <code>filter</code></a>, and the 1.24 usage text):</p>
+<ul><li>
+<strong><code>-e EXPR</code></strong> names what <em>fails</em>:
+records for which the expression is true. (<code>-i</code> is the
+opposite: it names what passes. Swapping them inverts a filter.)</li>
+<li>
+<strong><code>-s NAME</code></strong> makes a <strong>soft
+filter</strong>: a failing record gets <code>NAME</code> in its FILTER
+column and stays in the file. A record that passes gets
+<code>PASS</code>. Without <code>-s</code> (and without
+<code>-S</code>), failing records would be deleted: a <strong>hard
+filter</strong>, which you cannot undo or inspect later.</li>
+<li>
+<strong><code>-m+</code></strong> adds the new label to labels
+already there (“do not replace but add to existing FILTER”), so a site
+that fails two filters reads <code>LowQual;HighDP</code>.</li>
+<li>The first three filters read <strong>site-level</strong> values:
+<code>QUAL</code>, and <code>INFO/DP</code> and <code>INFO/MQ</code>,
+which describe all reads at the site, from all three samples.</li>
+<li>The last command reads <strong>genotype-level</strong> values:
+<code>FMT/DP</code> and <code>FMT/GQ</code>, one per sample. With
+<code>-S .</code> it sets the genotypes of the failing samples to
+missing (<code>./.</code>), and it has no <code>-s</code>, so it adds no
+FILTER label and removes no record.</li>
+</ul><p>How does an expression on FORMAT fields combine across three samples?
+The bcftools manual says that with a single <code>&amp;</code> or
+<code>|</code>, both conditions are tested within one sample, and the
+expression selects the samples for which it is true;
+<code>&amp;&amp;</code> and <code>||</code> let the conditions be met in
+different samples. So <code>FMT/DP&lt;10 | FMT/GQ&lt;20</code> selects
+each sample whose own depth is below 10 or whose own GQ is below 20, and
+<code>-S .</code> masks exactly those samples’ genotypes. The other
+samples at the same site keep their calls.</p>
+<div id="accordionSpoiler3" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler3" aria-expanded="false" aria-controls="collapseSpoiler3">
+  <h3 class="accordion-header" id="headingSpoiler3">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler3" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler3" aria-labelledby="headingSpoiler3">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Now count the labels in the FILTER column (column 7):</p>
+<!-- kit: interactive 06-filter.sh -->
+<div class="codewrapper sourceCode" id="cb10">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" tabindex="-1" aria-label="code-block-10-1"></a><span class="ex">bcftools</span> view <span class="at">-H</span> results/vcf/trio.filtered.vcf.gz <span class="kw">|</span> <span class="fu">cut</span> <span class="at">-f7</span> <span class="kw">|</span> <span class="fu">sort</span> <span class="kw">|</span> <span class="fu">uniq</span> <span class="at">-c</span></span></code></pre>
+</div>
+<div id="accordionSpoiler4" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler4" aria-expanded="false" aria-controls="collapseSpoiler4">
+  <h3 class="accordion-header" id="headingSpoiler4">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler4" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler4" aria-labelledby="headingSpoiler4">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+  15725 HighDP
+   1118 HighDP;LowMQ
+   3298 LowMQ
+   4818 LowQual
+    813 LowQual;HighDP
+    165 LowQual;HighDP;LowMQ
+   1826 LowQual;LowMQ
+ 158151 PASS</code></pre>
+</div>
+<p>Every record is still there: the counts add up to the number of
+records before filtering (185,914 before, 185,914 after). 158,151
+records PASS; <code>HighDP</code> alone flags 15,725,
+<code>LowQual</code> alone 4,818, <code>LowMQ</code> alone 3,298, and
+3,922 records carry more than one label.</p>
+</div>
+</div>
+</div>
+</div>
+<p>The mask shows up in the per-sample counts. Compare the
+<code>nMissing</code> column (the last one) with the same lines before
+filtering, in Episode 5A:</p>
+<!-- kit: extra 06-filter.sh -->
+<div class="codewrapper sourceCode" id="cb12">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" tabindex="-1" aria-label="code-block-12-1"></a><span class="ex">bcftools</span> stats <span class="at">-s</span> <span class="at">-</span> results/vcf/trio.filtered.vcf.gz <span class="kw">|</span> <span class="fu">grep</span> ^PSC</span></code></pre>
+</div>
+<div id="accordionSpoiler5" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler5" aria-expanded="false" aria-controls="collapseSpoiler5">
+  <h3 class="accordion-header" id="headingSpoiler5">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler5" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler5" aria-labelledby="headingSpoiler5">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+PSC	0	HG002	40969	29704	84671	74303	40072	19006	44.0	4551	0	0	11564
+PSC	0	HG003	43532	27512	85191	73164	39539	18745	43.9	19109	0	0	10934
+PSC	0	HG004	42055	28711	84859	73732	39838	19122	43.5	20257	0	0	11167</code></pre>
+</div>
+<p>Missing genotypes per sample, before and after the mask: HG002 298
+before, 11,564 after; HG003 262 before, 10,934 after; HG004 449 before,
+11,167 after. The other columns of these lines count only genotypes that
+are still called, so they drop by the same amount.</p>
+</div>
+</div>
+</div>
+</div>
+<p>Finally, summarize the records that PASS, as Episode 5A did for all
+records:</p>
+<!-- kit: interactive 06-filter.sh -->
+<div class="codewrapper sourceCode" id="cb14">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb14-1"><a href="#cb14-1" tabindex="-1" aria-label="code-block-14-1"></a><span class="ex">bcftools</span> stats <span class="at">-f</span> PASS <span class="at">-s</span> <span class="at">-</span> results/vcf/trio.filtered.vcf.gz <span class="op">&gt;</span> results/vcf/trio.filtered.stats.txt</span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1" aria-label="code-block-14-2"></a><span class="fu">grep</span> <span class="at">-E</span> <span class="st">'^(SN|TSTV)'</span> results/vcf/trio.filtered.stats.txt</span></code></pre>
+</div>
+<div id="accordionSpoiler6" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler6" aria-expanded="false" aria-controls="collapseSpoiler6">
+  <h3 class="accordion-header" id="headingSpoiler6">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler6" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler6" aria-labelledby="headingSpoiler6">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+SN	0	number of samples:	3
+SN	0	number of records:	158151
+SN	0	number of no-ALTs:	0
+SN	0	number of SNPs:	129329
+SN	0	number of MNPs:	0
+SN	0	number of indels:	28822
+SN	0	number of others:	0
+SN	0	number of multiallelic sites:	0
+SN	0	number of multiallelic SNP sites:	0
+TSTV	0	86429	42900	2.01	86429	42900	2.01</code></pre>
+</div>
+<p>158,151 PASS records, 129,329 SNVs and 28,822 indels. Ts/Tv rises
+from 1.81 for all records to 2.01 for the PASS records.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="section level3">
+<h3 id="what-tstv-tells-us">What Ts/Tv tells us<a class="anchor" aria-label="anchor" href="#what-tstv-tells-us"></a></h3>
+<p>A <strong>transition</strong> exchanges a purine for a purine or a
+pyrimidine for a pyrimidine (A and G, C and T); a
+<strong>transversion</strong> is any other change. Of the three possible
+changes at a base, one is a transition and two are transversions, so
+random errors give a Ts/Tv near 0.5. Real human germline variation has
+more transitions than transversions: in the HG002 benchmark’s own SNVs
+on chromosome 20, Ts/Tv is 2.31 inside the v4.2.1 regions (reference
+run, <code>TRUTH.TOTAL.TiTv_ratio</code>). A call set with many errors
+has a Ts/Tv pulled toward 0.5. That is why filtering raised it from 1.81
+to 2.01: the filters removed relatively more transversions, the
+signature of errors. Ts/Tv works only as a comparison (before and after,
+inside and outside, one sample against another); it does not say how
+many calls are wrong.</p>
+</div>
+<div class="section level3">
+<h3 id="tstv-inside-and-outside-the-benchmark-regions">Ts/Tv inside and outside the benchmark regions<a class="anchor" aria-label="anchor" href="#tstv-inside-and-outside-the-benchmark-regions"></a></h3>
+<p>The last two commands of the session compute Ts/Tv for HG002’s calls
+(raw, before filtering) inside the regions where the v4.2.1 benchmark is
+confident (<code>-T</code> with the BED file), and outside them
+(<code>^</code> negates the regions):</p>
+<!-- kit: interactive 06-filter.sh -->
+<div class="codewrapper sourceCode" id="cb16">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb16-1"><a href="#cb16-1" tabindex="-1" aria-label="code-block-16-1"></a><span class="co"># 3. Ts/Tv of HG002's raw calls inside and outside the benchmark regions (^ means outside)</span></span>
+<span id="cb16-2"><a href="#cb16-2" tabindex="-1" aria-label="code-block-16-2"></a><span class="ex">bcftools</span> view <span class="at">-s</span> HG002 <span class="at">-c</span> 1 <span class="at">-Ou</span> <span class="va">$VCF</span> <span class="kw">|</span> <span class="ex">bcftools</span> stats <span class="at">-T</span> resources/truth/HG002_v4.2.1_chr20.bed <span class="at">-</span> <span class="kw">|</span> <span class="fu">grep</span> ^TSTV</span>
+<span id="cb16-3"><a href="#cb16-3" tabindex="-1" aria-label="code-block-16-3"></a><span class="ex">bcftools</span> view <span class="at">-s</span> HG002 <span class="at">-c</span> 1 <span class="at">-Ou</span> <span class="va">$VCF</span> <span class="kw">|</span> <span class="ex">bcftools</span> stats <span class="at">-T</span> ^resources/truth/HG002_v4.2.1_chr20.bed <span class="at">-</span> <span class="kw">|</span> <span class="fu">grep</span> ^TSTV</span></code></pre>
+</div>
+<div id="accordionSpoiler7" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler7" aria-expanded="false" aria-controls="collapseSpoiler7">
+  <h3 class="accordion-header" id="headingSpoiler7">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler7" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler7" aria-labelledby="headingSpoiler7">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+TSTV	0	50100	21960	2.28	50100	21960	2.28
+[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+TSTV	0	26876	20920	1.28	26876	20920	1.28</code></pre>
+</div>
+<p>Each line gives the numbers of transitions and transversions, then
+their ratio. Inside the benchmark regions it is close to the truth set’s
+2.31; outside, it is far lower (2.28 inside, 1.28 outside).</p>
+</div>
+</div>
+</div>
+</div>
+<p><code>view -s HG002 -c 1</code> keeps HG002’s column and only the
+records where HG002 carries at least one ALT allele (Step 4 explains
+why). The benchmark regions are where NIST is confident it knows the
+truth; outside them lies sequence that NIST could not yet characterize,
+which includes difficult repeats (“Same calls, two benchmarks” below
+returns to this). A low Ts/Tv outside means many of the calls there are
+errors, and that is where a benchmark cannot score them.</p>
+<div id="challenge-do-the-filters-help-where-the-benchmark-cannot-look" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-do-the-filters-help-where-the-benchmark-cannot-look" class="callout-inner">
+<h3 class="callout-title">Challenge: do the filters help where the
+benchmark cannot look?</h3>
+<div class="callout-content">
+<p>Repeat the two commands for HG002’s PASS calls. <code>-f PASS</code>
+keeps only records that pass every filter, and <code>-Ou</code> passes
+the result through the pipe:</p>
+<!-- kit: extra 06-filter.sh -->
+<div class="codewrapper sourceCode" id="cb18">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb18-1"><a href="#cb18-1" tabindex="-1" aria-label="code-block-18-1"></a><span class="ex">bcftools</span> view <span class="at">-s</span> HG002 <span class="at">-c</span> 1 <span class="at">-f</span> PASS <span class="at">-Ou</span> results/vcf/trio.filtered.vcf.gz <span class="kw">|</span> <span class="ex">bcftools</span> stats <span class="at">-T</span> resources/truth/HG002_v4.2.1_chr20.bed <span class="at">-</span> <span class="kw">|</span> <span class="fu">grep</span> ^TSTV</span>
+<span id="cb18-2"><a href="#cb18-2" tabindex="-1" aria-label="code-block-18-2"></a><span class="ex">bcftools</span> view <span class="at">-s</span> HG002 <span class="at">-c</span> 1 <span class="at">-f</span> PASS <span class="at">-Ou</span> results/vcf/trio.filtered.vcf.gz <span class="kw">|</span> <span class="ex">bcftools</span> stats <span class="at">-T</span> ^resources/truth/HG002_v4.2.1_chr20.bed <span class="at">-</span> <span class="kw">|</span> <span class="fu">grep</span> ^TSTV</span></code></pre>
+</div>
+<ol style="list-style-type: decimal"><li>How does Ts/Tv change inside and outside the benchmark regions after
+filtering?</li>
+<li>Why does it change more outside?</li>
+<li>The staged file <code>resources/regions/chr20_centromere.bed</code>
+holds the centromere of chromosome 20. Write the command for HG002’s raw
+calls in the centromere, and predict the result.</li>
+</ol></div>
+</div>
+</div>
+<div id="accordionSolution2" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution2" aria-expanded="false" aria-controls="collapseSolution2">
+  <h4 class="accordion-header" id="headingSolution2"> Show me the solution </h4>
+</button>
+<div id="collapseSolution2" class="accordion-collapse collapse" data-bs-parent="#accordionSolution2" aria-labelledby="headingSolution2">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+TSTV	0	49743	21630	2.30	49743	21630	2.30
+[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+TSTV	0	15059	10458	1.44	15059	10458	1.44</code></pre>
+</div>
+<ol style="list-style-type: decimal"><li><p>Inside, it barely moves (2.28 to 2.30); outside, it rises (1.28
+to 1.44).</p></li>
+<li><p>Inside the benchmark regions few calls are wrong, so there is
+little to remove. Outside, many calls are errors, and the filters remove
+relatively more of them. The benchmark could never show this, because it
+does not score calls outside its regions.</p></li>
+<li>
+<p>Replace the BED file:</p>
+<!-- kit: extra 06-filter.sh -->
+<div class="codewrapper sourceCode" id="cb20">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb20-1"><a href="#cb20-1" tabindex="-1" aria-label="code-block-20-1"></a><span class="ex">bcftools</span> view <span class="at">-s</span> HG002 <span class="at">-c</span> 1 <span class="at">-Ou</span> <span class="va">$VCF</span> <span class="kw">|</span> <span class="ex">bcftools</span> stats <span class="at">-T</span> resources/regions/chr20_centromere.bed <span class="at">-</span> <span class="kw">|</span> <span class="fu">grep</span> ^TSTV</span></code></pre>
+</div>
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+TSTV	0	14759	12135	1.22	14759	12135	1.22</code></pre>
+</div>
+<p>HG002 has 26,894 raw SNVs in the centromere (14,759 transitions plus
+12,135 transversions), 22% of its 119,856 SNVs in 5.6% of the
+chromosome, with Ts/Tv 1.22. In the reference run, 12,390 of them PASS
+after filtering, with Ts/Tv 1.36: still far from 2.3. The filters remove
+many calls there and improve the ratio, but many remaining calls in the
+centromere are likely errors.</p>
+</li>
+</ol></div>
+</div>
+</div>
+</div>
+<p>Type <code>exit</code> to leave the interactive session.</p>
+<div id="short-on-time" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="short-on-time" class="callout-inner">
+<h3 class="callout-title">Short on time?</h3>
+<div class="callout-content">
+<p>If filtering did not finish, copy the filtered calls and the tables
+from the results copy:</p>
+<!-- kit: not-run fallback -->
+<div class="codewrapper sourceCode" id="cb22">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb22-1"><a href="#cb22-1" tabindex="-1" aria-label="code-block-22-1"></a><span class="fu">cp</span> /depot/workshop/data/varcall-workshop_results/results/vcf/trio.filtered.vcf.gz<span class="pp">*</span> <span class="va">$SCRATCH</span>/varcall-workshop/results/vcf/</span>
+<span id="cb22-2"><a href="#cb22-2" tabindex="-1" aria-label="code-block-22-2"></a><span class="fu">cp</span> /depot/workshop/data/varcall-workshop_results/results/vcf/trio.filtered.stats.txt <span class="va">$SCRATCH</span>/varcall-workshop/results/vcf/</span></code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="benchmarking-against-genome-in-a-bottle">Benchmarking against Genome in a Bottle<a class="anchor" aria-label="anchor" href="#benchmarking-against-genome-in-a-bottle"></a></h2>
+<hr class="half-width"><p>To measure accuracy we need the right answer. For HG002, NIST
+publishes <strong>benchmark</strong> variant calls and the
+<strong>confident regions</strong> (a BED file) where it vouches for
+them (<a href="https://www.nist.gov/programs-projects/genome-bottle" class="external-link">Genome in a
+Bottle</a>). Inside those regions, every variant in the benchmark is
+real, and every position not in it is homozygous reference. Outside
+them, the benchmark says nothing.</p>
+<p>Comparing our calls with the benchmark sorts them into:</p>
+<ul><li>
+<strong>true positives (TP)</strong>: in both;</li>
+<li>
+<strong>false positives (FP)</strong>: in our calls, not in the
+benchmark;</li>
+<li>
+<strong>false negatives (FN)</strong>: in the benchmark, missed by
+our calls.</li>
+</ul><p>From these (<a href="https://doi.org/10.1038/s41587-019-0054-x" class="external-link">Krusche et
+al. 2019</a>):</p>
+<ul><li>
+<strong>precision</strong> = TP / (TP + FP): the fraction of our
+calls that are right;</li>
+<li>
+<strong>recall</strong> = TP / (TP + FN): the fraction of real
+variants we found;</li>
+<li>
+<strong>F1</strong> = 2 x precision x recall / (precision + recall):
+one number that is high only if both are.</li>
+</ul><p>A variant called with the wrong genotype (for example
+<code>0/1</code> where the benchmark says <code>1/1</code>) counts as
+both a false positive and a false negative.</p>
+<div class="section level3">
+<h3 id="comparing-variants-is-harder-than-comparing-positions">Comparing variants is harder than comparing positions<a class="anchor" aria-label="anchor" href="#comparing-variants-is-harder-than-comparing-positions"></a></h3>
+<p>The same variant can be written in several ways (Episode 5A),
+especially indels in repeats and nearby variants that can be grouped
+differently. <strong>hap.py</strong> with the <strong>vcfeval</strong>
+engine compares the haplotypes, the sequences the variants produce,
+rather than the text of the records, so equivalent representations match
+(<a href="https://github.com/Illumina/hap.py/blob/master/doc/happy.md" class="external-link">hap.py
+documentation</a>). Normalization still matters for everything that
+compares records by position and allele: counting variants, merging
+files, and tools such as <code>bcftools isec</code>.</p>
+</div>
+</section><section><h2 class="section-heading" id="step-4-evaluate-with-hap-py">Step 4: Evaluate with hap.py<a class="anchor" aria-label="anchor" href="#step-4-evaluate-with-hap-py"></a></h2>
+<hr class="half-width"><p>This is <code>scripts/evaluate.sh</code>:</p>
+<!-- kit: script evaluate.sh -->
+<div class="codewrapper sourceCode" id="cb23">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb23-1"><a href="#cb23-1" tabindex="-1" aria-label="code-block-23-1"></a><span class="co">#!/bin/bash</span></span>
+<span id="cb23-2"><a href="#cb23-2" tabindex="-1" aria-label="code-block-23-2"></a><span class="co">#SBATCH --nodes=1</span></span>
+<span id="cb23-3"><a href="#cb23-3" tabindex="-1" aria-label="code-block-23-3"></a><span class="co">#SBATCH --ntasks=1</span></span>
+<span id="cb23-4"><a href="#cb23-4" tabindex="-1" aria-label="code-block-23-4"></a><span class="co">#SBATCH --cpus-per-task=24</span></span>
+<span id="cb23-5"><a href="#cb23-5" tabindex="-1" aria-label="code-block-23-5"></a><span class="co">#SBATCH --account=rcac</span></span>
+<span id="cb23-6"><a href="#cb23-6" tabindex="-1" aria-label="code-block-23-6"></a><span class="co">#SBATCH --qos=standby</span></span>
+<span id="cb23-7"><a href="#cb23-7" tabindex="-1" aria-label="code-block-23-7"></a><span class="co">#SBATCH --partition=cpu</span></span>
+<span id="cb23-8"><a href="#cb23-8" tabindex="-1" aria-label="code-block-23-8"></a><span class="co">#SBATCH --time=01:00:00</span></span>
+<span id="cb23-9"><a href="#cb23-9" tabindex="-1" aria-label="code-block-23-9"></a><span class="co">#SBATCH --job-name=evaluate</span></span>
+<span id="cb23-10"><a href="#cb23-10" tabindex="-1" aria-label="code-block-23-10"></a><span class="co">#SBATCH --array=1-4</span></span>
+<span id="cb23-11"><a href="#cb23-11" tabindex="-1" aria-label="code-block-23-11"></a><span class="co">#SBATCH --output=cluster-%x.%j.out</span></span>
+<span id="cb23-12"><a href="#cb23-12" tabindex="-1" aria-label="code-block-23-12"></a><span class="co">#SBATCH --error=cluster-%x.%j.err</span></span>
+<span id="cb23-13"><a href="#cb23-13" tabindex="-1" aria-label="code-block-23-13"></a></span>
+<span id="cb23-14"><a href="#cb23-14" tabindex="-1" aria-label="code-block-23-14"></a><span class="ex">module</span> load biocontainers</span>
+<span id="cb23-15"><a href="#cb23-15" tabindex="-1" aria-label="code-block-23-15"></a><span class="ex">module</span> load bcftools/1.24</span>
+<span id="cb23-16"><a href="#cb23-16" tabindex="-1" aria-label="code-block-23-16"></a><span class="ex">module</span> load hap.py/0.3.9</span>
+<span id="cb23-17"><a href="#cb23-17" tabindex="-1" aria-label="code-block-23-17"></a></span>
+<span id="cb23-18"><a href="#cb23-18" tabindex="-1" aria-label="code-block-23-18"></a><span class="co"># hap.py runs the vcfeval engine of RTG Tools (Java). Without a cap, the same task peaked between</span></span>
+<span id="cb23-19"><a href="#cb23-19" tabindex="-1" aria-label="code-block-23-19"></a><span class="co"># 1 and 39 GiB in different runs; RTG_MEM sets the memory that RTG Tools may use.</span></span>
+<span id="cb23-20"><a href="#cb23-20" tabindex="-1" aria-label="code-block-23-20"></a><span class="bu">export</span> <span class="va">RTG_MEM</span><span class="op">=</span>8g</span>
+<span id="cb23-21"><a href="#cb23-21" tabindex="-1" aria-label="code-block-23-21"></a></span>
+<span id="cb23-22"><a href="#cb23-22" tabindex="-1" aria-label="code-block-23-22"></a><span class="va">WORK</span><span class="op">=</span><span class="va">$SCRATCH</span>/varcall-workshop</span>
+<span id="cb23-23"><a href="#cb23-23" tabindex="-1" aria-label="code-block-23-23"></a><span class="va">REF</span><span class="op">=</span><span class="va">$WORK</span>/ref/GRCh38_no_alt.fa</span>
+<span id="cb23-24"><a href="#cb23-24" tabindex="-1" aria-label="code-block-23-24"></a><span class="va">SDF</span><span class="op">=</span><span class="va">$WORK</span>/ref/GRCh38_no_alt.sdf</span>
+<span id="cb23-25"><a href="#cb23-25" tabindex="-1" aria-label="code-block-23-25"></a><span class="va">TRUTHDIR</span><span class="op">=</span><span class="va">$WORK</span>/resources/truth</span>
+<span id="cb23-26"><a href="#cb23-26" tabindex="-1" aria-label="code-block-23-26"></a><span class="va">OUTDIR</span><span class="op">=</span><span class="va">$WORK</span>/results/eval</span>
+<span id="cb23-27"><a href="#cb23-27" tabindex="-1" aria-label="code-block-23-27"></a><span class="fu">mkdir</span> <span class="at">-p</span> <span class="va">$OUTDIR</span></span>
+<span id="cb23-28"><a href="#cb23-28" tabindex="-1" aria-label="code-block-23-28"></a></span>
+<span id="cb23-29"><a href="#cb23-29" tabindex="-1" aria-label="code-block-23-29"></a><span class="co"># One sample and truth set per array task: task N reads line N+1 of truth_sets.tsv</span></span>
+<span id="cb23-30"><a href="#cb23-30" tabindex="-1" aria-label="code-block-23-30"></a><span class="va">LINE</span><span class="op">=</span><span class="va">$(</span><span class="fu">sed</span> <span class="at">-n</span> <span class="st">"</span><span class="va">$((SLURM_ARRAY_TASK_ID</span> <span class="op">+</span> <span class="dv">1</span><span class="va">))</span><span class="st">p"</span> <span class="va">$TRUTHDIR</span>/truth_sets.tsv<span class="va">)</span></span>
+<span id="cb23-31"><a href="#cb23-31" tabindex="-1" aria-label="code-block-23-31"></a><span class="va">IFS</span><span class="op">=</span><span class="st">$'</span><span class="dt">\t</span><span class="st">'</span> <span class="bu">read</span> <span class="at">-r</span> <span class="va">SAMPLE</span> <span class="va">TRUTH</span> <span class="va">TRUTH_VCF</span> <span class="va">TRUTH_BED</span> <span class="op">&lt;&lt;&lt;</span> <span class="st">"</span><span class="va">$LINE</span><span class="st">"</span></span>
+<span id="cb23-32"><a href="#cb23-32" tabindex="-1" aria-label="code-block-23-32"></a></span>
+<span id="cb23-33"><a href="#cb23-33" tabindex="-1" aria-label="code-block-23-33"></a><span class="co"># Evaluate the calls before and after filtering</span></span>
+<span id="cb23-34"><a href="#cb23-34" tabindex="-1" aria-label="code-block-23-34"></a><span class="cf">for</span> CALLS <span class="kw">in</span> norm filtered<span class="kw">;</span> <span class="cf">do</span></span>
+<span id="cb23-35"><a href="#cb23-35" tabindex="-1" aria-label="code-block-23-35"></a>    <span class="co"># hap.py compares one sample: keep that sample's column and the sites where it has an ALT allele.</span></span>
+<span id="cb23-36"><a href="#cb23-36" tabindex="-1" aria-label="code-block-23-36"></a>    <span class="co"># The file name includes the truth set: two tasks evaluate HG002 at the same time.</span></span>
+<span id="cb23-37"><a href="#cb23-37" tabindex="-1" aria-label="code-block-23-37"></a>    <span class="ex">bcftools</span> view <span class="at">-s</span> <span class="va">$SAMPLE</span> <span class="at">-c</span> 1 <span class="at">-Oz</span> <span class="at">--write-index</span><span class="op">=</span>tbi <span class="dt">\</span></span>
+<span id="cb23-38"><a href="#cb23-38" tabindex="-1" aria-label="code-block-23-38"></a>        <span class="at">-o</span> <span class="va">$OUTDIR</span>/<span class="va">$SAMPLE</span>.<span class="va">$TRUTH</span>.<span class="va">$CALLS</span>.calls.vcf.gz <span class="va">$WORK</span>/results/vcf/trio.<span class="va">$CALLS</span>.vcf.gz</span>
+<span id="cb23-39"><a href="#cb23-39" tabindex="-1" aria-label="code-block-23-39"></a></span>
+<span id="cb23-40"><a href="#cb23-40" tabindex="-1" aria-label="code-block-23-40"></a>    <span class="co"># 24 cores for memory (about 1.9 GB each), 16 threads</span></span>
+<span id="cb23-41"><a href="#cb23-41" tabindex="-1" aria-label="code-block-23-41"></a>    <span class="ex">hap.py</span> <span class="va">$TRUTHDIR</span>/<span class="va">$TRUTH_VCF</span> <span class="va">$OUTDIR</span>/<span class="va">$SAMPLE</span>.<span class="va">$TRUTH</span>.<span class="va">$CALLS</span>.calls.vcf.gz <span class="dt">\</span></span>
+<span id="cb23-42"><a href="#cb23-42" tabindex="-1" aria-label="code-block-23-42"></a>        <span class="at">-f</span> <span class="va">$TRUTHDIR</span>/<span class="va">$TRUTH_BED</span> <span class="dt">\</span></span>
+<span id="cb23-43"><a href="#cb23-43" tabindex="-1" aria-label="code-block-23-43"></a>        <span class="at">-r</span> <span class="va">$REF</span> <span class="dt">\</span></span>
+<span id="cb23-44"><a href="#cb23-44" tabindex="-1" aria-label="code-block-23-44"></a>        <span class="at">-o</span> <span class="va">$OUTDIR</span>/<span class="va">$SAMPLE</span>.<span class="va">$TRUTH</span>.<span class="va">$CALLS</span> <span class="dt">\</span></span>
+<span id="cb23-45"><a href="#cb23-45" tabindex="-1" aria-label="code-block-23-45"></a>        <span class="at">-l</span> chr20 <span class="dt">\</span></span>
+<span id="cb23-46"><a href="#cb23-46" tabindex="-1" aria-label="code-block-23-46"></a>        <span class="at">--roc</span> QUAL <span class="dt">\</span></span>
+<span id="cb23-47"><a href="#cb23-47" tabindex="-1" aria-label="code-block-23-47"></a>        <span class="at">--engine</span> vcfeval <span class="dt">\</span></span>
+<span id="cb23-48"><a href="#cb23-48" tabindex="-1" aria-label="code-block-23-48"></a>        <span class="at">--engine-vcfeval-template</span> <span class="va">$SDF</span> <span class="dt">\</span></span>
+<span id="cb23-49"><a href="#cb23-49" tabindex="-1" aria-label="code-block-23-49"></a>        <span class="at">--threads</span> 16</span>
+<span id="cb23-50"><a href="#cb23-50" tabindex="-1" aria-label="code-block-23-50"></a><span class="cf">done</span></span></code></pre>
+</div>
+<p>The four array tasks are the four lines of
+<code>resources/truth/truth_sets.tsv</code>: task 1 is HG002 against
+benchmark v5.0q (NIST’s current release for HG002), task 2 HG002 against
+v4.2.1 (for comparison), and tasks 3 and 4 HG003 and HG004 against
+v4.2.1. Each task evaluates the calls twice, before filtering
+(<code>trio.norm</code>) and after (<code>trio.filtered</code>). In the
+workshop’s test runs each task took 1.5 to 2.5 minutes, plus the time
+waiting in the queue.</p>
+<p>In the workshop, submit task 1 only. <code>--array=1</code> on the
+command line replaces the <code>--array=1-4</code> of the script:</p>
+<!-- kit: interactive 06-evaluate-summary.sh -->
+<div class="codewrapper sourceCode" id="cb24">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb24-1"><a href="#cb24-1" tabindex="-1" aria-label="code-block-24-1"></a><span class="bu">cd</span> <span class="va">$SCRATCH</span>/varcall-workshop/scripts</span>
+<span id="cb24-2"><a href="#cb24-2" tabindex="-1" aria-label="code-block-24-2"></a><span class="ex">sbatch</span> <span class="at">--array</span><span class="op">=</span>1 evaluate.sh</span></code></pre>
+</div>
+<p>Then copy the results of the other three tasks from the completed
+results, so that Step 5 can compare all four:</p>
+<!-- kit: not-run fallback -->
+<div class="codewrapper sourceCode" id="cb25">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb25-1"><a href="#cb25-1" tabindex="-1" aria-label="code-block-25-1"></a><span class="fu">cp</span> /depot/workshop/data/varcall-workshop_results/results/eval/HG002.v4.2.1.<span class="pp">*</span> <span class="va">$SCRATCH</span>/varcall-workshop/results/eval/</span>
+<span id="cb25-2"><a href="#cb25-2" tabindex="-1" aria-label="code-block-25-2"></a><span class="fu">cp</span> /depot/workshop/data/varcall-workshop_results/results/eval/HG003.v4.2.1.<span class="pp">*</span> <span class="va">$SCRATCH</span>/varcall-workshop/results/eval/</span>
+<span id="cb25-3"><a href="#cb25-3" tabindex="-1" aria-label="code-block-25-3"></a><span class="fu">cp</span> /depot/workshop/data/varcall-workshop_results/results/eval/HG004.v4.2.1.<span class="pp">*</span> <span class="va">$SCRATCH</span>/varcall-workshop/results/eval/</span></code></pre>
+</div>
+<p>Working on your own, submit all four tasks instead:</p>
+<!-- kit: submit evaluate.sh -->
+<div class="codewrapper sourceCode" id="cb26">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb26-1"><a href="#cb26-1" tabindex="-1" aria-label="code-block-26-1"></a><span class="bu">cd</span> <span class="va">$SCRATCH</span>/varcall-workshop/scripts</span>
+<span id="cb26-2"><a href="#cb26-2" tabindex="-1" aria-label="code-block-26-2"></a><span class="ex">sbatch</span> evaluate.sh</span></code></pre>
+</div>
+<p>What the commands do:</p>
+<ul><li>
+<strong><code>bcftools view -s $SAMPLE -c 1</code></strong>: hap.py
+compares one sample with one benchmark, so we give it one sample’s
+column. <code>-c 1</code> keeps only records where that sample carries
+at least one ALT allele; the trio file also has records where this
+sample is <code>0/0</code> or masked (<code>./.</code>), which are not
+calls for this sample.</li>
+<li>
+<strong><code>-f $TRUTH_BED</code></strong>: the confident regions.
+hap.py counts query calls outside them as <strong>UNK</strong> (not
+assessed), not as false positives, so precision says nothing about calls
+outside the regions. Without <code>-f</code>, every call outside the
+benchmark’s knowledge would count against us. For example, HG002’s
+<code>1/1</code> call at chr20:29,070,822 in the centromere (FILTER
+<code>HighDP;LowMQ</code>) lies outside both HG002 benchmark regions, so
+in the evaluation of the unfiltered calls hap.py counts it as UNK,
+whether it is real or not.</li>
+<li>
+<strong><code>-l chr20</code></strong>: compare chromosome 20 only.
+hap.py otherwise processes chr1-22, X and Y; with a whole-genome
+benchmark, every benchmark variant on another chromosome would become a
+false negative.</li>
+<li>
+<strong><code>--engine vcfeval --engine-vcfeval-template $SDF</code></strong>:
+the haplotype-aware comparison, with the reference in the format it
+needs (<code>ref/GRCh38_no_alt.sdf</code>, prepared for the
+workshop).</li>
+<li>
+<strong><code>--roc QUAL</code></strong>: also compute precision and
+recall at every QUAL threshold (Step 6).</li>
+<li>
+<strong>24 cores, 16 threads</strong>: hap.py’s memory use varies
+from run to run. In the workshop’s test runs the same task peaked
+anywhere between 1 and 39 GiB, more than the memory that comes with 16
+cores, so the script requests 24 cores for their memory and runs 16
+threads. The HG002 v5.0q task (task 1) peaked at 4.4 GiB in the latest
+test run and never above 10.2 GiB in five runs. The script also sets
+<code>RTG_MEM</code>, the memory setting of RTG Tools, whose vcfeval
+engine hap.py runs; whether it limits the peak has not been
+confirmed.</li>
+</ul><div id="short-on-time-1" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="short-on-time-1" class="callout-inner">
+<h3 class="callout-title">Short on time?</h3>
+<div class="callout-content">
+<p>If your evaluation job fails or is still waiting when we reach Step
+5, copy the hap.py summaries and ROC tables from the results copy:</p>
+<!-- kit: not-run fallback -->
+<div class="codewrapper sourceCode" id="cb27">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb27-1"><a href="#cb27-1" tabindex="-1" aria-label="code-block-27-1"></a><span class="fu">cp</span> /depot/workshop/data/varcall-workshop_results/results/eval/<span class="pp">*</span>.summary.csv <span class="va">$SCRATCH</span>/varcall-workshop/results/eval/</span>
+<span id="cb27-2"><a href="#cb27-2" tabindex="-1" aria-label="code-block-27-2"></a><span class="fu">cp</span> /depot/workshop/data/varcall-workshop_results/results/eval/<span class="pp">*</span>.roc.Locations.<span class="pp">*</span>.csv.gz <span class="va">$SCRATCH</span>/varcall-workshop/results/eval/</span></code></pre>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-5-read-the-hap-py-summary">Step 5: Read the hap.py summary<a class="anchor" aria-label="anchor" href="#step-5-read-the-hap-py-summary"></a></h2>
+<hr class="half-width"><p>When <code>squeue -u $USER</code> no longer lists the
+<code>evaluate</code> job, look at the results on the login node.
+<code>column</code> aligns the comma-separated fields, and
+<code>cut -c1-120</code> keeps the lines on screen:</p>
+<!-- kit: interactive 06-evaluate-summary.sh -->
+<div class="codewrapper sourceCode" id="cb28">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb28-1"><a href="#cb28-1" tabindex="-1" aria-label="code-block-28-1"></a><span class="bu">cd</span> <span class="va">$SCRATCH</span>/varcall-workshop</span>
+<span id="cb28-2"><a href="#cb28-2" tabindex="-1" aria-label="code-block-28-2"></a><span class="fu">ls</span> results/eval/<span class="pp">*</span>.summary.csv</span>
+<span id="cb28-3"><a href="#cb28-3" tabindex="-1" aria-label="code-block-28-3"></a><span class="ex">column</span> <span class="at">-s,</span> <span class="at">-t</span> results/eval/HG002.v5.0q.norm.summary.csv <span class="kw">|</span> <span class="fu">cut</span> <span class="at">-c1-120</span></span></code></pre>
+</div>
+<div id="accordionSpoiler8" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler8" aria-expanded="false" aria-controls="collapseSpoiler8">
+  <h3 class="accordion-header" id="headingSpoiler8">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler8" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler8" aria-labelledby="headingSpoiler8">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>results/eval/HG002.v4.2.1.filtered.summary.csv
+results/eval/HG002.v4.2.1.norm.summary.csv
+results/eval/HG002.v5.0q.filtered.summary.csv
+results/eval/HG002.v5.0q.norm.summary.csv
+results/eval/HG003.v4.2.1.filtered.summary.csv
+results/eval/HG003.v4.2.1.norm.summary.csv
+results/eval/HG004.v4.2.1.filtered.summary.csv
+results/eval/HG004.v4.2.1.norm.summary.csv
+Type   Filter  TRUTH.TOTAL  TRUTH.TP  TRUTH.FN  QUERY.TOTAL  QUERY.FP  QUERY.UNK  FP.gt  METRIC.Recall  METRIC.Precision
+INDEL  ALL     18173        15261     2912      20265        2245      2731       1737   0.839762       0.871963
+INDEL  PASS    18173        15261     2912      20265        2245      2731       1737   0.839762       0.871963
+SNP    ALL     75854        74963     891       119754       1570      43202      286    0.988254       0.979491
+SNP    PASS    75854        74963     891       119754       1570      43202      286    0.988254       0.979491</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Each row is one variant type (<code>INDEL</code>, <code>SNP</code>)
+and one set of calls: <code>ALL</code> counts every call,
+<code>PASS</code> only calls with <code>PASS</code> in FILTER. Before
+filtering there is no FILTER label, so the two rows are the same. The
+columns (<a href="https://github.com/Illumina/hap.py/blob/master/doc/happy.md" class="external-link">hap.py
+documentation</a>):</p>
+<table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr><th>Column</th>
+<th>Meaning</th>
+</tr></thead><tbody><tr><td><code>TRUTH.TOTAL</code></td>
+<td>benchmark variants in the confident regions</td>
+</tr><tr><td>
+<code>TRUTH.TP</code>, <code>TRUTH.FN</code>
+</td>
+<td>benchmark variants we found, and missed</td>
+</tr><tr><td><code>QUERY.TOTAL</code></td>
+<td>our calls for HG002</td>
+</tr><tr><td><code>QUERY.FP</code></td>
+<td>our calls inside the confident regions that the benchmark does not
+support</td>
+</tr><tr><td><code>QUERY.UNK</code></td>
+<td>our calls outside the confident regions: not assessed</td>
+</tr><tr><td><code>FP.gt</code></td>
+<td>false positives where the variant is right but the genotype is
+wrong</td>
+</tr><tr><td>
+<code>METRIC.Recall</code>, <code>METRIC.Precision</code>
+</td>
+<td>as defined above</td>
+</tr></tbody></table><p><code>METRIC.F1_Score</code> is further to the right, past the 120
+characters shown. For the unfiltered calls against v5.0q, SNV recall and
+precision are 0.9883 and 0.9795, and indel 0.8398 and 0.8720: indels are
+much harder.</p>
+<p>Now the filtered calls:</p>
+<!-- kit: interactive 06-evaluate-summary.sh -->
+<div class="codewrapper sourceCode" id="cb30">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb30-1"><a href="#cb30-1" tabindex="-1" aria-label="code-block-30-1"></a><span class="ex">column</span> <span class="at">-s,</span> <span class="at">-t</span> results/eval/HG002.v5.0q.filtered.summary.csv <span class="kw">|</span> <span class="fu">cut</span> <span class="at">-c1-120</span></span></code></pre>
+</div>
+<div id="accordionSpoiler9" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler9" aria-expanded="false" aria-controls="collapseSpoiler9">
+  <h3 class="accordion-header" id="headingSpoiler9">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler9" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler9" aria-labelledby="headingSpoiler9">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>Type   Filter  TRUTH.TOTAL  TRUTH.TP  TRUTH.FN  QUERY.TOTAL  QUERY.FP  QUERY.UNK  FP.gt  METRIC.Recall  METRIC.Precision
+INDEL  ALL     18173        14248     3925      17615        1133      2213       782    0.78402        0.926438
+INDEL  PASS    18173        14161     4012      16823        1060      1575       768    0.779233       0.930483
+SNP    ALL     75854        74596     1258      114284       1065      38614      173    0.983416       0.985926
+SNP    PASS    75854        74383     1471      96848        848       21609      159    0.980607       0.988729</code></pre>
+</div>
+<p>The <code>PASS</code> rows are the frozen values of this workshop:
+SNV recall 0.980607 and precision 0.988729, indel recall 0.779233 and
+precision 0.930483.</p>
+</div>
+</div>
+</div>
+</div>
+<p>The figure puts both summaries and the ROC tables of Step 6 on one
+plot. Each curve shows the unfiltered calls filtered at every possible
+QUAL threshold: high thresholds sit at the left (few calls kept, low
+recall), no threshold at the right end. The two points are the
+<code>PASS</code> rows above.</p>
+<figure style="text-align: center"><img src="fig/06/pr_hg002_v5.0q.png" alt="Line plot of precision (y axis, 0.868 to 1.0) against recall (x axis, 0 to 1). A solid blue SNV curve runs almost flat near precision 0.995 to 1.0 from recall 0 to about 0.97, then drops steeply to 0.979 at recall 0.988; a blue circle marks the SNV PASS point at recall 0.981, precision 0.989. A dashed red indel curve starts near precision 0.998 at recall 0.06, falls to about 0.935 by recall 0.16, wanders between 0.90 and 0.92 up to recall 0.75, and drops to 0.872 at recall 0.84; a red square marks the indel PASS point at recall 0.779, precision 0.930, above the dashed curve." class="figure mx-auto d-block"><figcaption>
+Precision against recall for HG002’s calls against benchmark v5.0q,
+chromosome 20, from the workshop’s test run (drawn by the run kit from
+the hap.py ROC tables and summary; not a learner command). The precision
+axis starts at 0.868, not 0. SNVs keep precision above 0.98 almost all
+the way to recall 0.98. Indels reach recall 0.84 at best, and their
+precision falls below 0.90 as recall rises. The indel PASS point (recall
+0.779, precision 0.930) lies above the indel curve: the genotype mask
+and site filters give higher precision at that recall than any QUAL
+threshold alone.
+</figcaption></figure><div class="section level3">
+<h3 id="two-filters-two-effects">Two filters, two effects<a class="anchor" aria-label="anchor" href="#two-filters-two-effects"></a></h3>
+<p>The filtered file differs from the unfiltered one in two ways, and
+the summary separates them:</p>
+<ul><li>the <strong><code>ALL</code> row of the filtered file</strong>
+counts every record, whatever its FILTER label, but with the genotype
+mask applied (masked genotypes are gone, because <code>-c 1</code> drops
+<code>./.</code>);</li>
+<li>the <strong><code>PASS</code> row</strong> adds the site
+filters.</li>
+</ul><p>So unfiltered <code>ALL</code> against filtered <code>ALL</code>
+shows the genotype mask alone, and filtered <code>ALL</code> against
+filtered <code>PASS</code> shows the site filters. The reference run,
+against v4.2.1 (comparison benchmark; <a href="https://github.com/rcac-bioinformatics/variant-calling/blob/main/maintenance/plan/reference-run.md" class="external-link">reference-run
+memo</a>, section 4):</p>
+<table class="table"><colgroup><col width="25%"><col width="25%"><col width="25%"><col width="25%"></colgroup><thead><tr><th>Type</th>
+<th>Raw: recall / precision</th>
+<th>After the genotype mask</th>
+<th>After the site filters too</th>
+</tr></thead><tbody><tr><td>SNV</td>
+<td>0.9948 / 0.9862</td>
+<td>0.9931 / 0.9891</td>
+<td>0.9907 / 0.9914</td>
+</tr><tr><td>Indel</td>
+<td>0.9432 / 0.9465</td>
+<td>0.9080 / 0.9712</td>
+<td>0.9063 / 0.9727</td>
+</tr></tbody></table><p>For SNVs, both steps trade a little recall for precision. For indels,
+the genotype mask causes almost all of the recall loss and most of the
+precision gain: indel genotypes with GQ below 20 are common, and when
+the mask sets a real but uncertain genotype to missing, a true positive
+becomes a false negative. That is the <strong>precision-recall
+trade-off</strong>: any threshold that removes more wrong calls also
+removes some right ones, and where the balance should sit depends on
+what the calls are for. A screen for candidate variants that a person
+will check by hand can favor recall; a call set that goes straight into
+a report needs precision.</p>
+<div id="challenge-the-trade-off-in-your-own-summary" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-the-trade-off-in-your-own-summary" class="callout-inner">
+<h3 class="callout-title">Challenge: the trade-off in your own
+summary</h3>
+<div class="callout-content">
+<p>Using the two v5.0q summaries you printed (unfiltered and
+filtered):</p>
+<ol style="list-style-type: decimal"><li>For indels, write down recall and precision for unfiltered
+<code>ALL</code>, filtered <code>ALL</code> and filtered
+<code>PASS</code>. Which step costs the most recall?</li>
+<li>Look at <code>FP.gt</code> for indels and SNVs in the filtered
+<code>PASS</code> rows. What fraction of the false positives are
+genotype errors in each type?</li>
+<li>Why can a QUAL threshold do little about those genotype errors?</li>
+</ol></div>
+</div>
+</div>
+<div id="accordionSolution3" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution3" aria-expanded="false" aria-controls="collapseSolution3">
+  <h4 class="accordion-header" id="headingSolution3"> Show me the solution </h4>
+</button>
+<div id="collapseSolution3" class="accordion-collapse collapse" data-bs-parent="#accordionSolution3" aria-labelledby="headingSolution3">
+<div class="accordion-body">
+<ol style="list-style-type: decimal"><li>Indels against v5.0q, recall / precision: unfiltered
+<code>ALL</code> 0.8398 / 0.8720; filtered <code>ALL</code> (genotype
+mask) 0.7840 / 0.9264; filtered <code>PASS</code> (mask and site
+filters) 0.7792 / 0.9305. The mask costs 0.056 of recall, the site
+filters 0.005 more. As against v4.2.1, the genotype mask causes most of
+the indel recall loss.</li>
+<li>Indels: 768 of 1,060 false positives are genotype errors (72%).
+SNVs: 159 of 848 (19%). Most indel false positives are real variant
+sites called with the wrong genotype; most SNV false positives are
+not.</li>
+<li>QUAL measures how sure the caller is that the site is variant at
+all. A genotype error is at a real variant site, which can have a high
+QUAL; only the genotype is wrong. QUAL cannot tell the two genotypes
+apart, so a QUAL threshold removes these false positives no faster than
+the true positives around them.</li>
+</ol></div>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-6-predict-then-test-a-threshold">Step 6: Predict, then test a threshold<a class="anchor" aria-label="anchor" href="#step-6-predict-then-test-a-threshold"></a></h2>
+<hr class="half-width"><p><code>--roc QUAL</code> made hap.py compute recall and precision at
+every QUAL value of the unfiltered calls, as if we had filtered at that
+value. The tables are in
+<code>results/eval/HG002.v5.0q.norm.roc.Locations.SNP.csv.gz</code> and
+<code>...INDEL.csv.gz</code>.</p>
+<div id="challenge-predict-then-test-a-qual-threshold" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-predict-then-test-a-qual-threshold" class="callout-inner">
+<h3 class="callout-title">Challenge: predict, then test a QUAL
+threshold</h3>
+<div class="callout-content">
+<p>Our filter flags QUAL below 30. Suppose we raised the threshold to
+225.</p>
+<ol style="list-style-type: decimal"><li>Predict, before looking: what happens to SNV recall and precision?
+To indel recall and precision? Which type changes more?</li>
+<li>Test the prediction. Each command prints the rows of the ROC table
+at the first QUAL values at or above 30 and 225, with the columns QUAL,
+recall, precision and F1:</li>
+</ol><!-- kit: extra 06-evaluate-summary.sh --><div class="codewrapper sourceCode" id="cb32">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb32-1"><a href="#cb32-1" tabindex="-1" aria-label="code-block-32-1"></a><span class="fu">zcat</span> results/eval/HG002.v5.0q.norm.roc.Locations.SNP.csv.gz <span class="kw">|</span> <span class="fu">tail</span> <span class="at">-n</span> +2 <span class="kw">|</span> <span class="fu">cut</span> <span class="at">-d,</span> <span class="at">-f7,8,9,11</span> <span class="kw">|</span> <span class="fu">sort</span> <span class="at">-t,</span> <span class="at">-k1,1g</span> <span class="kw">|</span> <span class="fu">awk</span> <span class="at">-F,</span> <span class="st">'(30 &lt;= $1 &amp;&amp; !a++) || (225 &lt;= $1 &amp;&amp; !b++)'</span></span>
+<span id="cb32-2"><a href="#cb32-2" tabindex="-1" aria-label="code-block-32-2"></a><span class="fu">zcat</span> results/eval/HG002.v5.0q.norm.roc.Locations.INDEL.csv.gz <span class="kw">|</span> <span class="fu">tail</span> <span class="at">-n</span> +2 <span class="kw">|</span> <span class="fu">cut</span> <span class="at">-d,</span> <span class="at">-f7,8,9,11</span> <span class="kw">|</span> <span class="fu">sort</span> <span class="at">-t,</span> <span class="at">-k1,1g</span> <span class="kw">|</span> <span class="fu">awk</span> <span class="at">-F,</span> <span class="st">'(30 &lt;= $1 &amp;&amp; !a++) || (225 &lt;= $1 &amp;&amp; !b++)'</span></span></code></pre>
+</div>
+</div>
+</div>
+</div>
+<div id="accordionSolution4" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution4" aria-expanded="false" aria-controls="collapseSolution4">
+  <h4 class="accordion-header" id="headingSolution4"> Show me the solution </h4>
+</button>
+<div id="collapseSolution4" class="accordion-collapse collapse" data-bs-parent="#accordionSolution4" aria-labelledby="headingSolution4">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>30.481899,0.987067,0.984282,0.985673
+225.110992,0.977404,0.993196,0.985237
+30.222500,0.834095,0.877202,0.855105
+225.104996,0.748638,0.902337,0.818333</code></pre>
+</div>
+<p>The first two lines are SNVs, the last two indels. From QUAL 30 to
+225 against v5.0q, SNV recall falls from 0.9871 to 0.9774 and precision
+rises from 0.9843 to 0.9932; indel recall falls from 0.8341 to 0.7486
+and precision rises from 0.8772 to 0.9023. Indel recall falls much more.
+Indel precision rises more in absolute terms, but look at the wrong
+calls, 1 minus precision: for SNVs they fall from 1.6% to 0.7% of calls,
+by more than half; for indels from 12.3% to 9.8%, by about a fifth. Most
+indel false positives are genotype errors, which QUAL does not separate
+(previous challenge). Against v4.2.1 the reference run shows the same
+pattern: from QUAL 30 to 225, SNV recall 0.9944 to 0.9906 and precision
+0.9889 to 0.9949; indel recall 0.9425 to 0.9074, precision 0.9478 to
+0.9511.</p>
+</div>
+</div>
+</div>
+</div>
+<div id="do-not-tune-thresholds-on-the-benchmark" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="do-not-tune-thresholds-on-the-benchmark" class="callout-inner">
+<h3 class="callout-title">Do not tune thresholds on the benchmark</h3>
+<div class="callout-content">
+<p>The ROC table makes it tempting to pick the QUAL with the best F1. In
+your SNV table against v5.0q, F1 peaks at QUAL 117.7 (F1 0.9869).
+Against v4.2.1, the same calls peak at about QUAL 156-160 (F1 0.9931 in
+the reference run). The best threshold moved because the test set
+changed, not the calls. Choosing it for that reason would be
+<strong>tuning on the test set</strong>: the threshold would be fitted
+to this benchmark, these samples and this region, and the scores would
+then overstate how well it works anywhere else. Choose thresholds from
+the call set’s own distributions and from conventions, as in Step 2, and
+use the benchmark only to measure the result. On your own data there
+will usually be no benchmark at all.</p>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="same-calls-two-benchmarks">Same calls, two benchmarks<a class="anchor" aria-label="anchor" href="#same-calls-two-benchmarks"></a></h2>
+<hr class="half-width"><p>Look at the HG002 summary against the older benchmark:</p>
+<!-- kit: interactive 06-evaluate-summary.sh -->
+<div class="codewrapper sourceCode" id="cb34">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb34-1"><a href="#cb34-1" tabindex="-1" aria-label="code-block-34-1"></a><span class="ex">column</span> <span class="at">-s,</span> <span class="at">-t</span> results/eval/HG002.v4.2.1.filtered.summary.csv <span class="kw">|</span> <span class="fu">cut</span> <span class="at">-c1-120</span></span></code></pre>
+</div>
+<div id="accordionSpoiler10" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler10" aria-expanded="false" aria-controls="collapseSpoiler10">
+  <h3 class="accordion-header" id="headingSpoiler10">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler10" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler10" aria-labelledby="headingSpoiler10">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>Type   Filter  TRUTH.TOTAL  TRUTH.TP  TRUTH.FN  QUERY.TOTAL  QUERY.FP  QUERY.UNK  FP.gt  METRIC.Recall  METRIC.Precision
+INDEL  ALL     11256        10221     1035      17615        302       7123       241    0.908049       0.971216
+INDEL  PASS    11256        10201     1055      16823        286       6364       239    0.906272       0.972655
+SNP    ALL     71333        70839     494       114284       778       42598      40     0.993075       0.989147
+SNP    PASS    71333        70671     662       96848        613       25496      32     0.99072        0.991409</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>The calls are identical, but PASS indel recall is 0.7792 against
+v5.0q and 0.9063 against v4.2.1, and SNV recall 0.9806 against 0.9907.
+The benchmark defines the score. NIST built v5.0q from a complete
+diploid assembly of HG002 (the T2T HG002 Q100 assembly), which “allows
+for the characterization and inclusion of challenging genomic regions
+and variant types previously excluded from GIAB benchmark sets”,
+including segmental duplications and large tandem repeats (<a href="https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/AshkenazimTrio/HG002_NA24385_son/latest/NIST_HG002_v5.0q_variant-benchmarksets_README.md" class="external-link">v5.0q
+README</a>). On chromosome 20 its confident regions cover 58.1 Mb
+against 56.9 Mb, and it holds 6% more SNVs and 61% more indels than
+v4.2.1 (reference-run memo). The variants it adds sit in harder
+sequence, where short reads struggle, so recall falls. The README also
+says that some regions in v4.2.1 are excluded from v5.0q, for example
+regions inside inversions, and that results “should be carefully
+evaluated” because the approach is new.</p>
+<div id="discussion-which-number-would-you-report" class="callout discussion">
+<div class="callout-square">
+<i class="callout-icon" data-feather="message-circle"></i>
+</div>
+<span class="callout-header">Discussion</span>
+<div id="discussion-which-number-would-you-report" class="callout-inner">
+<h3 class="callout-title">Discussion: which number would you
+report?</h3>
+<div class="callout-content">
+<p>A paper reports “indel recall 0.91 against GIAB HG002”. Another
+reports 0.78. Could both describe the same pipeline? What would you need
+to know before comparing them? What should you write when you report
+your own accuracy?</p>
+</div>
+</div>
+</div>
+<div id="challenge-same-calls-two-benchmarks-self-paced" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-same-calls-two-benchmarks-self-paced" class="callout-inner">
+<h3 class="callout-title">Challenge: same calls, two benchmarks
+(self-paced)</h3>
+<div class="callout-content">
+<ol style="list-style-type: decimal"><li>From the two filtered HG002 summaries, compare
+<code>TRUTH.TOTAL</code> for SNVs and indels. How many more benchmark
+variants does v5.0q contain?</li>
+<li>Compare <code>QUERY.UNK</code>. Why is it smaller against
+v5.0q?</li>
+<li>Which part of the drop in indel recall comes from variants the newer
+benchmark adds, and which from calls that changed? (Hint: did any call
+change?)</li>
+</ol></div>
+</div>
+</div>
+<div id="accordionSolution5" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution5" aria-expanded="false" aria-controls="collapseSolution5">
+  <h4 class="accordion-header" id="headingSolution5"> Show me the solution </h4>
+</button>
+<div id="collapseSolution5" class="accordion-collapse collapse" data-bs-parent="#accordionSolution5" aria-labelledby="headingSolution5">
+<div class="accordion-body">
+<ol style="list-style-type: decimal"><li>v5.0q: 75,854 SNVs and 18,173 indels; v4.2.1: 71,333 and 11,256.
+That is 6% more SNVs and 61% more indels.</li>
+<li>
+<code>QUERY.UNK</code> counts our calls outside the confident
+regions. v5.0q’s regions cover more of chromosome 20 and more of the
+difficult sequence, so more of our calls are assessed (and more of them
+can turn out to be false positives).</li>
+<li>All of it comes from the benchmark: the calls are the same file. The
+added benchmark variants lie mostly in harder sequence, where our calls
+miss more of them.</li>
+</ol></div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="difficult-regions-and-stratification">Difficult regions and stratification<a class="anchor" aria-label="anchor" href="#difficult-regions-and-stratification"></a></h2>
+<hr class="half-width"><p>Accuracy is not uniform along the genome. Homopolymers and tandem
+repeats make indels hard to align and to represent; segmental
+duplications and regions of low mappability attract reads from
+elsewhere; the centromere combines all of these. GIAB publishes
+<strong>stratification</strong> BED files that divide the genome into
+such contexts, and hap.py can report precision and recall for each of
+them (<a href="https://doi.org/10.1038/s41587-019-0054-x" class="external-link">Krusche et
+al. 2019</a>). They are not part of the workshop copy, so we do not
+compute per-context numbers here; the Ts/Tv inside and outside the
+benchmark regions, and in the centromere, gave a first view of the same
+effect.</p>
+</section><section><h2 class="section-heading" id="proxy-measures-when-there-is-no-truth-set">Proxy measures when there is no truth set<a class="anchor" aria-label="anchor" href="#proxy-measures-when-there-is-no-truth-set"></a></h2>
+<hr class="half-width"><p>For your own samples there is usually no benchmark. These measures
+still tell you something:</p>
+<ul><li>
+<strong>Ts/Tv</strong>, as above: before and after filtering, inside
+and outside regions you trust, across samples. A ratio far below that of
+the known variation of your organism points to errors.</li>
+<li>
+<strong>Mendelian consistency</strong> in families: a child’s
+genotype must be explainable by one allele from each parent. In Episode
+8 we count the sites where it is not.</li>
+<li>
+<strong>Replicate concordance</strong>: the same sample sequenced
+twice should give the same calls; disagreements point to errors.</li>
+<li>
+<strong>Known sites</strong>: the fraction of your calls already
+listed in a population database (for example gnomAD, Episode 7). An
+unusually low fraction suggests errors, although real rare variants are
+often absent from such databases.</li>
+</ul><p>None of these gives precision and recall, and each can be fooled, but
+together they show whether a filter moves a call set in the right
+direction.</p>
+</section><section><h2 class="section-heading" id="common-problems">Common problems<a class="anchor" aria-label="anchor" href="#common-problems"></a></h2>
+<hr class="half-width"><table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Symptom</th>
+<th>Likely cause</th>
+<th>Fix</th>
+</tr></thead><tbody><tr><td>a filter flags far too many or too few sites</td>
+<td>
+<code>INFO/DP</code> and <code>FMT/DP</code> confused: one is summed
+over samples, the other per sample</td>
+<td>name the field explicitly (<code>INFO/DP</code>,
+<code>FMT/DP</code>)</td>
+</tr><tr><td>the filter keeps what it should remove</td>
+<td>
+<code>-i</code> and <code>-e</code> swapped</td>
+<td>
+<code>-e</code> names what fails, <code>-i</code> what passes</td>
+</tr><tr><td>records disappeared after filtering</td>
+<td>a hard filter: <code>-e</code> without <code>-s</code>
+</td>
+<td>add <code>-s NAME</code> to label instead of delete</td>
+</tr><tr><td>precision far too low</td>
+<td>hap.py run without the confident-region BED (<code>-f</code>)</td>
+<td>give <code>-f</code> the benchmark BED</td>
+</tr><tr><td>recall close to 0, or hap.py complains about samples</td>
+<td>a multi-sample VCF given to hap.py, or the wrong sample</td>
+<td>extract one sample with
+<code>bcftools view -s SAMPLE -c 1</code>
+</td>
+</tr><tr><td>recall far too low</td>
+<td>whole-genome benchmark without <code>-l</code>
+</td>
+<td>restrict with <code>-l chr20</code>
+</td>
+</tr><tr><td>counts that differ between tools</td>
+<td>calls not normalized</td>
+<td>
+<code>bcftools norm -f ref.fa -m -any</code> (Episode 5A)</td>
+</tr></tbody></table></section><section><h2 class="section-heading" id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a></h2>
 <hr class="half-width"><div id="keypoints1" class="callout keypoints">
 <div class="callout-square">
 <i class="callout-icon" data-feather="key"></i>
@@ -413,7 +1609,25 @@ and difficult regions do worse.</li>
 <span class="callout-header">Key Points</span>
 <div class="callout-inner">
 <div class="callout-content">
-<ul><li>TBD(P5)</li>
+<ul><li>
+<code>bcftools stats</code> and simple percentiles of QUAL, depth
+and MQ show the tails that filters should target; Ts/Tv rises when
+errors are removed.</li>
+<li>Thresholds come from the call set’s distributions and from
+conventions; tuning them on the benchmark is test-set leakage.</li>
+<li>Site filters (<code>-s</code> with QUAL, <code>INFO/DP</code>,
+<code>INFO/MQ</code>) label records in FILTER and keep them; the
+genotype mask (<code>-S .</code> with <code>FMT/DP</code>,
+<code>FMT/GQ</code>) sets single genotypes to missing.</li>
+<li>hap.py with vcfeval compares one sample’s calls with a benchmark
+inside its confident regions; calls outside them are UNK, not
+scored.</li>
+<li>Precision and recall trade against each other: the genotype mask
+raises indel precision and costs indel recall.</li>
+<li>The benchmark defines the score: the same calls score lower against
+the more complete v5.0q.</li>
+<li>Without a truth set, use proxies: Ts/Tv, Mendelian consistency,
+replicate concordance and known sites.</li>
 </ul></div>
 </div>
 </div>
@@ -481,8 +1695,8 @@ any links that you are not going to use.
   "url": "https://rcac-bioinformatics.github.io/variant-calling/06-filtering-and-evaluation.html",
   "identifier": "https://rcac-bioinformatics.github.io/variant-calling/06-filtering-and-evaluation.html",
   "dateCreated": "2026-10-09",
-  "dateModified": "2026-10-13",
-  "datePublished": "2026-10-13"
+  "dateModified": "2026-10-14",
+  "datePublished": "2026-10-14"
 }
 
   </script><script>

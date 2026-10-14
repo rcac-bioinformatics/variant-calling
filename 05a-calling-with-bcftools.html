@@ -253,15 +253,16 @@
 
     <div id="flush-collapsecurrent" class="accordion-collapse collapse show" data-bs-parent="#accordionFlushcurrent">
       <div class="accordion-body">
-        <ul><li><a href="#from-pileup-to-genotype">From pileup to genotype</a></li>
-<li><a href="#joint-and-per-sample-calling">Joint and per-sample calling</a></li>
-<li><a href="#calling-by-region-with-an-array-job">Calling by region with an array job</a></li>
-<li><a href="#concatenating-normalizing-and-indexing">Concatenating, normalizing and indexing</a></li>
-<li><a href="#vcf-anatomy">VCF anatomy</a></li>
-<li><a href="#querying-a-vcf">Querying a VCF</a></li>
-<li><a href="#variant-representation-and-normalization">Variant representation and normalization</a></li>
-<li><a href="#vcf-bcf-and-indexes">VCF, BCF and indexes</a></li>
-<li><a href="#the-gvcf-idea">The gVCF idea</a></li>
+        <ul><li><a href="#introduction">Introduction</a></li>
+<li><a href="#step-1-submit-the-calling-job">Step 1: Submit the calling job</a></li>
+<li><a href="#how-bcftools-calls-a-genotype">How bcftools calls a genotype</a></li>
+<li><a href="#step-2-the-calling-script-line-by-line">Step 2: The calling script, line by line</a></li>
+<li><a href="#step-3-start-an-interactive-session">Step 3: Start an interactive session</a></li>
+<li><a href="#step-4-anatomy-of-a-vcf-record">Step 4: Anatomy of a VCF record</a></li>
+<li><a href="#step-5-variant-representation-and-normalization">Step 5: Variant representation and normalization</a></li>
+<li><a href="#step-6-join-normalize-and-index-the-calls">Step 6: Join, normalize and index the calls</a></li>
+<li><a href="#common-problems">Common problems</a></li>
+<li><a href="#summary">Summary</a></li>
         </ul></div><!--/div.accordion-body-->
     </div><!--/div.accordion-collapse-->
 
@@ -353,7 +354,7 @@
       </div>
       <hr></nav><main id="main-content" class="main-content"><div class="container lesson-content">
         <h1>5A. Calling variants with bcftools</h1>
-        <p>Last updated on 2026-10-13 |
+        <p>Last updated on 2026-10-14 |
 
         <a href="https://github.com/rcac-bioinformatics/variant-calling/edit/main/episodes/05a-calling-with-bcftools.Rmd" class="external-link">Edit this page <i aria-hidden="true" data-feather="edit"></i></a></p>
 
@@ -394,16 +395,1092 @@ DP).</li>
 </div>
 </div>
 </div>
+<section><h2 class="section-heading" id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a></h2>
+<hr class="half-width"><p>In Episode 4 we looked at the reads at chr20:88,108 and guessed the
+genotype by eye. In this episode bcftools makes that guess for every
+position of chromosome 20, for all three samples at once, and writes the
+result as a VCF file. We start the calling job first, read a small
+example VCF while it runs, and then join, normalize and index our own
+calls.</p>
+<div id="before-you-start" class="callout prereq">
+<div class="callout-square">
+<i class="callout-icon" data-feather="check"></i>
+</div>
+<span class="callout-header">Prerequisite</span>
+<div id="before-you-start" class="callout-inner">
+<h3 class="callout-title">Before you start</h3>
+<div class="callout-content">
+<p>You need the three duplicate-marked BAM files and their indexes from
+Episode 4 in <code>results/bam/</code>, the reference links in
+<code>ref/</code>, and the script <code>scripts/call.sh</code>. If your
+alignment job did not finish, copy the BAM files from the results copy
+first (Episode 4, “Short on time?”).</p>
+</div>
+</div>
+</div>
 
-<section><h2 class="section-heading" id="from-pileup-to-genotype">From pileup to genotype<a class="anchor" aria-label="anchor" href="#from-pileup-to-genotype"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="joint-and-per-sample-calling">Joint and per-sample calling<a class="anchor" aria-label="anchor" href="#joint-and-per-sample-calling"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="calling-by-region-with-an-array-job">Calling by region with an array job<a class="anchor" aria-label="anchor" href="#calling-by-region-with-an-array-job"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="concatenating-normalizing-and-indexing">Concatenating, normalizing and indexing<a class="anchor" aria-label="anchor" href="#concatenating-normalizing-and-indexing"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="vcf-anatomy">VCF anatomy<a class="anchor" aria-label="anchor" href="#vcf-anatomy"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="querying-a-vcf">Querying a VCF<a class="anchor" aria-label="anchor" href="#querying-a-vcf"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="variant-representation-and-normalization">Variant representation and normalization<a class="anchor" aria-label="anchor" href="#variant-representation-and-normalization"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="vcf-bcf-and-indexes">VCF, BCF and indexes<a class="anchor" aria-label="anchor" href="#vcf-bcf-and-indexes"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="the-gvcf-idea">The gVCF idea<a class="anchor" aria-label="anchor" href="#the-gvcf-idea"></a></h2>
+</section><section><h2 class="section-heading" id="step-1-submit-the-calling-job">Step 1: Submit the calling job<a class="anchor" aria-label="anchor" href="#step-1-submit-the-calling-job"></a></h2>
+<hr class="half-width"><p>The calling script is already in your <code>scripts/</code> folder.
+Submit it now; the next sections explain it while it runs:</p>
+<!-- kit: submit call.sh -->
+<div class="codewrapper sourceCode" id="cb1">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1" aria-label="code-block-1-1"></a><span class="bu">cd</span> <span class="va">$SCRATCH</span>/varcall-workshop/scripts</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1" aria-label="code-block-1-2"></a><span class="ex">sbatch</span> call.sh</span></code></pre>
+</div>
+<p>The script is an array job with eight tasks, one per region of
+chromosome 20, and each task uses 2 cores. In the workshop’s test runs
+each task took 2 to 4 minutes, plus the time waiting in the standby
+queue. Check on it with:</p>
+<!-- kit: not-run monitoring -->
+<div class="codewrapper sourceCode" id="cb2">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1" aria-label="code-block-2-1"></a><span class="ex">squeue</span> <span class="at">-u</span> <span class="va">$USER</span></span></code></pre>
+</div>
+<p>Each task writes its log to
+<code>scripts/cluster-call.&lt;jobid&gt;.out</code> and
+<code>.err</code>.</p>
+<div id="short-on-time" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="short-on-time" class="callout-inner">
+<h3 class="callout-title">Short on time?</h3>
+<div class="callout-content">
+<p>If your calling job fails or is still waiting when we reach Step 6,
+cancel it (<code>scancel &lt;jobid&gt;</code>) and copy the eight
+finished chunks and their indexes from the results copy:</p>
+<!-- kit: not-run fallback -->
+<div class="codewrapper sourceCode" id="cb3">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1" aria-label="code-block-3-1"></a><span class="fu">mkdir</span> <span class="at">-p</span> <span class="va">$SCRATCH</span>/varcall-workshop/results/vcf/chunks</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1" aria-label="code-block-3-2"></a><span class="fu">cp</span> /depot/workshop/data/varcall-workshop_results/results/vcf/chunks/chunk0<span class="pp">?</span>.bcf<span class="pp">*</span> <span class="va">$SCRATCH</span>/varcall-workshop/results/vcf/chunks/</span></code></pre>
+</div>
+<p>Then continue with Step 6 as written.</p>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="how-bcftools-calls-a-genotype">How bcftools calls a genotype<a class="anchor" aria-label="anchor" href="#how-bcftools-calls-a-genotype"></a></h2>
+<hr class="half-width"><p>Calling is two commands joined by a pipe (<a href="https://samtools.github.io/bcftools/bcftools.html" class="external-link">bcftools
+manual</a>).</p>
+<p><strong><code>bcftools mpileup</code></strong> reads the BAM files
+position by position. At each position it collects the bases of the
+reads that cover it, with their base qualities and mapping qualities,
+and computes for each sample a <strong>genotype likelihood</strong> for
+every possible genotype: how probable the observed bases are if the true
+genotype were <code>0/0</code>, <code>0/1</code> or <code>1/1</code>. It
+stores them in the <code>PL</code> field, Phred-scaled and rounded, so
+that the most likely genotype gets 0 and a genotype with <code>PL</code>
+30 is 1,000 times less likely than that one (<a href="https://samtools.github.io/hts-specs/VCFv4.3.pdf" class="external-link">VCF
+specification</a>, section 1.6.2). The statistical model is described by
+<a href="https://doi.org/10.1093/bioinformatics/btr509" class="external-link">Li
+(2011)</a>.</p>
+<p>Before counting, <code>mpileup</code> drops some reads and bases.
+With the defaults of bcftools 1.24, as its usage text lists them:</p>
+<ul><li>reads with any of the flags <code>UNMAP,SECONDARY,QCFAIL,DUP</code>
+are skipped (<code>--ns</code>), so duplicates marked in Episode 4 do
+not count;</li>
+<li>anomalous pairs, flagged as paired but not as a proper pair, are
+skipped (<code>-A</code> includes them);</li>
+<li>reads with mapping quality below 0 are skipped (<code>-q 0</code>;
+that is, none are);</li>
+<li>where the two reads of a pair overlap, the lower-quality base of
+each overlapping pair of bases gets base quality 0, so the overlap
+counts once (<a href="https://github.com/samtools/htslib/blob/1.24/htslib/sam.h" class="external-link">htslib
+<code>sam.h</code></a>, <code>bam_mplp_init_overlaps</code>;
+<code>-x</code> disables this);</li>
+<li>bases with base quality below 1 are skipped (<code>-Q 1</code>),
+after the BAQ adjustment of Episode 3. Our data hold only the qualities
+2, 11, 25 and 37 (Episode 3), so this floor removes only bases whose
+quality was set to 0, by BAQ or by the overlap rule;</li>
+<li>at most 250 reads are read per position and input file
+(<code>-d 250</code>, the depth cap, see the callout below).</li>
+</ul><p><strong><code>bcftools call -m</code></strong> turns the likelihoods
+into calls. <code>-m</code> selects the “multiallelic caller”, which
+also handles sites with more than one ALT allele. It combines each
+sample’s likelihoods with a <strong>prior</strong>, the expected rate of
+variation (<code>-P</code>, default <code>1.1e-3</code>, “mutation rate
+(use bigger for greater sensitivity)” in the usage text). From
+likelihoods and prior it decides whether the site is variant at all, and
+if so writes:</p>
+<ul><li>
+<strong>QUAL</strong>, for the site: the Phred-scaled probability
+that the site is not variant in any of the samples, “−10log10 prob(no
+variant)” in the VCF specification.</li>
+<li>
+<strong>GT</strong> for each sample: the most probable
+genotype.</li>
+<li>
+<strong>GQ</strong> for each sample, because <code>call.sh</code>
+asks for it with <code>-a FORMAT/GQ</code>: the Phred-scaled probability
+that this sample’s genotype is wrong, given that the site is variant
+(the specification’s “conditional genotype quality”).</li>
+</ul><p>QUAL and GQ answer different questions. In a joint call of three
+samples, QUAL pools the evidence of all three: a site where only one
+sample carries the ALT allele can have a high QUAL, while another sample
+at the same site has a low GQ because few reads cover it. Filtering on
+QUAL judges the site; filtering on GQ judges one person’s genotype.
+Episode 6 uses both.</p>
+<p><code>-v</code> writes variant sites only. Without it, every position
+of the chromosome would get a record.</p>
+<div id="joint-calling-and-per-sample-calling" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="joint-calling-and-per-sample-calling" class="callout-inner">
+<h3 class="callout-title">Joint calling and per-sample calling</h3>
+<div class="callout-content">
+<p>We pass all three BAM files to one <code>mpileup</code> command, so
+the trio is called <strong>jointly</strong>: every site that is variant
+in any sample gets one record with a genotype for each of the three
+samples. Two things follow:</p>
+<ul><li>A sample without the ALT allele gets an explicit <code>0/0</code>
+with its own read counts, so “this person is homozygous for the
+reference allele, and we looked” is different from “no reads here”
+(<code>./.</code>). Episode 8 relies on this difference.</li>
+<li>Evidence is pooled at the site level (QUAL), which helps at sites
+where one sample has few reads.</li>
+</ul><p>Calling each sample separately and merging the VCFs afterwards loses
+the first point: a site missing from one sample’s VCF could be
+homozygous reference or simply not covered. The gVCF approach (callout
+at the end) solves this for large cohorts.</p>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-2-the-calling-script-line-by-line">Step 2: The calling script, line by line<a class="anchor" aria-label="anchor" href="#step-2-the-calling-script-line-by-line"></a></h2>
+<hr class="half-width"><p>This is <code>scripts/call.sh</code> as you submitted it:</p>
+<!-- kit: script call.sh -->
+<div class="codewrapper sourceCode" id="cb4">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1" aria-label="code-block-4-1"></a><span class="co">#!/bin/bash</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1" aria-label="code-block-4-2"></a><span class="co">#SBATCH --nodes=1</span></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1" aria-label="code-block-4-3"></a><span class="co">#SBATCH --ntasks=1</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1" aria-label="code-block-4-4"></a><span class="co">#SBATCH --cpus-per-task=2</span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1" aria-label="code-block-4-5"></a><span class="co">#SBATCH --account=rcac</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1" aria-label="code-block-4-6"></a><span class="co">#SBATCH --qos=standby</span></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1" aria-label="code-block-4-7"></a><span class="co">#SBATCH --partition=cpu</span></span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1" aria-label="code-block-4-8"></a><span class="co">#SBATCH --time=00:30:00</span></span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1" aria-label="code-block-4-9"></a><span class="co">#SBATCH --job-name=call</span></span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1" aria-label="code-block-4-10"></a><span class="co">#SBATCH --array=1-8</span></span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1" aria-label="code-block-4-11"></a><span class="co">#SBATCH --output=cluster-%x.%j.out</span></span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1" aria-label="code-block-4-12"></a><span class="co">#SBATCH --error=cluster-%x.%j.err</span></span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1" aria-label="code-block-4-13"></a></span>
+<span id="cb4-14"><a href="#cb4-14" tabindex="-1" aria-label="code-block-4-14"></a><span class="ex">module</span> load biocontainers</span>
+<span id="cb4-15"><a href="#cb4-15" tabindex="-1" aria-label="code-block-4-15"></a><span class="ex">module</span> load bcftools/1.24</span>
+<span id="cb4-16"><a href="#cb4-16" tabindex="-1" aria-label="code-block-4-16"></a></span>
+<span id="cb4-17"><a href="#cb4-17" tabindex="-1" aria-label="code-block-4-17"></a><span class="va">WORK</span><span class="op">=</span><span class="va">$SCRATCH</span>/varcall-workshop</span>
+<span id="cb4-18"><a href="#cb4-18" tabindex="-1" aria-label="code-block-4-18"></a><span class="va">REF</span><span class="op">=</span><span class="va">$WORK</span>/ref/GRCh38_no_alt.fa</span>
+<span id="cb4-19"><a href="#cb4-19" tabindex="-1" aria-label="code-block-4-19"></a><span class="va">BAMDIR</span><span class="op">=</span><span class="va">$WORK</span>/results/bam</span>
+<span id="cb4-20"><a href="#cb4-20" tabindex="-1" aria-label="code-block-4-20"></a><span class="va">OUTDIR</span><span class="op">=</span><span class="va">$WORK</span>/results/vcf/chunks</span>
+<span id="cb4-21"><a href="#cb4-21" tabindex="-1" aria-label="code-block-4-21"></a><span class="fu">mkdir</span> <span class="at">-p</span> <span class="va">$OUTDIR</span></span>
+<span id="cb4-22"><a href="#cb4-22" tabindex="-1" aria-label="code-block-4-22"></a></span>
+<span id="cb4-23"><a href="#cb4-23" tabindex="-1" aria-label="code-block-4-23"></a><span class="co"># One region of chr20 per array task (line N of the chunk list)</span></span>
+<span id="cb4-24"><a href="#cb4-24" tabindex="-1" aria-label="code-block-4-24"></a><span class="va">REGION</span><span class="op">=</span><span class="va">$(</span><span class="fu">sed</span> <span class="at">-n</span> <span class="st">"</span><span class="va">${SLURM_ARRAY_TASK_ID}</span><span class="st">p"</span> <span class="va">$WORK</span>/resources/regions/chr20_chunks.txt<span class="va">)</span></span>
+<span id="cb4-25"><a href="#cb4-25" tabindex="-1" aria-label="code-block-4-25"></a><span class="va">CHUNK</span><span class="op">=</span>chunk<span class="va">$(</span><span class="bu">printf</span> <span class="st">'%02d'</span> <span class="va">$SLURM_ARRAY_TASK_ID)</span></span>
+<span id="cb4-26"><a href="#cb4-26" tabindex="-1" aria-label="code-block-4-26"></a></span>
+<span id="cb4-27"><a href="#cb4-27" tabindex="-1" aria-label="code-block-4-27"></a><span class="co"># Joint calling of the trio; BAM order sets the sample order: child, father, mother</span></span>
+<span id="cb4-28"><a href="#cb4-28" tabindex="-1" aria-label="code-block-4-28"></a><span class="ex">bcftools</span> mpileup <span class="at">-f</span> <span class="va">$REF</span> <span class="at">-r</span> <span class="va">$REGION</span> <span class="at">-a</span> AD,DP,SP <span class="at">-Ou</span> <span class="dt">\</span></span>
+<span id="cb4-29"><a href="#cb4-29" tabindex="-1" aria-label="code-block-4-29"></a>    <span class="va">$BAMDIR</span>/HG002.markdup.bam <span class="va">$BAMDIR</span>/HG003.markdup.bam <span class="va">$BAMDIR</span>/HG004.markdup.bam <span class="dt">\</span></span>
+<span id="cb4-30"><a href="#cb4-30" tabindex="-1" aria-label="code-block-4-30"></a>  <span class="kw">|</span> <span class="ex">bcftools</span> call <span class="at">-mv</span> <span class="at">-a</span> FORMAT/GQ <span class="at">-Ob</span> <span class="at">-W</span> <span class="at">-o</span> <span class="va">$OUTDIR</span>/<span class="va">$CHUNK</span>.bcf</span></code></pre>
+</div>
+<div class="section level3">
+<h3 id="calling-by-region-with-an-array-job">Calling by region with an array job<a class="anchor" aria-label="anchor" href="#calling-by-region-with-an-array-job"></a></h3>
+<p>Calling works one position at a time and does not need the rest of
+the chromosome, so chromosome 20 can be split into regions that are
+called independently and joined afterwards. The region list has one
+region per line:</p>
+<!-- kit: extra 05-merge.sh -->
+<div class="codewrapper sourceCode" id="cb5">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" tabindex="-1" aria-label="code-block-5-1"></a><span class="fu">cat</span> <span class="va">$SCRATCH</span>/varcall-workshop/resources/regions/chr20_chunks.txt</span></code></pre>
+</div>
+<div id="accordionSpoiler1" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler1" aria-expanded="false" aria-controls="collapseSpoiler1">
+  <h3 class="accordion-header" id="headingSpoiler1">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler1" class="accordion-collapse collapse" aria-labelledby="headingSpoiler1" data-bs-parent="#accordionSpoiler1">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code><span><span class="va">chr20</span><span class="op">:</span><span class="fl">1</span><span class="op">-</span><span class="fl">8055521</span></span>
+<span><span class="va">chr20</span><span class="op">:</span><span class="fl">8055522</span><span class="op">-</span><span class="fl">16111042</span></span>
+<span><span class="va">chr20</span><span class="op">:</span><span class="fl">16111043</span><span class="op">-</span><span class="fl">24166563</span></span>
+<span><span class="va">chr20</span><span class="op">:</span><span class="fl">24166564</span><span class="op">-</span><span class="fl">31160372</span></span>
+<span><span class="va">chr20</span><span class="op">:</span><span class="fl">31160373</span><span class="op">-</span><span class="fl">40277604</span></span>
+<span><span class="va">chr20</span><span class="op">:</span><span class="fl">40277605</span><span class="op">-</span><span class="fl">48333125</span></span>
+<span><span class="va">chr20</span><span class="op">:</span><span class="fl">48333126</span><span class="op">-</span><span class="fl">56388646</span></span>
+<span><span class="va">chr20</span><span class="op">:</span><span class="fl">56388647</span><span class="op">-</span><span class="fl">64444167</span></span></code></pre>
+</div>
+<p>Eight regions in <code>chrom:start-end</code> form, 1-based and
+inclusive (Episode 2), in chromosome order. Together they cover
+chromosome 20 without overlap.</p>
+</div>
+</div>
+</div>
+</div>
+<p>Array task N reads line N of this list
+(<code>sed -n "${SLURM_ARRAY_TASK_ID}p"</code>; this file has no header,
+unlike <code>samples.tsv</code>), and names its output
+<code>chunk01.bcf</code> to <code>chunk08.bcf</code>
+(<code>printf '%02d'</code> pads the number to two digits). The regions
+were cut to hold similar amounts of sequence, so the tasks take similar
+times; the one that holds the centromere has the most calls and runs
+longest.</p>
+</div>
+<div class="section level3">
+<h3 id="the-mpileup-and-call-options">The <code>mpileup</code> and <code>call</code> options<a class="anchor" aria-label="anchor" href="#the-mpileup-and-call-options"></a></h3>
+<table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr><th>Option</th>
+<th>Meaning</th>
+</tr></thead><tbody><tr><td><code>-f $REF</code></td>
+<td>the reference FASTA. Its sequence names must match the BAM headers
+(<code>chr20</code> in both)</td>
+</tr><tr><td><code>-r $REGION</code></td>
+<td>call only this region; needs the BAM indexes from Episode 4</td>
+</tr><tr><td><code>-a AD,DP,SP</code></td>
+<td>add per-sample allelic depths (<code>AD</code>), depth
+(<code>DP</code>) and a strand-bias score (<code>SP</code>)</td>
+</tr><tr><td><code>-Ou</code></td>
+<td>pass uncompressed BCF through the pipe</td>
+</tr><tr><td>three BAM files</td>
+<td>one sample each; their order is the order of the sample columns in
+the VCF</td>
+</tr><tr><td><code>call -m</code></td>
+<td>the multiallelic caller</td>
+</tr><tr><td><code>call -v</code></td>
+<td>write variant sites only</td>
+</tr><tr><td><code>-a FORMAT/GQ</code></td>
+<td>add the genotype quality</td>
+</tr><tr><td><code>-Ob -W -o</code></td>
+<td>write compressed BCF, write its index, and name the output file</td>
+</tr></tbody></table><p>The sample names in the VCF come from the <code>SM</code> field of
+each BAM’s read group (Episode 4), and their order from the order of the
+BAM files: HG002 (child), HG003 (father), HG004 (mother), the order of
+<code>trio.ped</code>.</p>
+<div id="why-bcf-for-the-chunks-and-vcf-for-the-result" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="why-bcf-for-the-chunks-and-vcf-for-the-result" class="callout-inner">
+<h3 class="callout-title">Why BCF for the chunks, and VCF for the
+result?</h3>
+<div class="callout-content">
+<p><strong>BCF</strong> is the binary form of VCF: the same content,
+stored so that programs read it without parsing text. It is faster to
+write and read, which matters for intermediate files that only bcftools
+reads. The final file is <strong>bgzipped VCF</strong>
+(<code>.vcf.gz</code>), which other tools (hap.py, SnpEff, IGV) read and
+people can inspect with <code>zcat</code> or <code>bcftools view</code>.
+Both formats are compressed in blocks (BGZF), which lets an
+<strong>index</strong> (<code>.csi</code> or <code>.tbi</code>) jump
+straight to a region (<a href="https://samtools.github.io/hts-specs/" class="external-link">htslib file formats</a>).
+<code>-W</code> writes the index next to the output, so <code>-r</code>
+region queries work on every file we create.</p>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-3-start-an-interactive-session">Step 3: Start an interactive session<a class="anchor" aria-label="anchor" href="#step-3-start-an-interactive-session"></a></h2>
+<hr class="half-width"><p>While the calling tasks run, start an interactive session and load
+bcftools. You will use the same session to join the chunks in Step
+6:</p>
+<!-- kit: interactive 05-merge.sh -->
+<div class="codewrapper sourceCode" id="cb7">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" tabindex="-1" aria-label="code-block-7-1"></a><span class="ex">sinteractive</span> <span class="at">-A</span> rcac <span class="at">-q</span> standby <span class="at">-p</span> cpu <span class="at">-N</span> 1 <span class="at">-n</span> 4 <span class="at">--time</span><span class="op">=</span>1:00:00</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1" aria-label="code-block-7-2"></a><span class="ex">module</span> load biocontainers</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1" aria-label="code-block-7-3"></a><span class="ex">module</span> load bcftools/1.24</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1" aria-label="code-block-7-4"></a><span class="bu">cd</span> <span class="va">$SCRATCH</span>/varcall-workshop</span></code></pre>
+</div>
+</section><section><h2 class="section-heading" id="step-4-anatomy-of-a-vcf-record">Step 4: Anatomy of a VCF record<a class="anchor" aria-label="anchor" href="#step-4-anatomy-of-a-vcf-record"></a></h2>
+<hr class="half-width"><p>Your own calls are not ready yet, so we read a small example first:
+<code>resources/example/trio.example.raw.vcf.gz</code> holds the calls
+of the workshop’s reference run for chr20:60,000-90,000, before
+normalization. It contains the three sites of Episodes 2 and 4.</p>
+<p>A VCF file has a header (lines starting with <code>##</code>, then
+one line starting with <code>#CHROM</code>) and one line per variant.
+The header declares every field the records use. Print the declarations
+of the fields we need, and the column line:</p>
+<!-- kit: extra 05-merge.sh -->
+<div class="codewrapper sourceCode" id="cb8">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" tabindex="-1" aria-label="code-block-8-1"></a><span class="ex">bcftools</span> view <span class="at">-h</span> resources/example/trio.example.raw.vcf.gz <span class="kw">|</span> <span class="fu">grep</span> <span class="at">-E</span> <span class="st">'^##(INFO|FORMAT)=&lt;ID=(DP|MQ|AD|GT|PL|GQ),'</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1" aria-label="code-block-8-2"></a><span class="ex">bcftools</span> view <span class="at">-h</span> resources/example/trio.example.raw.vcf.gz <span class="kw">|</span> <span class="fu">tail</span> <span class="at">-1</span></span></code></pre>
+</div>
+<div id="accordionSpoiler2" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler2" aria-expanded="false" aria-controls="collapseSpoiler2">
+  <h3 class="accordion-header" id="headingSpoiler2">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler2" class="accordion-collapse collapse" aria-labelledby="headingSpoiler2" data-bs-parent="#accordionSpoiler2">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+##INFO=&lt;ID=DP,Number=1,Type=Integer,Description="Raw read depth"&gt;
+##FORMAT=&lt;ID=PL,Number=G,Type=Integer,Description="List of Phred-scaled genotype likelihoods"&gt;
+##FORMAT=&lt;ID=DP,Number=1,Type=Integer,Description="Number of high-quality bases"&gt;
+##FORMAT=&lt;ID=AD,Number=R,Type=Integer,Description="Allelic depths (high-quality bases)"&gt;
+##FORMAT=&lt;ID=GT,Number=1,Type=String,Description="Genotype"&gt;
+##FORMAT=&lt;ID=GQ,Number=1,Type=Integer,Description="Phred-scaled Genotype Quality"&gt;
+##INFO=&lt;ID=MQ,Number=1,Type=Integer,Description="Average mapping quality"&gt;
+[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	HG002	HG003	HG004</code></pre>
+</div>
+<p>The <code>[W::bcf_hdr_check_sanity]</code> lines are a warning that
+bcftools prints for these files; the callout in Step 6 explains it. Each
+<code>##INFO</code> and <code>##FORMAT</code> line gives a field’s ID,
+how many values it has (<code>Number</code>: 1, <code>R</code> for one
+per allele including REF, <code>G</code> for one per possible genotype),
+its type and a description. INFO fields describe the site; FORMAT fields
+are repeated for each sample. The last line names the columns: eight
+fixed columns, <code>FORMAT</code>, then one column per sample.</p>
+</div>
+</div>
+</div>
+</div>
+<p>Now the record at the heterozygous site of Episode 4:</p>
+<!-- kit: extra 05-merge.sh -->
+<div class="codewrapper sourceCode" id="cb10">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" tabindex="-1" aria-label="code-block-10-1"></a><span class="ex">bcftools</span> view <span class="at">-H</span> <span class="at">-r</span> chr20:88108 resources/example/trio.example.raw.vcf.gz</span></code></pre>
+</div>
+<div id="accordionSpoiler3" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler3" aria-expanded="false" aria-controls="collapseSpoiler3">
+  <h3 class="accordion-header" id="headingSpoiler3">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler3" class="accordion-collapse collapse" aria-labelledby="headingSpoiler3" data-bs-parent="#accordionSpoiler3">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+chr20	88108	.	T	C	723.977	.	DP=117;VDB=0.244275;SGB=-7.53767;RPBZ=-1.26517;MQBZ=0;MQSBZ=0;BQBZ=0.232513;SCBZ=0;MQ0F=0;AC=3;AN=6;DP4=30,23,31,23;MQ=60	GT:PL:DP:SP:AD:GQ	0/1:249,0,255:32:8:19,13:127	0/1:255,0,255:42:4:20,22:127	0/1:255,0,255:33:16:14,19:127</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Reading it column by column (<a href="https://samtools.github.io/hts-specs/VCFv4.3.pdf" class="external-link">VCF
+specification</a>, section 1.6):</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Column</th>
+<th>Here</th>
+<th>Meaning</th>
+</tr></thead><tbody><tr><td>CHROM, POS</td>
+<td>
+<code>chr20</code>, <code>88108</code>
+</td>
+<td>1-based position</td>
+</tr><tr><td>ID</td>
+<td><code>.</code></td>
+<td>no identifier (for example a dbSNP rs number)</td>
+</tr><tr><td>REF, ALT</td>
+<td>
+<code>T</code>, <code>C</code>
+</td>
+<td>reference allele and the alternate allele(s)</td>
+</tr><tr><td>QUAL</td>
+<td>about 724</td>
+<td>site quality (above)</td>
+</tr><tr><td>FILTER</td>
+<td><code>.</code></td>
+<td>not filtered yet; Episode 6 fills this column</td>
+</tr><tr><td>INFO</td>
+<td><code>DP=...;...;MQ=...</code></td>
+<td>site-level fields, separated by <code>;</code>
+</td>
+</tr><tr><td>FORMAT</td>
+<td><code>GT:PL:DP:SP:AD:GQ</code></td>
+<td>the order of the per-sample fields that follow</td>
+</tr><tr><td>HG002, HG003, HG004</td>
+<td><code>0/1:...</code></td>
+<td>one column per sample, values in the FORMAT order</td>
+</tr></tbody></table><p>So the HG002 column reads as: <code>GT</code> the genotype;
+<code>PL</code> the three genotype likelihoods for <code>0/0</code>,
+<code>0/1</code>, <code>1/1</code>; <code>DP</code> this sample’s depth;
+<code>SP</code> the strand-bias score; <code>AD</code> the read counts
+for REF and ALT; <code>GQ</code> the genotype quality. <code>PL</code>
+and <code>GQ</code> stop at 255 and 127 in these files: a value at the
+cap means “at least this confident”.</p>
+<div id="challenge-reading-ad-at-a-heterozygous-site" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-reading-ad-at-a-heterozygous-site" class="callout-inner">
+<h3 class="callout-title">Challenge: reading AD at a heterozygous
+site</h3>
+<div class="callout-content">
+<ol style="list-style-type: decimal"><li>From the record above, what are HG002’s <code>AD</code> and
+<code>DP</code> at chr20:88,108? How many reads support
+<code>C</code>?</li>
+<li>In Episode 4, <code>samtools tview</code> showed 14 reads with
+<code>C</code> and 25 with the reference <code>T</code> in this column,
+39 in all. Do the numbers agree? If not, list what <code>mpileup</code>
+does that <code>tview</code> does not.</li>
+<li>The INFO field also has a <code>DP</code>. Why is it larger than
+HG002’s <code>DP</code>?</li>
+</ol></div>
+</div>
+</div>
+<div id="accordionSolution1" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution1" aria-expanded="false" aria-controls="collapseSolution1">
+  <h4 class="accordion-header" id="headingSolution1"> Show me the solution </h4>
+</button>
+<div id="collapseSolution1" class="accordion-collapse collapse" aria-labelledby="headingSolution1" data-bs-parent="#accordionSolution1">
+<div class="accordion-body">
+<ol style="list-style-type: decimal"><li><p>HG002 has <code>AD</code> 19,13 and <code>DP</code> 32: 13 reads
+support <code>C</code>.</p></li>
+<li>
+<p>They differ, because <code>mpileup</code> counts only some of the
+reads that <code>tview</code> displays. The workshop’s test run counted
+the same position with each of <code>mpileup</code>’s read and base
+filters switched off, then on again one at a time:</p>
+<table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr><th>What <code>mpileup</code> counts at chr20:88,108 in HG002</th>
+<th>AD (T,C) and DP</th>
+</tr></thead><tbody><tr><td>every read and base, filters off</td>
+<td>25,14,0; DP 39</td>
+</tr><tr><td>skip reads flagged as duplicates</td>
+<td>21,14,0; DP 35</td>
+</tr><tr><td>also skip anomalous pairs (paired, not in a proper pair)</td>
+<td>21,14,0; DP 35</td>
+</tr><tr><td>also detect overlapping mates (one base of each overlap gets quality
+0)</td>
+<td>21,14,0; DP 35</td>
+</tr><tr><td>also apply the base-quality floor (<code>-Q 1</code>)</td>
+<td>19,13,0; DP 32</td>
+</tr><tr><td>also apply BAQ: the defaults, as in <code>call.sh</code>
+</td>
+<td>19,13,0; DP 32</td>
+</tr></tbody></table><p>Each row adds one filter to the row above (the third number of
+<code>AD</code> counts bases that are neither <code>T</code> nor
+<code>C</code>). The options are those of the bcftools 1.24 usage text
+(<code>--ns</code>, <code>-A</code>, <code>-x</code>, <code>-Q</code>,
+<code>-B</code>). With every filter off, <code>mpileup</code> counts the
+same 39 reads as the <code>tview</code> column, 25 <code>T</code> and 14
+<code>C</code>. Two causes explain the difference at this site:</p>
+<ul><li>
+<strong>duplicates</strong>: 4 reads, all <code>T</code>, are marked
+as duplicates (Episode 4) and skipped;</li>
+<li>
+<strong>overlapping mates</strong>: in 3 read pairs both mates cover
+the site. Overlap detection sets one base of each pair to quality 0,
+which changes no count by itself (the overlap row), and the base-quality
+floor then drops those 3 bases (2 <code>T</code>, 1
+<code>C</code>).</li>
+</ul><p>Anomalous pairs and BAQ remove nothing here. That leaves 19
+<code>T</code> and 13 <code>C</code>, 32 in all.</p>
+</li>
+<li><p><code>INFO/DP</code> (117) is the site’s raw depth summed over
+all three samples; <code>FORMAT/DP</code> is one sample’s depth after
+the filters above. The header lines from the start of this step give
+both descriptions. Episode 6 filters on each, so it matters which one an
+expression reads.</p></li>
+</ol></div>
+</div>
+</div>
+</div>
+<div class="section level3">
+<h3 id="why-01-the-likelihood-argument">Why <code>0/1</code>: the likelihood argument<a class="anchor" aria-label="anchor" href="#why-01-the-likelihood-argument"></a></h3>
+<p>In Episode 4 we reasoned with a coin toss: with 39 reads at a
+balanced heterozygous site, 14 or fewer <code>C</code> reads happen 5.4%
+of the time (10.8% for 14 or fewer of either allele). That is a tail
+probability, and it does not by itself decide anything. The caller
+compares the three genotypes instead. HG002’s <code>PL</code> at this
+site is <code>249,0,255</code>:</p>
+<ul><li>
+<code>0/0</code> would mean that all 13 <code>C</code> bases are
+sequencing errors, each of them at high base quality. That is extremely
+unlikely, so its <code>PL</code> is large.</li>
+<li>
+<code>1/1</code> would mean that all the <code>T</code> bases are
+errors. Also extremely unlikely.</li>
+<li>
+<code>0/1</code> explains both alleles with ordinary sampling, so
+its <code>PL</code> is 0.</li>
+</ul><p>A difference of 10 in <code>PL</code> is a factor of 10 in
+likelihood, so a difference in the hundreds means that the other
+genotypes are less likely by many orders of magnitude. The call is
+<code>0/1</code> because the alternatives are far less likely, not
+because 14 of 39 passes a test of balance. GQ (at the cap, 127) says the
+same.</p>
+<div id="challenge-predict-a-homozygous-record" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-predict-a-homozygous-record" class="callout-inner">
+<h3 class="callout-title">Challenge: predict a homozygous record</h3>
+<div class="callout-content">
+<p>The benchmark says HG002 is homozygous for the ALT allele
+<code>A</code> at chr20:85,259 (reference <code>G</code>), and in
+Episode 4 all 50 reads in that column showed <code>A</code>.</p>
+<ol style="list-style-type: decimal"><li>Before you look: what do you expect for HG002’s <code>GT</code>, the
+two numbers of <code>AD</code>, and which of the three <code>PL</code>
+values is 0?</li>
+<li>Check with <code>bcftools query</code>, which prints the fields you
+name in the format you give it (<code>%</code> for a field,
+<code>[...]</code> repeated for each sample):</li>
+</ol><!-- kit: extra 05-merge.sh --><div class="codewrapper sourceCode" id="cb12">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" tabindex="-1" aria-label="code-block-12-1"></a><span class="ex">bcftools</span> query <span class="at">-r</span> chr20:85259 <span class="at">-f</span> <span class="st">'%POS %REF %ALT %QUAL[\n  %SAMPLE %GT AD=%AD DP=%DP PL=%PL GQ=%GQ]\n'</span> resources/example/trio.example.raw.vcf.gz</span></code></pre>
+</div>
+</div>
+</div>
+</div>
+<div id="accordionSolution2" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution2" aria-expanded="false" aria-controls="collapseSolution2">
+  <h4 class="accordion-header" id="headingSolution2"> Show me the solution </h4>
+</button>
+<div id="collapseSolution2" class="accordion-collapse collapse" aria-labelledby="headingSolution2" data-bs-parent="#accordionSolution2">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+85259 G A 739.009
+  HG002 1/1 AD=0,43 DP=43 PL=255,129,0 GQ=127
+  HG003 1/1 AD=0,38 DP=38 PL=255,114,0 GQ=127
+  HG004 1/1 AD=0,32 DP=32 PL=255,96,0 GQ=127</code></pre>
+</div>
+<p>HG002 is <code>1/1</code> with <code>AD</code> 0,43, <code>DP</code>
+43, <code>PL</code> 255,129,0 and <code>GQ</code> 127. No read supports
+<code>G</code>, and the third <code>PL</code> value (for
+<code>1/1</code>) is 0. If your prediction had <code>AD</code> equal to
+0,50: <code>mpileup</code> counts fewer reads than <code>tview</code>
+shows, for the reasons in the previous challenge.</p>
+</div>
+</div>
+</div>
+</div>
+<p><code>bcftools query</code> turns a VCF into a table, which is how
+most questions about a call set are answered. One table with the
+genotypes of all three samples at the three sites from Episode 4 (the
+het SNV, the hom-ALT SNV and a 10 bp insertion):</p>
+<!-- kit: extra 05-merge.sh -->
+<div class="codewrapper sourceCode" id="cb14">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb14-1"><a href="#cb14-1" tabindex="-1" aria-label="code-block-14-1"></a><span class="ex">bcftools</span> query <span class="at">-r</span> chr20:85259,chr20:86859,chr20:88108 <span class="at">-f</span> <span class="st">'%POS\t%REF\t%ALT\t%QUAL[\t%SAMPLE=%GT]\n'</span> resources/example/trio.example.raw.vcf.gz</span></code></pre>
+</div>
+<div id="accordionSpoiler4" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler4" aria-expanded="false" aria-controls="collapseSpoiler4">
+  <h3 class="accordion-header" id="headingSpoiler4">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler4" class="accordion-collapse collapse" aria-labelledby="headingSpoiler4" data-bs-parent="#accordionSpoiler4">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+85259	G	A	739.009	HG002=1/1	HG003=1/1	HG004=1/1
+86859	TTGGTAT	TTGGTATCTAGTGGTAT	729.329	HG002=1/1	HG003=1/1	HG004=0/1
+88108	T	C	723.977	HG002=0/1	HG003=0/1	HG004=0/1</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-5-variant-representation-and-normalization">Step 5: Variant representation and normalization<a class="anchor" aria-label="anchor" href="#step-5-variant-representation-and-normalization"></a></h2>
+<hr class="half-width"><p>The same variant can be written in more than one way. A deletion
+inside a repeat can be placed at any copy of the repeat unit, and a site
+with two different ALT alleles can be one record (<code>ALT</code> =
+<code>A,T</code>) or two. Tools that compare calls by position and
+allele, such as <code>bcftools isec</code> (<a href="https://samtools.github.io/bcftools/bcftools.html#isec" class="external-link">bcftools
+manual</a>), see different representations as different variants.
+<strong>Normalization</strong> gives each variant one form (<a href="https://doi.org/10.1093/bioinformatics/btv112" class="external-link">Tan et
+al. 2015</a>):</p>
+<ul><li>
+<strong>left-alignment</strong>: shift each indel to its leftmost
+equivalent position and trim shared bases; this needs the reference
+(<code>norm -f</code>);</li>
+<li>
+<strong>splitting</strong>: write each ALT allele of a multiallelic
+site as its own record (<code>norm -m -any</code>).</li>
+</ul><p>The example region has one multiallelic site before normalization.
+Find it:</p>
+<!-- kit: extra 05-merge.sh -->
+<div class="codewrapper sourceCode" id="cb16">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb16-1"><a href="#cb16-1" tabindex="-1" aria-label="code-block-16-1"></a><span class="ex">bcftools</span> query <span class="at">-i</span> <span class="st">'N_ALT&gt;1'</span> <span class="at">-f</span> <span class="st">'%CHROM\t%POS\t%REF\t%ALT\t%QUAL[\t%SAMPLE=%GT:%AD]\n'</span> resources/example/trio.example.raw.vcf.gz</span></code></pre>
+</div>
+<div id="accordionSpoiler5" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler5" aria-expanded="false" aria-controls="collapseSpoiler5">
+  <h3 class="accordion-header" id="headingSpoiler5">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler5" class="accordion-collapse collapse" aria-labelledby="headingSpoiler5" data-bs-parent="#accordionSpoiler5">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+chr20	88865	GACACACACACACACACACACACACACACA	GACACACACACACACACACACACACACACACACACA,GACACACACACACACACACACACACACACACACA	240.617	HG002=0/0:36,0,0	HG003=0/2:26,0,4	HG004=0/1:15,17,0</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p><code>-i 'N_ALT&gt;1'</code> keeps records with more than one ALT
+allele. This one is in a <code>CA</code> repeat: the two ALT alleles add
+6 and 4 bases to it (<code>ACACAC</code> and <code>ACAC</code>).
+Genotypes number the alleles in order, <code>0</code> for REF,
+<code>1</code> for the first ALT and <code>2</code> for the second, and
+<code>AD</code> has one number per allele in the same order. So HG003 is
+<code>0/2</code> (26 reads for REF, 4 for the second ALT), HG004 is
+<code>0/1</code> (15 and 17), and the child HG002 is <code>0/0</code>.
+Now look at the same position in the normalized version of the example,
+<code>trio.example.filtered.vcf.gz</code> (it is also filtered, which
+Episode 6 explains). The first line stores the position in a shell
+variable:</p>
+<!-- kit: extra 05-merge.sh -->
+<div class="codewrapper sourceCode" id="cb18">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb18-1"><a href="#cb18-1" tabindex="-1" aria-label="code-block-18-1"></a><span class="va">POS</span><span class="op">=</span><span class="va">$(</span><span class="ex">bcftools</span> query <span class="at">-i</span> <span class="st">'N_ALT&gt;1'</span> <span class="at">-f</span> <span class="st">'%POS\n'</span> resources/example/trio.example.raw.vcf.gz<span class="va">)</span></span>
+<span id="cb18-2"><a href="#cb18-2" tabindex="-1" aria-label="code-block-18-2"></a><span class="ex">bcftools</span> query <span class="at">-r</span> chr20:<span class="va">$POS</span> <span class="at">-f</span> <span class="st">'%CHROM\t%POS\t%REF\t%ALT\t%QUAL[\t%SAMPLE=%GT:%AD]\n'</span> resources/example/trio.example.filtered.vcf.gz</span></code></pre>
+</div>
+<div id="accordionSpoiler6" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler6" aria-expanded="false" aria-controls="collapseSpoiler6">
+  <h3 class="accordion-header" id="headingSpoiler6">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler6" class="accordion-collapse collapse" aria-labelledby="headingSpoiler6" data-bs-parent="#accordionSpoiler6">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+chr20	88865	G	GACACAC	240.617	HG002=0/0:36,0	HG003=0/0:26,0	HG004=0/1:15,17
+chr20	88865	G	GACAC	240.617	HG002=0/0:36,0	HG003=0/1:26,4	HG004=0/0:15,0</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>The one record became 2 records at the same position, each with a
+single ALT allele, and <code>norm</code> also trimmed the repeat bases
+that REF and ALT shared, so each insertion is now written as
+<code>G</code> followed by the inserted bases. A sample’s genotype is
+rewritten for each record: HG003’s <code>0/2</code> becomes
+<code>0/0</code> in the first record and <code>0/1</code> in the second,
+because when splitting, <code>norm</code> fills in the reference allele
+for the other ALT (<code>--multi-overlaps 0|.</code>, default
+<code>[0]</code>, in the 1.24 usage text). In the same way a
+<code>1/2</code> would become <code>1/0</code> and <code>0/1</code>.
+<code>AD</code> keeps the REF count and the count of that record’s ALT:
+HG003’s 4 reads for the shorter insertion appear only in the second
+record. Reads of the other ALT count as neither allele, so read the
+<code>AD</code> of split records with care.</p>
+<p>After splitting, every record is biallelic, which makes counting
+simple (one ALT, one variant), and Episodes 6-8 can treat each record as
+one variant.</p>
+</section><section><h2 class="section-heading" id="step-6-join-normalize-and-index-the-calls">Step 6: Join, normalize and index the calls<a class="anchor" aria-label="anchor" href="#step-6-join-normalize-and-index-the-calls"></a></h2>
+<hr class="half-width"><p>When <code>squeue -u $USER</code> no longer lists the
+<code>call</code> job, continue in your session. First, list the chunks
+in order:</p>
+<!-- kit: interactive 05-merge.sh -->
+<div class="codewrapper sourceCode" id="cb20">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb20-1"><a href="#cb20-1" tabindex="-1" aria-label="code-block-20-1"></a><span class="co"># chunk01 ... chunk08: the names sort in chromosome order</span></span>
+<span id="cb20-2"><a href="#cb20-2" tabindex="-1" aria-label="code-block-20-2"></a><span class="fu">ls</span> results/vcf/chunks/chunk<span class="pp">*</span>.bcf <span class="op">&gt;</span> results/vcf/chunks.txt</span>
+<span id="cb20-3"><a href="#cb20-3" tabindex="-1" aria-label="code-block-20-3"></a><span class="fu">cat</span> results/vcf/chunks.txt</span></code></pre>
+</div>
+<div id="accordionSpoiler7" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler7" aria-expanded="false" aria-controls="collapseSpoiler7">
+  <h3 class="accordion-header" id="headingSpoiler7">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler7" class="accordion-collapse collapse" aria-labelledby="headingSpoiler7" data-bs-parent="#accordionSpoiler7">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code><span><span class="va">results</span><span class="op">/</span><span class="va">vcf</span><span class="op">/</span><span class="va">chunks</span><span class="op">/</span><span class="va">chunk01.bcf</span></span>
+<span><span class="va">results</span><span class="op">/</span><span class="va">vcf</span><span class="op">/</span><span class="va">chunks</span><span class="op">/</span><span class="va">chunk02.bcf</span></span>
+<span><span class="va">results</span><span class="op">/</span><span class="va">vcf</span><span class="op">/</span><span class="va">chunks</span><span class="op">/</span><span class="va">chunk03.bcf</span></span>
+<span><span class="va">results</span><span class="op">/</span><span class="va">vcf</span><span class="op">/</span><span class="va">chunks</span><span class="op">/</span><span class="va">chunk04.bcf</span></span>
+<span><span class="va">results</span><span class="op">/</span><span class="va">vcf</span><span class="op">/</span><span class="va">chunks</span><span class="op">/</span><span class="va">chunk05.bcf</span></span>
+<span><span class="va">results</span><span class="op">/</span><span class="va">vcf</span><span class="op">/</span><span class="va">chunks</span><span class="op">/</span><span class="va">chunk06.bcf</span></span>
+<span><span class="va">results</span><span class="op">/</span><span class="va">vcf</span><span class="op">/</span><span class="va">chunks</span><span class="op">/</span><span class="va">chunk07.bcf</span></span>
+<span><span class="va">results</span><span class="op">/</span><span class="va">vcf</span><span class="op">/</span><span class="va">chunks</span><span class="op">/</span><span class="va">chunk08.bcf</span></span></code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Because the chunk numbers are padded to two digits, <code>ls</code>
+lists them in chromosome order. Join them, then normalize:</p>
+<!-- kit: interactive 05-merge.sh -->
+<div class="codewrapper sourceCode" id="cb22">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb22-1"><a href="#cb22-1" tabindex="-1" aria-label="code-block-22-1"></a><span class="ex">bcftools</span> concat <span class="at">-f</span> results/vcf/chunks.txt <span class="at">-Ob</span> <span class="at">-W</span> <span class="at">-o</span> results/vcf/trio.raw.bcf</span>
+<span id="cb22-2"><a href="#cb22-2" tabindex="-1" aria-label="code-block-22-2"></a><span class="ex">bcftools</span> norm <span class="at">-f</span> ref/GRCh38_no_alt.fa <span class="at">-m</span> <span class="at">-any</span> <span class="at">-Oz</span> <span class="at">-W</span> <span class="at">-o</span> results/vcf/trio.norm.vcf.gz results/vcf/trio.raw.bcf</span></code></pre>
+</div>
+<div id="accordionSpoiler8" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler8" aria-expanded="false" aria-controls="collapseSpoiler8">
+  <h3 class="accordion-header" id="headingSpoiler8">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler8" class="accordion-collapse collapse" aria-labelledby="headingSpoiler8" data-bs-parent="#accordionSpoiler8">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>Checking the headers and starting positions of 8 files
+[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+Concatenating results/vcf/chunks/chunk01.bcf	0.105096 seconds
+Concatenating results/vcf/chunks/chunk02.bcf	0.088082 seconds
+Concatenating results/vcf/chunks/chunk03.bcf	0.084996 seconds
+Concatenating results/vcf/chunks/chunk04.bcf	0.271559 seconds
+Concatenating results/vcf/chunks/chunk05.bcf	0.092314 seconds
+Concatenating results/vcf/chunks/chunk06.bcf	0.079879 seconds
+Concatenating results/vcf/chunks/chunk07.bcf	0.095996 seconds
+Concatenating results/vcf/chunks/chunk08.bcf	0.106483 seconds
+[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+Lines   total/split/joined/realigned/mismatch_removed/dup_removed/skipped:	181481/3956/0/28035/0/0/0</code></pre>
+</div>
+<p><code>concat</code> first checks the headers and the starting
+position of each file; the files must be listed in chromosome order.
+<code>norm</code> reports what it did on its <code>Lines</code> line:
+the number of records read, how many multiallelic records it split
+(3,956), and how many indels it realigned (28,035). The seconds on the
+<code>Concatenating</code> lines differ from run to run.</p>
+</div>
+</div>
+</div>
+</div>
+<p><code>concat -f</code> reads the list of files to join, in order.
+<code>norm -f</code> left-aligns indels against the reference, and
+<code>-m -any</code> splits every multiallelic site, SNVs and indels
+alike. Both write with <code>-W</code>, so both outputs get an
+index.</p>
+<div id="mq-should-be-declared-as-typefloat" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="mq-should-be-declared-as-typefloat" class="callout-inner">
+<h3 class="callout-title">“MQ should be declared as Type=Float”</h3>
+<div class="callout-content">
+<p>Every bcftools command that reads these files prints:</p>
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float</code></pre>
+</div>
+<p>It is a header-type notice, not an error. The VCF specification
+reserves the INFO key <code>MQ</code> (“RMS mapping quality”) with
+<code>Type=Float</code> (<a href="https://samtools.github.io/hts-specs/VCFv4.3.pdf" class="external-link">VCF
+specification</a>, Table 1), and the header that <code>mpileup</code>
+writes declares <code>MQ</code> with another type (the
+<code>##INFO=&lt;ID=MQ</code> line in Step 4). The warning changes
+nothing in the output: the <code>INFO/MQ &lt; 30</code> filter in
+Episode 6 flags 6,407 sites, as expected from the MQ distribution. You
+can ignore it.</p>
+</div>
+</div>
+</div>
+<p>Check the sample names and the first records:</p>
+<!-- kit: interactive 05-merge.sh -->
+<div class="codewrapper sourceCode" id="cb25">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb25-1"><a href="#cb25-1" tabindex="-1" aria-label="code-block-25-1"></a><span class="ex">bcftools</span> query <span class="at">-l</span> results/vcf/trio.norm.vcf.gz</span>
+<span id="cb25-2"><a href="#cb25-2" tabindex="-1" aria-label="code-block-25-2"></a><span class="ex">bcftools</span> view <span class="at">-H</span> results/vcf/trio.norm.vcf.gz <span class="kw">|</span> <span class="fu">head</span> <span class="at">-3</span></span></code></pre>
+</div>
+<div id="accordionSpoiler9" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler9" aria-expanded="false" aria-controls="collapseSpoiler9">
+  <h3 class="accordion-header" id="headingSpoiler9">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler9" class="accordion-collapse collapse" aria-labelledby="headingSpoiler9" data-bs-parent="#accordionSpoiler9">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+HG002
+HG003
+HG004
+[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+chr20	61083	.	C	T	389.284	.	DP=122;VDB=0.110165;SGB=0.0318579;RPBZ=-2.14575;MQBZ=2.20292;MQSBZ=2.23992;BQBZ=-1.50832;SCBZ=-0.208065;MQ0F=0.0245902;AC=2;AN=6;DP4=52,30,17,13;MQ=54	GT:PL:DP:SP:AD:GQ	0/0:0,126,255:42:0:42,0:127	0/1:255,0,255:39:3:19,20:127	0/1:171,0,255:31:4:21,10:127
+chr20	61264	.	T	C	8.72949	.	DP=123;VDB=0.00922863;SGB=-25.4761;RPBZ=-1.36098;MQBZ=-6.90319;MQSBZ=1.12068;BQBZ=-1.24528;SCBZ=4.03624;MQ0F=0.130081;AC=1;AN=6;DP4=42,44,15,9;MQ=45	GT:PL:DP:SP:AD:GQ	0/0:0,47,255:39:10:32,6:54	0/1:44,0,255:32:2:25,5:36	0/0:0,32,255:39:0:29,9:39
+chr20	61275	.	A	G	344.637	.	DP=184;VDB=1.69768e-13;SGB=-38.0955;RPBZ=-5.45572;MQBZ=-3.51699;MQSBZ=1.17918;BQBZ=-0.407145;SCBZ=7.27953;MQ0F=0.108696;AC=3;AN=6;DP4=62,58,21,17;MQ=42	GT:PL:DP:SP:AD:GQ	0/1:111,0,255:56:3:43,11:108	0/1:176,0,255:50:4:34,15:127	0/1:97,0,255:52:1:43,9:94</code></pre>
+</div>
+<p><code>query -l</code> lists the samples in column order: HG002,
+HG003, HG004, the order of the BAM files in <code>call.sh</code> and of
+<code>trio.ped</code>. Episode 8 depends on this order.</p>
+</div>
+</div>
+</div>
+</div>
+<p>Your record at chr20:88,108 should be identical to the one in the
+example file, because the example was cut from the reference run, made
+with the same scripts:</p>
+<!-- kit: extra 05-merge.sh -->
+<div class="codewrapper sourceCode" id="cb27">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb27-1"><a href="#cb27-1" tabindex="-1" aria-label="code-block-27-1"></a><span class="ex">bcftools</span> view <span class="at">-H</span> <span class="at">-r</span> chr20:88108 results/vcf/trio.norm.vcf.gz</span></code></pre>
+</div>
+<div id="accordionSpoiler10" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler10" aria-expanded="false" aria-controls="collapseSpoiler10">
+  <h3 class="accordion-header" id="headingSpoiler10">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler10" class="accordion-collapse collapse" aria-labelledby="headingSpoiler10" data-bs-parent="#accordionSpoiler10">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+chr20	88108	.	T	C	723.977	.	DP=117;VDB=0.244275;SGB=-7.53767;RPBZ=-1.26517;MQBZ=0;MQSBZ=0;BQBZ=0.232513;SCBZ=0;MQ0F=0;AC=3;AN=6;DP4=30,23,31,23;MQ=60	GT:PL:DP:SP:AD:GQ	0/1:249,0,255:32:8:19,13:127	0/1:255,0,255:42:4:20,22:127	0/1:255,0,255:33:16:14,19:127</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="section level3">
+<h3 id="count-the-calls">Count the calls<a class="anchor" aria-label="anchor" href="#count-the-calls"></a></h3>
+<p><code>bcftools stats</code> summarizes a VCF file. <code>-s -</code>
+adds per-sample counts for all samples. Save the summary, then print the
+overall numbers and the per-sample lines:</p>
+<!-- kit: interactive 05-merge.sh -->
+<div class="codewrapper sourceCode" id="cb29">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb29-1"><a href="#cb29-1" tabindex="-1" aria-label="code-block-29-1"></a><span class="ex">bcftools</span> stats <span class="at">-s</span> <span class="at">-</span> results/vcf/trio.norm.vcf.gz <span class="op">&gt;</span> results/vcf/trio.norm.stats.txt</span>
+<span id="cb29-2"><a href="#cb29-2" tabindex="-1" aria-label="code-block-29-2"></a><span class="fu">grep</span> <span class="at">-E</span> <span class="st">'^(SN|TSTV)'</span> results/vcf/trio.norm.stats.txt</span>
+<span id="cb29-3"><a href="#cb29-3" tabindex="-1" aria-label="code-block-29-3"></a><span class="fu">grep</span> ^PSC results/vcf/trio.norm.stats.txt</span></code></pre>
+</div>
+<div id="accordionSpoiler11" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler11" aria-expanded="false" aria-controls="collapseSpoiler11">
+  <h3 class="accordion-header" id="headingSpoiler11">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler11" class="accordion-collapse collapse" aria-labelledby="headingSpoiler11" data-bs-parent="#accordionSpoiler11">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float
+SN	0	number of samples:	3
+SN	0	number of records:	185914
+SN	0	number of no-ALTs:	0
+SN	0	number of SNPs:	155291
+SN	0	number of MNPs:	0
+SN	0	number of indels:	30623
+SN	0	number of others:	0
+SN	0	number of multiallelic sites:	0
+SN	0	number of multiallelic SNP sites:	0
+TSTV	0	100039	55252	1.81	100039	55252	1.81
+PSC	0	HG002	44001	31755	88101	76976	42880	21759	44.0	2049	0	0	298
+PSC	0	HG003	46627	29277	88481	75644	42114	21267	43.9	17640	0	0	262
+PSC	0	HG004	45117	30599	88065	76259	42405	21684	43.5	18746	0	0	449</code></pre>
+</div>
+<p>The <code>SN</code> lines count records by type: 185,914 records,
+155,291 SNVs and 30,623 indels, and no multiallelic sites left after
+<code>norm</code>. The <code>TSTV</code> line gives the
+transition/transversion ratio of the SNVs, 1.81 (Episode 6 explains why
+it matters). Each <code>PSC</code> line describes one sample; its
+columns are listed in the comment line above them in the stats file
+(<code>grep -m1 '^# PSC' results/vcf/trio.norm.stats.txt</code>).</p>
+</div>
+</div>
+</div>
+</div>
+<div id="challenge-snvs-and-indels-per-sample" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-snvs-and-indels-per-sample" class="callout-inner">
+<h3 class="callout-title">Challenge: SNVs and indels per sample</h3>
+<div class="callout-content">
+<p>The trio file has 155,291 SNV records and 30,623 indel records, but
+no single person carries all of them.</p>
+<ol style="list-style-type: decimal"><li>From the <code>PSC</code> lines, how many SNVs and how many indels
+does each sample carry? (SNVs are transitions plus transversions; use
+the <code># PSC</code> comment line to find the columns.)</li>
+<li>Why does each sample carry fewer than the trio file holds?</li>
+<li>Which column counts the genotypes with no call
+(<code>./.</code>)?</li>
+</ol></div>
+</div>
+</div>
+<div id="accordionSolution3" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution3" aria-expanded="false" aria-controls="collapseSolution3">
+  <h4 class="accordion-header" id="headingSolution3"> Show me the solution </h4>
+</button>
+<div id="collapseSolution3" class="accordion-collapse collapse" aria-labelledby="headingSolution3" data-bs-parent="#accordionSolution3">
+<div class="accordion-body">
+<ol style="list-style-type: decimal"><li>HG002 119,856 SNVs and 21,759 indels; HG003 117,758 SNVs and 21,267
+indels; HG004 118,664 SNVs and 21,684 indels. For HG002, 76,976
+transitions plus 42,880 transversions give 119,856.</li>
+<li>A trio record is written when any of the three samples carries an
+ALT allele; at many sites only one or two of them do. A sample with
+<code>0/0</code> or <code>./.</code> at a site does not carry that
+variant.</li>
+<li>
+<code>nMissing</code>, the last column: HG002 298, HG003 262 and
+HG004 449 missing genotypes. Before filtering, a genotype is missing
+only where the sample has no usable reads.</li>
+</ol></div>
+</div>
+</div>
+</div>
+<p>Type <code>exit</code> to leave the interactive session.</p>
+<div id="short-on-time-1" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="short-on-time-1" class="callout-inner">
+<h3 class="callout-title">Short on time?</h3>
+<div class="callout-content">
+<p>If you could not join and normalize the calls, copy the result and
+its statistics from the results copy:</p>
+<!-- kit: not-run fallback -->
+<div class="codewrapper sourceCode" id="cb31">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb31-1"><a href="#cb31-1" tabindex="-1" aria-label="code-block-31-1"></a><span class="fu">cp</span> /depot/workshop/data/varcall-workshop_results/results/vcf/trio.norm.vcf.gz<span class="pp">*</span> <span class="va">$SCRATCH</span>/varcall-workshop/results/vcf/</span>
+<span id="cb31-2"><a href="#cb31-2" tabindex="-1" aria-label="code-block-31-2"></a><span class="fu">cp</span> /depot/workshop/data/varcall-workshop_results/results/vcf/trio.norm.stats.txt <span class="va">$SCRATCH</span>/varcall-workshop/results/vcf/</span></code></pre>
+</div>
+<p>Episode 6 starts from <code>results/vcf/trio.norm.vcf.gz</code>.</p>
+</div>
+</div>
+</div>
+<div id="the-depth-cap" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="the-depth-cap" class="callout-inner">
+<h3 class="callout-title">The depth cap</h3>
+<div class="callout-content">
+<p><code>mpileup</code> reads at most 250 reads per position from each
+input file (<code>-d</code>). At about 40x this never matters in
+ordinary sequence. It matters in two cases. In a <strong>collapsed
+repeat</strong>, many copies of a sequence that the reference holds only
+once, reads from all copies pile up at one place. Depth far above the
+mean does occur in our data: in Episode 4, <code>mosdepth</code>
+reported a maximum depth of 13,784 in HG002. At such places the cap
+keeps memory in check, and the calls deserve suspicion anyway; Episode 6
+flags sites with unusually high depth. In <strong>deep data</strong>
+(targeted panels, amplicons, mitochondria), the cap silently throws away
+reads at every position; raise <code>-d</code> for such data.</p>
+</div>
+</div>
+</div>
+<div id="ploidy" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="ploidy" class="callout-inner">
+<h3 class="callout-title">Ploidy</h3>
+<div class="callout-content">
+<p>Human chromosome 20 is diploid, so every genotype here has two
+alleles. <code>bcftools call</code> assumes diploid genotypes unless
+told otherwise; its usage text gives <code>--ploidy</code> the default
+<code>[2]</code>. For haploid sequence (chrY and most of chrX in males,
+mitochondria, many microbes) or polyploid organisms, set
+<code>--ploidy</code> or <code>--ploidy-file</code>. Pooled samples need
+a different approach altogether (Episode 10).</p>
+</div>
+</div>
+</div>
+<div id="the-gvcf-idea" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="the-gvcf-idea" class="callout-inner">
+<h3 class="callout-title">The gVCF idea</h3>
+<div class="callout-content">
+<p>Our VCF has records only at variant sites (<code>-v</code>). To add a
+fourth sample later, we would have to call all four again, because the
+existing file does not say whether the new sample’s variant sites were
+covered in the other three. A <strong>gVCF</strong> solves this: it also
+stores blocks of non-variant positions with their depth and genotype
+quality, so each sample is called once and the samples are genotyped
+together afterwards. <code>bcftools mpileup -g</code> writes gVCF
+blocks, and GATK’s HaplotypeCaller is built around them; Episode 5B
+(self-paced) uses that route.</p>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="common-problems">Common problems<a class="anchor" aria-label="anchor" href="#common-problems"></a></h2>
+<hr class="half-width"><table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Symptom</th>
+<th>Likely cause</th>
+<th>Fix</th>
+</tr></thead><tbody><tr><td>errors that name a sequence, or an empty VCF</td>
+<td>contig names differ between FASTA and BAM (<code>chr20</code>
+against <code>20</code>), or a different reference build</td>
+<td>align to the same FASTA you call with; check
+<code>samtools view -H</code> against the <code>.fai</code> (Episode
+2)</td>
+</tr><tr><td>no <code>AD</code> in the FORMAT column</td>
+<td>
+<code>-a AD</code> missing from <code>mpileup</code>
+</td>
+<td>add <code>-a AD,DP,SP</code> as in <code>call.sh</code>
+</td>
+</tr><tr><td>millions of records, nearly all <code>0/0</code>
+</td>
+<td>
+<code>-v</code> missing from <code>call</code>
+</td>
+<td>call again with <code>-mv</code>
+</td>
+</tr><tr><td>
+<code>mpileup</code> reports a region it cannot parse</td>
+<td>region syntax: <code>chr20:1-8060000</code>, no spaces, no thousands
+separators</td>
+<td>fix the line in the region list</td>
+</tr><tr><td>depth stuck at 250 in deep data</td>
+<td>the depth cap</td>
+<td>raise <code>-d</code>
+</td>
+</tr><tr><td>
+<code>concat</code> complains about the order of the files</td>
+<td>chunks listed out of order</td>
+<td>list them in chromosome order (the padded names do this)</td>
+</tr><tr><td>“could not load index” or <code>-r</code> does not work</td>
+<td>an output written without an index</td>
+<td>write with <code>-W</code>, or run <code>bcftools index</code>
+</td>
+</tr><tr><td>one sample column, or unexpected sample names</td>
+<td>wrong <code>SM</code> in the read groups</td>
+<td>fix <code>samples.tsv</code> and realign (Episode 4)</td>
+</tr></tbody></table></section><section><h2 class="section-heading" id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a></h2>
 <hr class="half-width"><div id="keypoints1" class="callout keypoints">
 <div class="callout-square">
 <i class="callout-icon" data-feather="key"></i>
@@ -411,7 +1488,24 @@ DP).</li>
 <span class="callout-header">Key Points</span>
 <div class="callout-inner">
 <div class="callout-content">
-<ul><li>TBD(P5)</li>
+<ul><li>
+<code>bcftools mpileup</code> computes per-sample genotype
+likelihoods (<code>PL</code>) from the bases, base qualities and mapping
+qualities of the reads; it skips duplicates and some other reads and
+bases by default.</li>
+<li>
+<code>bcftools call -m</code> combines the likelihoods with a prior
+to give GT for each sample and QUAL for the site; GQ is added on request
+(<code>-a FORMAT/GQ</code>).</li>
+<li>QUAL is about the site, pooled over the samples of a joint call; GQ
+is about one sample’s genotype.</li>
+<li>Joint calling gives every sample a genotype at every variant site,
+so homozygous reference is distinct from no data.</li>
+<li>Calling by region with an array job, then <code>concat</code> in
+order, <code>norm -f -m -any</code> and indexing (<code>-W</code>),
+gives one normalized, indexed VCF.</li>
+<li>A genotype is chosen because the alternatives are much less likely
+(<code>PL</code>), not because the read counts pass a balance test.</li>
 </ul></div>
 </div>
 </div>
@@ -479,8 +1573,8 @@ any links that you are not going to use.
   "url": "https://rcac-bioinformatics.github.io/variant-calling/05a-calling-with-bcftools.html",
   "identifier": "https://rcac-bioinformatics.github.io/variant-calling/05a-calling-with-bcftools.html",
   "dateCreated": "2026-10-09",
-  "dateModified": "2026-10-13",
-  "datePublished": "2026-10-13"
+  "dateModified": "2026-10-14",
+  "datePublished": "2026-10-14"
 }
 
   </script><script>

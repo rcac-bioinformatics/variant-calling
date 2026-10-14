@@ -785,14 +785,128 @@ quit).</p>
 <h3 id="05a-calling-with-bcftools-headingInstructor1">
 <a href="05a-calling-with-bcftools.html#headingInstructor1">Instructor Note</a><a class="anchor" aria-label="anchor" href="#05a-calling-with-bcftools-headingInstructor1"></a>
 </h3>
-<p>Stub: content arrives in phase P5.</p>
+<p>Live path (45 minutes; plan section 4: submit the calling array by
+about 11:40). Episodes 1-4 do not mark live and self-paced sections, so
+this note gives the live path; P7 applies the same format to every
+episode.</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr>
+<th>Minutes</th>
+<th>Section</th>
+<th>Live or self-paced</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>5</td>
+<td>Step 1: submit <code>call.sh</code>; Step 3: start the interactive
+session</td>
+<td>live</td>
+</tr>
+<tr>
+<td>10</td>
+<td>How bcftools calls a genotype (PL, prior, QUAL and GQ); joint
+calling</td>
+<td>live, short version</td>
+</tr>
+<tr>
+<td>15</td>
+<td>Step 4: VCF anatomy on the example file; the chr20:88,108 record;
+challenge “Reading AD at a heterozygous site”</td>
+<td>live</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Step 5: a multiallelic site and normalization</td>
+<td>live</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Step 6: concatenate, normalize, count; challenge “SNVs and indels
+per sample”</td>
+<td>live</td>
+</tr>
+</tbody>
+</table>
+<p>Self-paced: Step 2 (the script line by line), the challenge “Predict
+a homozygous record”, and the callouts on the depth cap, ploidy and
+gVCF. If calling has not finished by the 35-minute mark, switch to the
+“Short on time?” copy and run Step 6 on it.</p>
 <hr>
 <br></section><section id="06-filtering-and-evaluation"><h2 class="section-heading"><a href="06-filtering-and-evaluation.html">6. Filtering and evaluating variant calls</a></h2>
 <hr class="half-width">
 <h3 id="06-filtering-and-evaluation-headingInstructor1">
 <a href="06-filtering-and-evaluation.html#headingInstructor1">Instructor Note</a><a class="anchor" aria-label="anchor" href="#06-filtering-and-evaluation-headingInstructor1"></a>
 </h3>
-<p>Stub: content arrives in phase P5.</p>
+<p>Live path (60 minutes; plan section 4, with hap.py running in the
+background):</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr>
+<th>Minutes</th>
+<th>Section</th>
+<th>Live or self-paced</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>5</td>
+<td>Step 1: session and distributions</td>
+<td>live</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Step 2: thresholds from the distributions; the filter commands</td>
+<td>live</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Step 3: site and genotype filters, and what they changed</td>
+<td>live</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Step 4: submit task 1 of <code>evaluate.sh</code>; copy the other
+three tasks’ results</td>
+<td>live</td>
+</tr>
+<tr>
+<td>10</td>
+<td>While hap.py runs: Ts/Tv inside and outside the benchmark (end of
+Step 3); benchmarks, precision and recall</td>
+<td>live</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Step 5: reading <code>summary.csv</code>; the genotype mask and the
+site filters</td>
+<td>live</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Challenge “Predict, then test a QUAL threshold” and the leakage
+callout</td>
+<td>live</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Discussion “Same calls, two benchmarks”; proxies without a truth
+set</td>
+<td>live, discussion</td>
+</tr>
+</tbody>
+</table>
+<p>Self-paced: the challenge “Predict the filters”, the Ts/Tv challenge
+with PASS calls, the challenge “Same calls, two benchmarks” (the live
+session uses it as a discussion), and the sections on stratification and
+on proxies beyond Ts/Tv.</p>
 <hr>
 <br></section><section id="07-annotation"><h2 class="section-heading"><a href="07-annotation.html">7. Annotating variants</a></h2>
 <hr class="half-width">
@@ -858,8 +972,8 @@ quit).</p>
   "url": "https://rcac-bioinformatics.github.io/variant-calling/instructor/instructor-notes.html",
   "identifier": "https://rcac-bioinformatics.github.io/variant-calling/instructor/instructor-notes.html",
   "dateCreated": "2026-10-09",
-  "dateModified": "2026-10-13",
-  "datePublished": "2026-10-13"
+  "dateModified": "2026-10-14",
+  "datePublished": "2026-10-14"
 }
 
   </script><script>

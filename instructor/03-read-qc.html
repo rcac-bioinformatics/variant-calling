@@ -351,7 +351,7 @@
       </div>
       <hr></nav><main id="main-content" class="main-content"><div class="container lesson-content">
         <h1>3. Read quality control</h1>
-        <p>Last updated on 2026-10-13 |
+        <p>Last updated on 2026-10-14 |
 
         <a href="https://github.com/rcac-bioinformatics/variant-calling/edit/main/episodes/03-read-qc.Rmd" class="external-link">Edit this page <i aria-hidden="true" data-feather="edit"></i></a></p>
 
@@ -498,7 +498,7 @@ what was written:</p>
 <button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler1" aria-expanded="false" aria-controls="collapseSpoiler1">
   <h3 class="accordion-header" id="headingSpoiler1">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
 </button>
-<div id="collapseSpoiler1" class="accordion-collapse collapse" aria-labelledby="headingSpoiler1" data-bs-parent="#accordionSpoiler1">
+<div id="collapseSpoiler1" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler1" aria-labelledby="headingSpoiler1">
 <div class="accordion-body">
 <div class="codewrapper">
 <h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
@@ -572,9 +572,16 @@ not this workshop’s data.</p>
 With binned qualities, the box plots in each FastQC report look blocky:
 medians, quartiles and percentiles can only take the four values (2, 11,
 25, 37). That is binning, not a failure. In our files the median and
-both quartiles are 37 at every position; only the 10th percentile drops
-to 25 near the end of the read. MultiQC plots the mean, which stays near
-35 to 36 and falls slightly over the last cycles.</p>
+both quartiles are 37 at every position; only the 10th percentile drops,
+to 25, the next bin down, over the last part of the read (from position
+125 in R1, and from position 85 to 95 in R2, depending on the sample).
+Values between the bins, such as 27.4, 29.8, 32.2 and 34.6, are not
+qualities in the data: for reads longer than 50 bp FastQC groups
+neighboring positions (the <code>--nogroup</code> option of the <a href="https://github.com/s-andrews/FastQC/blob/master/fastqc" class="external-link">FastQC
+program</a> turns this off) and reports one value per group, the average
+over its positions. A group of five positions with the 10th percentile
+at 37 in three and at 25 in two shows 32.2. MultiQC plots the mean,
+which stays near 35 to 36 and falls slightly over the last cycles.</p>
 <figure style="text-align: center"><img src="../fig/03/multiqc_per_base_quality.png" alt="MultiQC line plot of mean Phred score against read position for six files; all lines lie close together near 35 to 36 in the green zone and dip slightly over the last cycles" class="figure mx-auto d-block"><figcaption>
 Your output: mean base quality at each position of the six workshop
 FASTQ files (MultiQC). The means stay between about Q34 and Q36 along
@@ -658,7 +665,11 @@ fragments average about 400 bp (the insert sizes of the source
 alignments were 399.5 to 417.9 bp on average; feasibility memo), well
 above the 151 bp read length, so few reads should reach the adapter.
 FastQC 0.12 also counts poly-A and poly-G stretches in this module, and
-reports each adapter type as its own line.</p>
+reports each adapter type as its own line. Its poly-A series counts
+reads that contain 12 A’s in a row (FastQC’s <a href="https://github.com/s-andrews/FastQC/blob/master/Configuration/adapter_list.txt" class="external-link">adapter
+list</a>). Such runs also occur in the genome itself, and every read
+here came from an alignment to chromosome 20, so the poly-A series does
+not point to a library artifact and is no reason to trim.</p>
 <figure style="text-align: center"><img src="../fig/03/multiqc_adapter_content.png" alt="MultiQC line plot of the percentage of reads containing adapter sequence against read position; one group of lines rises steadily to about 1.5% at position 140, a second group stays near zero and rises to about 0.5% over the last 30 positions, all within the green pass zone" class="figure mx-auto d-block"><figcaption>
 Your output: adapter content for the six workshop FASTQ files (MultiQC).
 Every line stays below 1.5% of reads; the highest lines are FastQC’s
@@ -668,7 +679,24 @@ poly-A series, and the Illumina Universal Adapter stays at or below
 Contrast example, schematic and not data: adapter content rising toward
 the read end (short inserts, acceptable only for fragmented ancient DNA)
 and a flat line near zero. Cartoon by Zandra Selina, CC BY 4.0.
-</figcaption></figure><div id="challenge-interpret-the-qc-report" class="callout challenge">
+</figcaption></figure><div id="why-these-reports-look-clean" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="why-these-reports-look-clean" class="callout-inner">
+<h3 class="callout-title">Why these reports look clean</h3>
+<div class="callout-content">
+<p>Our reads were selected from alignments to chromosome 20 (Episode 2;
+<a href="https://github.com/rcac-bioinformatics/variant-calling/blob/main/maintenance/plan/feasibility.md" class="external-link">feasibility
+memo</a>). Pairs that aligned nowhere, such as adapter dimers or reads
+of a single repeated base, were never in those alignments, so they are
+largely absent from our FASTQ files. The QC of a raw sequencing run of
+the same libraries would look less clean than these reports.</p>
+</div>
+</div>
+</div>
+<div id="challenge-interpret-the-qc-report" class="callout challenge">
 <div class="callout-square">
 <i class="callout-icon" data-feather="zap"></i>
 </div>
@@ -692,7 +720,7 @@ with the duplicate rate after alignment that Episode 4 reports?</li>
 <button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution1" aria-expanded="false" aria-controls="collapseSolution1">
   <h4 class="accordion-header" id="headingSolution1"> Show me the solution </h4>
 </button>
-<div id="collapseSolution1" class="accordion-collapse collapse" aria-labelledby="headingSolution1" data-bs-parent="#accordionSolution1">
+<div id="collapseSolution1" class="accordion-collapse collapse" data-bs-parent="#accordionSolution1" aria-labelledby="headingSolution1">
 <div class="accordion-body">
 <ol style="list-style-type: decimal"><li>HG002 has 9,462,450 reads in R1 and in R2, HG003 9,480,040 and HG004
 9,347,118. R1 and R2 of a sample must have the same number of reads,
@@ -762,7 +790,7 @@ alignment to confirm your choice?</p>
 <button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler2" aria-expanded="false" aria-controls="collapseSpoiler2">
   <h3 class="accordion-header" id="headingSpoiler2">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> Trimming with fastp (reference only) </h3>
 </button>
-<div id="collapseSpoiler2" class="accordion-collapse collapse" aria-labelledby="headingSpoiler2" data-bs-parent="#accordionSpoiler2">
+<div id="collapseSpoiler2" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler2" aria-labelledby="headingSpoiler2">
 <div class="accordion-body">
 <p><em>Optional reference: not part of the hands-on, and not tested by
 the workshop’s run kit.</em> If your data does need trimming, <a href="https://github.com/OpenGene/fastp" class="external-link">fastp</a> detects and removes
@@ -878,8 +906,8 @@ any links that you are not going to use.
   "url": "https://rcac-bioinformatics.github.io/variant-calling/instructor/03-read-qc.html",
   "identifier": "https://rcac-bioinformatics.github.io/variant-calling/instructor/03-read-qc.html",
   "dateCreated": "2026-10-09",
-  "dateModified": "2026-10-13",
-  "datePublished": "2026-10-13"
+  "dateModified": "2026-10-14",
+  "datePublished": "2026-10-14"
 }
 
   </script><script>

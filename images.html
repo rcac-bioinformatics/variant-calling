@@ -493,7 +493,20 @@ Your output: cumulative coverage of chromosome 20 for the three samples
 mean of about 39x.
 </figcaption></figure><hr></section><section id="05a-calling-with-bcftools"><h2 class="section-heading"><a href="05a-calling-with-bcftools.html">5A. Calling variants with bcftools</a></h2>
 <hr class="half-width"></section><section id="06-filtering-and-evaluation"><h2 class="section-heading"><a href="06-filtering-and-evaluation.html">6. Filtering and evaluating variant calls</a></h2>
-<hr class="half-width"></section><section id="07-annotation"><h2 class="section-heading"><a href="07-annotation.html">7. Annotating variants</a></h2>
+<hr class="half-width">
+<h3 id="06-filtering-and-evaluation-figure-1">Figure 1</h3>
+<p aria-hidden="true">Image 1 of 1: ‘Line plot of precision (y axis, 0.868 to 1.0) against recall (x axis, 0 to 1). A solid blue SNV curve runs almost flat near precision 0.995 to 1.0 from recall 0 to about 0.97, then drops steeply to 0.979 at recall 0.988; a blue circle marks the SNV PASS point at recall 0.981, precision 0.989. A dashed red indel curve starts near precision 0.998 at recall 0.06, falls to about 0.935 by recall 0.16, wanders between 0.90 and 0.92 up to recall 0.75, and drops to 0.872 at recall 0.84; a red square marks the indel PASS point at recall 0.779, precision 0.930, above the dashed curve.’</p>
+<figure style="text-align: center"><img src="fig/06/pr_hg002_v5.0q.png" alt="Line plot of precision (y axis, 0.868 to 1.0) against recall (x axis, 0 to 1). A solid blue SNV curve runs almost flat near precision 0.995 to 1.0 from recall 0 to about 0.97, then drops steeply to 0.979 at recall 0.988; a blue circle marks the SNV PASS point at recall 0.981, precision 0.989. A dashed red indel curve starts near precision 0.998 at recall 0.06, falls to about 0.935 by recall 0.16, wanders between 0.90 and 0.92 up to recall 0.75, and drops to 0.872 at recall 0.84; a red square marks the indel PASS point at recall 0.779, precision 0.930, above the dashed curve." class="figure mx-auto d-block"><figcaption>
+Precision against recall for HG002’s calls against benchmark v5.0q,
+chromosome 20, from the workshop’s test run (drawn by the run kit from
+the hap.py ROC tables and summary; not a learner command). The precision
+axis starts at 0.868, not 0. SNVs keep precision above 0.98 almost all
+the way to recall 0.98. Indels reach recall 0.84 at best, and their
+precision falls below 0.90 as recall rises. The indel PASS point (recall
+0.779, precision 0.930) lies above the indel curve: the genotype mask
+and site filters give higher precision at that recall than any QUAL
+threshold alone.
+</figcaption></figure><hr></section><section id="07-annotation"><h2 class="section-heading"><a href="07-annotation.html">7. Annotating variants</a></h2>
 <hr class="half-width"></section><section id="08-trio-candidate-variants"><h2 class="section-heading"><a href="08-trio-candidate-variants.html">8. Application: candidate variants in a family trio</a></h2>
 <hr class="half-width"></section>
 </div>
@@ -545,8 +558,8 @@ mean of about 39x.
   "url": "https://rcac-bioinformatics.github.io/variant-calling/images.html",
   "identifier": "https://rcac-bioinformatics.github.io/variant-calling/images.html",
   "dateCreated": "2026-10-09",
-  "dateModified": "2026-10-13",
-  "datePublished": "2026-10-13"
+  "dateModified": "2026-10-14",
+  "datePublished": "2026-10-14"
 }
 
   </script><script>

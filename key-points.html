@@ -467,11 +467,46 @@ and <code>mosdepth</code>, and compare samples in MultiQC. Here about
 </ul></section><section id="05a-calling-with-bcftools"><h2 class="section-heading"><a href="05a-calling-with-bcftools.html">5A. Calling variants with bcftools</a></h2>
 <hr class="half-width">
 <ul>
-<li>TBD(P5)</li>
+<li>
+<code>bcftools mpileup</code> computes per-sample genotype
+likelihoods (<code>PL</code>) from the bases, base qualities and mapping
+qualities of the reads; it skips duplicates and some other reads and
+bases by default.</li>
+<li>
+<code>bcftools call -m</code> combines the likelihoods with a prior
+to give GT for each sample and QUAL for the site; GQ is added on request
+(<code>-a FORMAT/GQ</code>).</li>
+<li>QUAL is about the site, pooled over the samples of a joint call; GQ
+is about one sample’s genotype.</li>
+<li>Joint calling gives every sample a genotype at every variant site,
+so homozygous reference is distinct from no data.</li>
+<li>Calling by region with an array job, then <code>concat</code> in
+order, <code>norm -f -m -any</code> and indexing (<code>-W</code>),
+gives one normalized, indexed VCF.</li>
+<li>A genotype is chosen because the alternatives are much less likely
+(<code>PL</code>), not because the read counts pass a balance test.</li>
 </ul></section><section id="06-filtering-and-evaluation"><h2 class="section-heading"><a href="06-filtering-and-evaluation.html">6. Filtering and evaluating variant calls</a></h2>
 <hr class="half-width">
 <ul>
-<li>TBD(P5)</li>
+<li>
+<code>bcftools stats</code> and simple percentiles of QUAL, depth
+and MQ show the tails that filters should target; Ts/Tv rises when
+errors are removed.</li>
+<li>Thresholds come from the call set’s distributions and from
+conventions; tuning them on the benchmark is test-set leakage.</li>
+<li>Site filters (<code>-s</code> with QUAL, <code>INFO/DP</code>,
+<code>INFO/MQ</code>) label records in FILTER and keep them; the
+genotype mask (<code>-S .</code> with <code>FMT/DP</code>,
+<code>FMT/GQ</code>) sets single genotypes to missing.</li>
+<li>hap.py with vcfeval compares one sample’s calls with a benchmark
+inside its confident regions; calls outside them are UNK, not
+scored.</li>
+<li>Precision and recall trade against each other: the genotype mask
+raises indel precision and costs indel recall.</li>
+<li>The benchmark defines the score: the same calls score lower against
+the more complete v5.0q.</li>
+<li>Without a truth set, use proxies: Ts/Tv, Mendelian consistency,
+replicate concordance and known sites.</li>
 </ul></section><section id="07-annotation"><h2 class="section-heading"><a href="07-annotation.html">7. Annotating variants</a></h2>
 <hr class="half-width">
 <ul>
@@ -530,8 +565,8 @@ and <code>mosdepth</code>, and compare samples in MultiQC. Here about
   "url": "https://rcac-bioinformatics.github.io/variant-calling/key-points.html",
   "identifier": "https://rcac-bioinformatics.github.io/variant-calling/key-points.html",
   "dateCreated": "2026-10-09",
-  "dateModified": "2026-10-13",
-  "datePublished": "2026-10-13"
+  "dateModified": "2026-10-14",
+  "datePublished": "2026-10-14"
 }
 
   </script><script>

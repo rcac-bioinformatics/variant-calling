@@ -329,7 +329,7 @@
       </div>
       <hr></nav><main id="main-content" class="main-content"><div class="container lesson-content">
         <h1>Reference</h1>
-        <p>Last updated on 2026-10-13 |
+        <p>Last updated on 2026-10-14 |
 
         <a href="https://github.com/rcac-bioinformatics/variant-calling/edit/main/learners/reference.md" class="external-link">Edit this page <i aria-hidden="true" data-feather="edit"></i></a></p>
 
@@ -417,24 +417,35 @@
 </ul></div>
 <div class="section level3">
 <h3 id="calling-filtering-and-evaluation">Calling, filtering and evaluation<a class="anchor" aria-label="anchor" href="#calling-filtering-and-evaluation"></a></h3>
-<ul><li>Benchmark (truth set)</li>
+<ul><li>Allelic depth (AD)</li>
+<li>Benchmark (truth set)</li>
 <li>Confident regions</li>
+<li>Depth cap (<code>mpileup -d</code>)</li>
 <li>F1 score</li>
 <li>False negative</li>
 <li>False positive</li>
 <li>FILTER field</li>
 <li>Genotype likelihood</li>
+<li>Genotype mask</li>
 <li>Genotype quality (GQ)</li>
+<li>Haplotype-aware comparison</li>
 <li>Hard filter</li>
+<li>INFO and FORMAT fields (site-level and per-sample)</li>
 <li>Joint calling</li>
+<li>Multiallelic site</li>
 <li>Normalization (left-alignment, multiallelic splitting)</li>
 <li>PL field</li>
 <li>Precision</li>
+<li>Prior (in <code>bcftools call</code>)</li>
 <li>QUAL</li>
 <li>Recall</li>
+<li>ROC curve (precision and recall by threshold)</li>
+<li>Site-level and genotype-level filters</li>
 <li>Soft filter</li>
 <li>Stratification</li>
+<li>Test-set leakage (tuning on the benchmark)</li>
 <li>True positive</li>
+<li>UNK (not assessed)</li>
 </ul></div>
 <div class="section level3">
 <h3 id="annotation-and-interpretation">Annotation and interpretation<a class="anchor" aria-label="anchor" href="#annotation-and-interpretation"></a></h3>
@@ -500,8 +511,48 @@ for <a href="https://www.htslib.org/doc/samtools-faidx.html" class="external-lin
 </li>
 <li>GATK base quality score recalibration: <a href="https://gatk.broadinstitute.org/hc/en-us/articles/360035890531-Base-Quality-Score-Recalibration-BQSR" class="external-link uri">https://gatk.broadinstitute.org/hc/en-us/articles/360035890531-Base-Quality-Score-Recalibration-BQSR</a>
 </li>
+</ul></div>
+<div class="section level3">
+<h3 id="sources-cited-in-episodes-5a-and-6">Sources cited in Episodes 5A and 6<a class="anchor" aria-label="anchor" href="#sources-cited-in-episodes-5a-and-6"></a></h3>
+<p>Specifications, methods and benchmarks:</p>
+<ul><li>VCF specification, version 4.3 (reserved INFO and FORMAT fields,
+QUAL, GQ, PL): <a href="https://samtools.github.io/hts-specs/VCFv4.3.pdf" class="external-link uri">https://samtools.github.io/hts-specs/VCFv4.3.pdf</a>
+</li>
+<li>Li H. (2011). A statistical framework for SNP calling, mutation
+discovery, association mapping and population genetical parameter
+estimation from sequencing data. Bioinformatics 27(21): 2987-2993. <a href="https://doi.org/10.1093/bioinformatics/btr509" class="external-link uri">https://doi.org/10.1093/bioinformatics/btr509</a>
+</li>
+<li>Tan A., Abecasis G. R., Kang H. M. (2015). Unified representation of
+genetic variants. Bioinformatics 31(13): 2202-2204. <a href="https://doi.org/10.1093/bioinformatics/btv112" class="external-link uri">https://doi.org/10.1093/bioinformatics/btv112</a>
+</li>
+<li>Krusche P. et al. (2019). Best practices for benchmarking germline
+small-variant calls in human genomes. Nature Biotechnology 37: 555-560.
+<a href="https://doi.org/10.1038/s41587-019-0054-x" class="external-link uri">https://doi.org/10.1038/s41587-019-0054-x</a>
+</li>
+<li>GIAB HG002 v5.0q benchmark README, NIST: <a href="https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/AshkenazimTrio/HG002_NA24385_son/latest/NIST_HG002_v5.0q_variant-benchmarksets_README.md" class="external-link uri">https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/AshkenazimTrio/HG002_NA24385_son/latest/NIST_HG002_v5.0q_variant-benchmarksets_README.md</a>
+</li>
+</ul><p>Tools:</p>
+<ul><li>bcftools manual, with the sections for <a href="https://samtools.github.io/bcftools/bcftools.html#filter" class="external-link"><code>filter</code></a>
+and <a href="https://samtools.github.io/bcftools/bcftools.html#isec" class="external-link"><code>isec</code></a>.
+Default values in Episodes 5A and 6 come from the usage text of the
+pinned bcftools 1.24 (<code>bcftools mpileup</code>, <code>call</code>,
+<code>filter</code> and <code>norm</code> without arguments), which the
+workshop’s run kit records.</li>
+<li>htslib <code>sam.h</code> (version 1.24), the comment on
+<code>bam_mplp_init_overlaps</code>: how overlapping read pairs are
+handled in a pileup: <a href="https://github.com/samtools/htslib/blob/1.24/htslib/sam.h" class="external-link uri">https://github.com/samtools/htslib/blob/1.24/htslib/sam.h</a>
+</li>
+<li>hap.py user guide (vcfeval engine, <code>summary.csv</code> columns,
+UNK, ROC tables): <a href="https://github.com/Illumina/hap.py/blob/master/doc/happy.md" class="external-link uri">https://github.com/Illumina/hap.py/blob/master/doc/happy.md</a>
+</li>
+<li>FastQC program options (<code>--nogroup</code>): <a href="https://github.com/s-andrews/FastQC/blob/master/fastqc" class="external-link uri">https://github.com/s-andrews/FastQC/blob/master/fastqc</a>;
+adapter list, including the poly-A and poly-G series: <a href="https://github.com/s-andrews/FastQC/blob/master/Configuration/adapter_list.txt" class="external-link uri">https://github.com/s-andrews/FastQC/blob/master/Configuration/adapter_list.txt</a>
+</li>
 </ul><p>Figures:</p>
-<ul><li>The FastQC contrast cartoons in Episode 3 are by Zandra Selina, CC
+<ul><li>The precision-recall figure in Episode 6 is drawn by the workshop’s
+run kit (<code>negishi-run/pr_figure.py</code>) from the hap.py ROC
+tables of a test run.</li>
+<li>The FastQC contrast cartoons in Episode 3 are by Zandra Selina, CC
 BY 4.0, reused from the <a href="https://github.com/rcac-bioinformatics/rnaseq-analysis" class="external-link">RCAC
 RNA-seq workshop</a>.</li>
 </ul><!--
@@ -563,8 +614,8 @@ any links that you are not going to use.
   "url": "https://rcac-bioinformatics.github.io/variant-calling/reference.html",
   "identifier": "https://rcac-bioinformatics.github.io/variant-calling/reference.html",
   "dateCreated": "2026-10-09",
-  "dateModified": "2026-10-13",
-  "datePublished": "2026-10-13"
+  "dateModified": "2026-10-14",
+  "datePublished": "2026-10-14"
 }
 
   </script><script>
