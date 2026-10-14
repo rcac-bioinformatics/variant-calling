@@ -239,7 +239,7 @@ All values "reference run, not frozen".
 - `[blocker]` 33 of the 41 de novo candidates left after the trio-region step are de novo in both HG002 truth sets (child het in v5.0q and v4.2.1, both parents hom-ref inside their benchmarks); 30 SNVs, 3 indels, 11 within 50 kb near 11.1-11.2 Mb. The plan expects about 1-2 germline de novo SNVs on chr20, and NIST's HG002 subclonal benchmark (85 SNVs genome-wide at AF > 5%) does not account for them. Episode 8's framing "most candidates are errors" does not hold after step 3. Next: child allele fractions at these sites (command in the memo, decision 3). Blocks the Episode 8 text, not the anchors.
 - `[check]` Episode 8 funnel ends at zero in both models (de novo 312, 81, 41, 0, 0; recessive 5,282, 5,282, 4,632, 8, 0). The recessive evidence step removes nothing after the genotype mask.
 - `[check]` Mendelian consistency (q0, PASS): 449 errors, 144,536 consistent, 0.31%.
-- `[should-fix]` `evaluate.sh` array task 2 (HG002 v5.0q, 2 hap.py runs) peaked at 35.1-35.6 GiB MaxRSS on 16 cores, above what 16 cores provide (about 31 GiB). Proposed `--cpus-per-task=24` (G3 decision 6).
+- `[should-fix]` `evaluate.sh` array task 2 (HG002 v5.0q, 2 hap.py runs; corrected 2026-10-11: task 2 is HG002 against v4.2.1, see "Phase 5 Part B") peaked at 35.1-35.6 GiB MaxRSS on 16 cores, above what 16 cores provide (about 31 GiB). Proposed `--cpus-per-task=24` (G3 decision 6).
 - `[check]` ACMG SF v3.3 (84 genes, August 2025): none of the 27 genes among HG002's rare protein-altering, HIGH-impact and recessive-impact variants (both call sets) is on the list. Gene list local only (`.claude/notes/`, gitignored).
 - `[nice]` Every bcftools read of these VCFs prints `[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float`. Episode 5A callout proposed.
 - `[check]` Annotation: `+split-vep` and `SnpSift extractFields` both work (240 rows for HG002). HG002 PASS variants 115,059; HIGH 3; HIGH or MODERATE 240; rare 20 by global AF and 12 by asj AF.
@@ -261,7 +261,7 @@ All values "reference run, not frozen".
 - `[check]` Final run `ref-final-2026-10-11` (q0, final learner scripts): 12 steps PASS, determinism PASS. All 57 anchor values and 5 sentinels identical to `ref-2026-10-10`, so every step is reproducible, not only alignment. Anchors frozen in `negishi-run/anchors.tsv` (tolerance exact).
 - `[check]` `evaluate.sh` at 24 cores, 16 threads: MaxRSS 1.75-6.31 GiB, 89-145 s per task. The first run's 35.6 GiB peak did not recur.
 - `[check]` De novo allele fractions (memo section 6): the 33 truth-supported candidates have a mean child AF of 0.44 (median 0.455; 3 below 0.3), with zero ALT reads in both parents. Heterozygous fractions point to clonal variants, germline or early cell line; they are not the low-fraction subclonal variants of the NIST mosaic benchmark. The P6 framing of "cell-line variants" needs this nuance.
-- `[check]` Results copy: `regen_results.sh --finalize --call-set q0 --run ref-final-2026-10-11` passed both guards (final scripts; example matches the run's calls) and wrote `/depot/workshop/data/varcall-workshop_results.2026-10-10` (6.6 GB, 235 files); swapped in as `/depot/workshop/data/varcall-workshop_results` (no earlier copy existed). `check_staged.sh --results`: 0 problems. `negishi-run/staged_results_manifest.tsv` brought back. Part D accepted: both staged copies and the results copy pass `check_staged.sh`; `anchors.tsv` traces to the final run; episodes and learner pages untouched. G3 frozen.
+- `[check]` Results copy: `regen_results.sh --finalize --call-set q0 --run ref-final-2026-10-11` passed both guards (final scripts; example matches the run's calls) and wrote the dated build directory (6.6 GB, 235 files). (Corrected 2026-10-12: the copy was never swapped in. It stayed in the dated directory until it was moved to `/depot/workshop/data/varcall-workshop_results` on 2026-10-12; see "Results copy swap, 2026-10-12".) `check_staged.sh --results`: 0 problems. `negishi-run/staged_results_manifest.tsv` brought back. Part D accepted: both staged copies and the results copy pass `check_staged.sh`; `anchors.tsv` traces to the final run; episodes and learner pages untouched. G3 frozen.
 
 ### Phase 4 Part A, 2026-10-10 (prompt-04-episodes-1-4.md; branch `dev/p04-episodes-1-4` from `main` at f628d91)
 
@@ -338,7 +338,173 @@ Kit fixes after the run:
 
 Checks after the edits: `build_kit.py --check` passes (0 placeholders and 0 figure slots left; the generated sessions' commands are identical to the run's); `validate_lesson()` clean; `build_lesson()` builds; no em dashes; shellcheck 0.10.0 clean on `submit_all.sh`; `summarize.py` parses under Python 3.6.15.
 
+### Phase 5 Part A, 2026-10-10 (prompt-05-episodes-5a-6.md; branch `dev/p05-episodes-5a-6`, which holds the P4 commit d57f706; local `main` is still at f628d91)
+
+Episodes 5A and 6, the five P4-review corrections, and run kit v2, written and checked on the laptop. Nothing was run on Negishi in this part. Every dataset number in 5A and 6 comes from `anchors.tsv`, `reference-run.md` or `feasibility.md` (labeled "reference run" where learners do not reproduce it) or is a `{{kit:...}}` placeholder that Part C fills.
+
+Files:
+- **Episodes:** `05a` and `06` written (front matter 30/30 and 40/40, unchanged); each shows its learner script (`call.sh`, `evaluate.sh`) byte for byte and the `05-merge.sh`, `06-filter.sh` and `06-evaluate-summary.sh` blocks in canonical order (checked by the kit). `02`, `03`, `04`: the five corrections only (below). Episodes 1, 7, 8, `pipeline/learner-scripts/` and the staged manifests unchanged.
+- **Learner pages:** `setup.md` (module notice sentence in the toolchain section); `reference.md` (14 glossary terms, sources cited in 5A and 6, the FastQC sources for Episode 3).
+- **Kit:** `build_kit.py` (pages 5A and 6, front-matter times 30/30/45 and 40/40/60, 9-step graph, "Short on time?" check, quoted text ignored by the write check of extra blocks), `kitrun.sh` (`kit_ep_done` for `call.sh` and `evaluate.sh`; kit-only `kit_mapq0_counts`, `kit_bcftools_usage`, `kit_site_counts`, `kit_filter_counts`), `py/summarize.py` (placeholder handlers; anchors extended to calling, filtering, hap.py and sentinels; hap.py tables; F1 peaks; memory headroom of `evaluate.sh`; live load; kit-only records), `collect.sh` (stats, hap.py summaries and ROC tables, kit-only records, `sinfo`, bcftools and hap.py module versions; tarball `varcall-p5-kit-*`), `submit_all.sh` (comments), new `pr_figure.py`, `docs/ADAPTATIONS.md`, `README.md` (Phase 5 runbook).
+
+Live path: Episodes 1-4 do not mark live timings or self-paced sections. 5A and 6 now carry an instructor note with the live path, minutes per section summing to 45 and 60, and what is self-paced. `[should-fix]` P7: apply the same note to every episode.
+
+Corrections (P4 review):
+1. Episode 4, chr20:88,108: "14 or fewer `C` reads 5.4% of the time, and 14 or fewer reads of either allele 10.8%" (binomial, n = 39, checked), with a pointer to the likelihood argument in 5A. 5A repeats the numbers.
+2. Episode 3, per-base quality. `[check]` The correction's premise does not hold: 25 is a bin (`:` = Q25, Episode 3's own table), and the P4 FastQC data show the 10th percentile at exactly 25.0 over the read end. What is not a quality in the data are the in-between values 27.4, 29.8, 32.2 and 34.6 (P4 kit FastQC zips), which are averages over FastQC's position groups (3 x 37 + 2 x 25 over 5 = 32.2). The text keeps "drops to 25, the next bin down", adds the grouping sentence (source: FastQC `--nogroup` help text), and takes the positions and the in-between values from new placeholders (`03-sol-q10-drop`, `03-sol-q10-between`).
+3. Episode 3, poly-A and clean QC: FastQC's poly-A series is 12 A's in a row (FastQC `adapter_list.txt`); every read here came from a chr20 alignment, so the series is no reason to trim. New callout "Why these reports look clean": reads that aligned nowhere (adapter dimers, single-base reads) are largely absent (feasibility memo). The specific claim "A-rich genomic repeats contain such runs" was not written (no source at hand); the text says such runs occur in the genome itself.
+4. Episode 4, MAPQ 0 gap: option 1. The text is unchanged; the kit-only `mapq0_counts.tsv` splits HG002's 1,054,357 MAPQ 0 records into primary mapped (`-F 0x904`), unmapped, supplementary and secondary, so Part C fixes the wording from the record.
+5. Module notice: the first `module load` is in Episode 2, whose spoiler said "The first line is a message the biocontainers module prints" while the kit output above it omits that line; Episode 4 said the same about "the first two lines". Both sentences now say the notice is printed and the outputs leave it out; the setup page says so once in the toolchain section. Episode 2 is outside the prompt's file list but is where the first `module load` is; the change is that one sentence.
+
+Placeholders for Part C (65 new; ids, lines and sources in `negishi-run/generated/placeholders.tsv`): `03-sol-q10-drop`, `03-sol-q10-between`; 5A defaults from the 1.24 usage text `05a-def-skip-flags`, `05a-def-min-mq`, `05a-def-min-bq`, `05a-def-min-bq-table`, `05a-def-max-depth`, `05a-def-max-depth-callout`, `05a-def-prior`, `05a-def-ploidy`, `05a-def-multi-overlaps`; 5A outputs `05a-out-chunks`, `-header`, `-site-example`, `-homalt`, `-sentinels`, `-multiallelic`, `-split`, `-chunk-list`, `-concat-norm`, `-samples-head`, `-site-own`, `-stats`; 5A values `05a-sol-site-ad`, `-site-fmt-dp`, `-site-alt`, `-site-alt-pl`, `-site-info-dp`, `-site-pl`, `-site-gq`, `05a-site-step-all`, `-nodup`, `-proper`, `-overlap`, `-bq`, `-default`, `05a-sol-homalt`, `05a-sol-split-n`, `05a-sol-counts`, `05a-sol-missing`; 6 outputs `06-out-quantiles`, `-median`, `-predict`, `-filter`, `-filter-labels`, `-psc-filtered`, `-pass-stats`, `-tstv-regions`, `-tstv-pass`, `-tstv-centromere`, `-eval-norm`, `-eval-filtered`, `-roc`, `-eval-v421`; 6 values `06-sol-predict-highdp`, `-predict-qual`, `-predict-mq`, `-predict-mask`, `06-sol-records-before`, `-records-after`, `06-sol-missing`, `06-sol-tradeoff`, `06-sol-fpgt-snv`, `06-sol-roc`, `06-sol-f1-peak-v5`. Plus one figure: `<!-- TBD(P5 Part C) -->` in Episode 6 for `pr_figure.py`.
+
+Multiallelic site: the memo's Part D result holds (one multiallelic record in the staged raw example, chr20:60,000-90,000), so no intermediate file is needed. Its position is not in any record on the laptop; the episode finds it with a read-only `bcftools query -i 'N_ALT>1'` on `resources/example/trio.example.raw.vcf.gz` and shows the split records in `trio.example.filtered.vcf.gz` (a shell variable carries the position). Part C reads the position from `05a-out-multiallelic`.
+
+Tool defaults: the online bcftools manual is 1.22 (fetched 2026-10-10), so every default in 5A and 6 is a placeholder filled from the kit's 1.24 usage text. `[check]` A local look at the staphb `bcftools:1.24` image (laptop, drafting only) shows `-Q, --min-BQ [1]`, not 13 as in older manuals; `-d [250]`; `-q [0]`; `--ns [UNMAP,SECONDARY,QCFAIL,DUP]`; anomalous pairs skipped unless `-A`; `-P [1.1e-3]`; `--ploidy [2]`. Part C must confirm them from the Negishi module.
+
+Claims cut or changed for lack of a source:
+- The cause of the `MQ should be declared as Type=Float` warning: the callout says only that the VCF specification reserves INFO/MQ as Float (VCF v4.3, Table 1) and that the mpileup header declares another type (visible in the learner's `view -h` output); no claim about htslib internals. A synthetic VCF with `MQ` declared `Integer` reproduces the warning with bcftools 1.24.
+- "`tview` shows duplicates, so its 39 matches the first row" (cut; already cut in P4).
+- Where HighDP and LowMQ sites fall (the centromere): not written. Episode 6 gives the centromere Ts/Tv and PASS counts only as the memo measured them (all filters together).
+- Ts/Tv "about 2.0-2.1 for human WGS" (plan 3.4, an approximate value without a source): replaced by the benchmark's own 2.31 (memo) and the combinatorial 0.5 for random errors.
+- Alu poly-A tails as the source of FastQC's poly-A hits (no source at hand; not written).
+- "Very new, frequent variants are suspicious" (known-sites proxy; replaced by a weaker statement: an unusually low known fraction suggests errors).
+- Stratification numbers: no GIAB stratification BED is staged; concept only. 5B and DeepVariant comparisons omitted (nothing staged).
+
+Findings:
+- `[check]` Episode 6 MultiQC: plan 3.4 lists "`bcftools stats` and MultiQC", but `06-filter.sh` runs no MultiQC, and adding it would change a canonical file (stop-and-ask item). Episode 6 reads the `bcftools stats` sections with `grep` instead and has no MultiQC figure. Decision needed: add `multiqc -o results/vcf results/vcf` to `06-filter.sh` (interactive files are not staged, so no restage), or keep it out.
+- `[check]` v5.0q SNV F1 peaks near QUAL 118, not 150 (150 is the memo's value against v4.2.1), in the P3 records (`q0/eval/*.roc.Locations.SNP.csv.gz`). The leakage callout quotes the memo's 150 (v4.2.1) and the v5.0q peak from a placeholder; its sentence "the two benchmarks do not even agree on the best value" depends on Part C confirming this.
+- `[check]` The genotype mask of the v5.0q evaluation (filtered `ALL` row) is not in the memo, so Episode 6 quotes the v4.2.1 decomposition from memo section 4 and lets learners read the v5.0q rows from their own `summary.csv` (`06-sol-tradeoff`).
+- `[check]` `06-evaluate-summary.sh` is typed on a login node but must wait for `evaluate.sh`; the kit runs it as a 1-task batch job (ADAPTATIONS).
+- `[nice]` The ROC tables are not sorted by QUAL; the episode's lookup sorts them (`sort -t, -k1,1g`) before taking the first row at or above a threshold. Tested on the P3 tables: the v4.2.1 rows reproduce memo section 9 (QUAL 30: SNV 0.9944/0.9889; 225: 0.9906/0.9949).
+- `[should-fix]` Episode 6 runs long for its 80 minutes if every self-paced part is done; the live path (60 min) marks the challenges that move to self-paced study. P10 dry run to confirm.
+
+Live load (cores per learner, and for 20 learners; peaks are jobs that run together in the episode's flow):
+
+| Episode | Job | Cores per learner | 20 learners |
+|---|---|---|---|
+| 4 | `align.sh` (3 x 16) | 48 | 960 |
+| 4 | alignment QC session | 4 | 80 |
+| 5A | `call.sh` (8 x 2) plus the merge session (4), open together | 20 | 400 |
+| 6 | filter session | 4 | 80 |
+| 6 | `evaluate.sh` (4 x 24) | 96 | 1,920 |
+| 6 | summary (login node) | 0 | 0 |
+
+`[check]` Episode 6's hap.py array is the largest load of the day: 1,920 cores for 20 learners if all start at once, against Episode 4's 960. `SUMMARY.md` prints this table from the run. Memory headroom from the P3 records: 24 cores provide 47.1 GiB (Negishi cpu nodes: 128 cores, 257,400 MB; 1.96 GiB per core); the final run peaked at 6.31 GiB (13%); the first run's 35.6 GiB peak (at 16 threads) would be 76% of 24 cores, under the 80% stop line.
+
+Static validation (all pass):
+- `python3 negishi-run/build_kit.py --check`: all kit checks pass; 76 bash blocks (script 3, interactive 29, extra 23, submit 3, not-run 18), 9 steps, 65 placeholders; `generated/` matches a fresh build.
+- Mutation test on a copy of the repository: 15 mutations (a "Short on time?" path not in the results manifest, in a block and in prose; a callout block not marked fallback; front matter of 5A and of 6; the `call.sh` block; the `06-filter.sh` text; the account in Episode 6; `--mem` in 5A; an extra block with `>` and one with `-o`; a cited URL missing from `reference.md`; a placeholder without a handler; the `evaluate.sh` submit block; an unmarked fence) caught 15 of 15.
+- `bash -n` on every kit script and generated file; shellcheck 0.10.0 clean on `kitrun.sh`, `submit_all.sh`, `collect.sh` and the generated jobs, and on the generated sessions with `-s bash` and the P3 learner-style excludes.
+- `py_compile` of `build_kit.py`, `py/summarize.py`, `py/sacct_summary.py`, `pipeline/py/metrics.py`, and `build_kit.py --check`, under Python 3.6.15 (`python:3.6-slim`).
+- `submit_all.sh --run test-dry --dry-run` with a stub `sbatch` (rejects `--mem` and any account but `rcac`): 9 steps, 8 test-only submissions accepted, `afterok` chain as in `graph.txt`.
+- `summarize.py` (Python 3.6) on a synthetic run built from the P3 final-run records (stats, hap.py summaries and ROC tables, `sacct`, region metrics), the P4 alignment records, the real bcftools 1.24 usage text and small invented kit-only tables: all 49 anchors PASS; every metric placeholder resolves; memory headroom, live load and kit-only sections fill. One parser bug found and fixed (`--prior` matched `--prior-freqs`).
+- The new read-only and kit-only bcftools commands ran with `staphb/bcftools:1.24` on a synthetic 3-sample VCF (header grep, `view -r`, `query -r` lists, `-i 'N_ALT>1'`, the `POS=$(...)` split view, `stats -s - | grep PSC`, the filter pipeline, `FILTER~`, the percentile and threshold `awk` lines); the five `mpileup` option sets of `kit_site_counts` parse.
+- `pr_figure.py` on a synthetic ROC table and summary (matplotlib 3.10.8, Python 3.13.5): SNV solid and indel dashed, PASS points as circle and square, legend below the axes; it prints the axis ranges for the caption.
+- `sandpaper::validate_lesson()` (0.17.1) clean; `build_lesson(preview = FALSE)` builds; titles render as "5A. Calling variants with bcftools" and "6. Filtering and evaluating variant calls"; only lesson pages rebuilt (the stale `site/built/prompt-01-scaffold.md` is from P1).
+- No em or en dashes in the changed files.
+
+Part B commands: `negishi-run/README.md`, "Phase 5". Laptop: `python3 negishi-run/build_kit.py`, `--check`, then the `rsync`. Negishi: `00_preflight.sh`; `submit_all.sh --run kit5-2026-10-11 --dry-run`; `submit_all.sh --run kit5-2026-10-11`; when `squeue` is empty, `collect.sh --run kit5-2026-10-11`; on the laptop, `rsync` the tarball and extract it under `negishi-run/records/`.
+
+### Phase 5 Part A review decisions, 2026-10-11 (uncommitted, same branch)
+
+Decisions on the Part A report:
+
+1. Correction 2 accepted as written (Q25 is a real bin; the in-between values are averages over FastQC's position groups). Correction 5 in Episode 2 and the setup page accepted.
+2. MultiQC in Episode 6: `06-filter.sh` stays unchanged and learners keep the `bcftools stats`/`grep` approach. Added a kit-only `kit_multiqc_export 06-filter results/vcf` (MultiQC 1.23) and two figure slots in Episode 6 Step 1, `06-multiqc-bcftools-qual` (`bcftools_stats_vqc_Count_SNP.png`) and `06-multiqc-bcftools-depth` (`bcftools_stats_variant_depths.png`), labeled in the text as made by the kit from `trio.norm.stats.txt` (all records) and `trio.filtered.stats.txt` (PASS only). File names checked locally with `quay.io/biocontainers/multiqc:1.23--pyhdfd78af_0` on the P3 stats files. Documented in `docs/ADAPTATIONS.md`.
+   - `[check]` The two plots are weak teaching figures on the P3 data: the SNV QUAL count plot is a few tall spikes (QUAL saturates at a few values), and the depth plot shows fractions on a 1-500 axis, so the body is a low bump and the cap at 500 dominates the right edge. Part C decides whether they earn their place or whether a kit-drawn histogram from `site_qual_dp_mq.tsv` (with the thresholds marked) would serve better.
+3. Leakage callout: now leads with the primary benchmark (the learner's own v5.0q SNV F1 peak, `{{kit:06-sol-f1-peak-v5}}`) and adds that the same calls peak elsewhere against v4.2.1. Reference-run values by argmax of the P3 final ROC tables: v5.0q QUAL 117.7 (F1 0.9869), v4.2.1 QUAL 159.8 (F1 0.9931). `[check]` The memo's "150 (SNV F1 peak, 0.9931)" is a grid row (0.9930 at 150); the argmax is 159.8, so the episode says "near QUAL 160". The curve is flat there.
+4. Multiallelic demo: `restage.sh --example` cuts `trio.example.raw.vcf.gz` from `trio.raw.bcf`, the concatenated calls before `norm` (P3 `example.tsv`: `multiallelic_raw 1`, 179 raw and 180 filtered records, the extra one from the split). The `N_ALT>1` demo therefore stays. `summarize.py` adds a stop check: Part C stops if the `N_ALT>1` query prints nothing or the split view prints fewer than two records (both paths tested on the synthetic run). The text after the query no longer assumes the genotype is `1/2`.
+5. `evaluate.sh` memory, the gap explained from the records (P3 first run `varcall-p3-records-ref-2026-10-10-20261010-1908`, final run `...-final-2026-10-11-20261010-2016`):
+   - (Task labels corrected under "Phase 5 Part B": array task 2 is HG002 against v4.2.1, not v5.0q.) The 35.1 and 35.6 GiB peaks were array task 2 in the first run's q0 and q20 arrays (16 cores, `--threads 16`). The 6.31 GiB final-run peak was task 1, HG002 against v5.0q; the final run's task 2 peaked at 2.34 GiB.
+   - Inputs were the same: hap.py logged the same record counts per task in both runs, and the q0 calls are anchor-identical. The thread count was the same (16). What changed was the allocation (16 to 24 cores) and the node.
+   - The first run's q0 task 4 also peaked at 23.1 GiB, while the same task in its q20 array peaked at 2.0 GiB. So MaxRSS of a hap.py task is not set by its inputs. `[check]` Unverified hypothesis: RTG vcfeval (Java) sizes its heap from the node's physical memory, not the job's allocation, so how far the heap grows before garbage collection depends on the node. P3 did not record nodes.
+   - Cores unchanged (24). `collect.sh` now also writes `records/sacct_nodes.tsv` (JobID, NodeList; `sacct.tsv` keeps its P3 format), and the `SUMMARY.md` headroom table labels each task with its sample, truth set and node next to MaxRSS and wall time, for the decision on fewer cores or a single HG002 v5.0q task on the live path.
+
+Checks after these changes: `build_kit.py --check` passes (76 bash blocks, 9 steps, 65 placeholders, 2 figure slots); `summarize.py` on the synthetic run: 49 anchors PASS, both figure slots resolve to the MultiQC 1.23 exports, the headroom table shows sample, truth and node; Python 3.6.15 parses `summarize.py` and `build_kit.py`; shellcheck 0.10.0 on `collect.sh` and `kitrun.sh` reports only SC1091 (sourced files not followed); `validate_lesson()` clean; no em dashes.
+
+### Phase 5 Part B, 2026-10-11 (kit run `kit5-2026-10-11`, tarball `varcall-p5-kit-kit5-2026-10-11-20261011-1013.tar.gz`)
+
+Results (`SUMMARY.md`): all 9 steps completed, no learner command failed; 48 of 49 anchors exact; the multiallelic stop check passed (1 site, split into 2 records); all 65 placeholders and both MultiQC figures resolved; no kit-only warning. bcftools 1.24 usage text: `-Q` default `[1]`, `-q` `[0]`, `-d` `[250]` (closes the `-Q` question).
+
+- `[blocker]`, fixed: sentinel artifact chr20:29070822 failed (truth `1|1` instead of "not in any truth set"). Kit bug: `kitrun.sh` read the truth genotype from the truth VCF without the benchmark BED, and GIAB truth VCFs also list variants outside their benchmark regions; P3's `report.py` chose the site as outside every benchmark BED. Confirmed on Negishi: outside both HG002 BEDs. Fixed: the lookup reports `outside` for a position outside a benchmark's BED and `absent` for one inside it with no truth record. Anchor wording changed in `anchors.tsv` from "truth not in any truth set" to "truth outside every benchmark region" (value unchanged: the call is FILTER HighDP;LowMQ, HG002 1/1). Episode 6 may use the site as the UNK example (Part C).
+- `[blocker]`, decided: `evaluate.sh` task 3 (HG003 v4.2.1) peaked at 39.09 GiB, 83% of 24 cores (47.1 GiB); task 4 (HG004) 37.31 GiB, 79%; both on node a130. Task 1 (HG002 v5.0q) 7.29 GiB, task 2 (HG002 v4.2.1) 18.37 GiB.
+- `[check]`, corrected: P3 task labels. SLURM gives the array's base job ID to the last task (P5: base 44099796 is task 4, HG004; tasks 1-3 are 44101081-83), and the P3 logs had been matched to tasks by job ID. In `truth_sets.tsv` order (task 1 HG002 v5.0q, 2 HG002 v4.2.1, 3 HG003, 4 HG004), the P3 peaks were: first run task 2 (HG002 v4.2.1) 35.1 and 35.6 GiB, task 4 (HG004) 23.1 GiB in one array and 2.0 GiB in the other, task 1 (HG002 v5.0q) 10.2 and 6.8 GiB; final run task 1 6.31, task 2 2.34, task 3 6.05, task 4 1.75 GiB. Across P3 and P5 the same task peaked between 1.2 and 39.1 GiB (HG003), with identical inputs; HG002 v5.0q never exceeded 10.2 GiB. Corrected in the 2026-10-10 entries above, the reference-run memo (item 6) and the local `.claude/CLAUDE.md`.
+
+Decisions (2026-10-11):
+
+1. Sentinel: fix the kit lookup and reword the anchor (above).
+2. `evaluate.sh`: `export RTG_MEM=8g` after the module loads, with a comment; the episode's explanation of the 24 cores now names the varying peaks and `RTG_MEM`. The tested MaxRSS comes from the rerun (below). `staged_manifest.tsv` row for `scripts/evaluate.sh` updated locally to the new md5 (`b99b4cda...`, 1734 bytes); `restage.sh --scripts` on Negishi rewrites the whole file, which comes back in Part C. Live path: learners submit task 1 only, `sbatch --array=1 evaluate.sh` (now in `interactive/06-evaluate-summary.sh` and Episode 6 Step 4), and copy the other three tasks' results from the results copy (a fallback block); self-paced learners submit the full array (the submit block stays). The kit runs the full array in `06-evaluate` and validates the learner's line with `sbatch --test-only` in `06-evalsum`; `build_kit.py` allows `sbatch` in an interactive block only as `sbatch --array=N SCRIPT` for a learner script. Live load of Episode 6: 24 cores per learner, 480 for 20 (was 96 and 1,920).
+   - `[check]` The results copy (`varcall-workshop_results`, `staged_results_manifest.tsv`) still holds the old `scripts/evaluate.sh` (md5 `34a0ed8e...`). Its eval outputs do not depend on `RTG_MEM` if the rerun's `summary.csv` files are identical. Updating that copy needs a decision (regen or a single-file update).
+   - The rerun starts at `06-filter`, not `06-evaluate`: the sentinels are kit-only records of `06-filter`, so the fix is only verified by rerunning it (about 2 min; same outputs).
+3. Leakage callout: the main number is the learner's own v5.0q SNV peak (placeholder, now formatted with one decimal: QUAL 117.7, F1 0.9869 in this run); the contrast is v4.2.1 "about QUAL 156-160" (F1 0.993067 on 6 tied ROC rows from QUAL 155.6 to 159.8). `SUMMARY.md` now prints tied F1 rows as a QUAL range.
+4. Tarball moved from the repository root to `negishi-run/records/`.
+
+Checks: `build_kit.py --check` passes (78 bash blocks, 9 steps, 65 placeholders, 2 figure slots); the generated `06-evalsum` session holds `sbatch --test-only --array=1 evaluate.sh`; the BED test of the sentinel lookup gives the expected inside/outside at interval edges; `summarize.py` on the synthetic run: 49 anchors PASS with the new artifact wording, F1 ties as ranges, Episode 6 live peak 24/480; shellcheck 0.10.0 clean on `kitrun.sh` and `collect.sh` (SC1091 excluded); Python 3.6.15 parses the kit's Python.
+
+### Phase 5 Part B rerun, 2026-10-11 (from `06-filter`; tarball `varcall-p5-kit-kit5-2026-10-11-20261011-1047.tar.gz`)
+
+Answers to the four questions of the Part B decisions:
+
+1. Results copy: its eval outputs came from the uncapped script and stay valid, because a memory cap does not change results. Update only `scripts/evaluate.sh` there and its row in `staged_results_manifest.tsv` (done locally: md5 `b99b4cda...`, 1734 bytes, note "single-file update 2026-10-11"); then run `check_staged.sh` on all three Depot copies.
+2. Rerun from `06-filter`: accepted.
+3. Staged manifest: bring the Negishi copy back and diff it; stop if rows other than `evaluate.sh` differ. All 43 data rows differed, but only in the note column: `restage.sh --scripts` writes one note on every row. Path, type, bytes, md5 and need were identical in all rows. Decision: take the Negishi copy (installed as `negishi-run/staged_manifest.tsv`).
+   - Provenance that the notes no longer carry: the example region `resources/example/` (chr20:60,000-90,000) was cut by `restage.sh --example` from run `ref-2026-10-10`, call set q0, on 2026-10-10; data and resources come from the stage-build of 2026-10-10.
+4. The tested MaxRSS: the "<X>" blank is dropped from the decision text; the rerun records the real number.
+
+Rerun results (`SUMMARY.md`):
+
+- All 49 anchors PASS; the artifact sentinel reads "truth outside every benchmark region". Multiallelic stop check PASS.
+- `summary.csv`: all 8 files byte-identical (`cmp`) to those of the first tarball (`varcall-p5-kit-kit5-2026-10-11-20261011-1013`, `qc/eval/`).
+- `06-evalsum` console: `sbatch: Job 44102636 to start at 2026-10-17T12:02:20 a using 24 processors on nodes a049 in partition cpu` (the `--test-only` validation of `sbatch --array=1 evaluate.sh`; nothing submitted).
+- `evaluate.sh` MaxRSS at 24 cores (47.1 GiB), `RTG_MEM=8g`: task 1 HG002 v5.0q 4.37 GiB (9%, node a082), task 2 HG002 v4.2.1 2.25 GiB (5%, a102), task 3 HG003 v4.2.1 27.14 GiB (58%, a102), task 4 HG004 v4.2.1 1.16 GiB (2%, a109). Wall 1.5-2.5 min.
+- `[check]` (P9 open item, decided 2026-10-12; not a Part C stop) The cap is not proven. Every `runinfo.json` records `RTG_MEM=8g` in hap.py's environment inside the container, but no hap.py log prints the Java command line, so the `-Xmx` that vcfeval used is not recorded. Task 3 peaked at 27.14 GiB, more than an 8 GiB Java heap plus ordinary overhead would explain: either the cap did not reach Java, or most of the memory is outside the Java heap (hap.py's own preprocessing and quantification, or what SLURM counts as RSS). Unresolved; needs a check on Negishi before the cap is described as working.
+
+### Results copy swap, 2026-10-12
+
+- `[should-fix]`, fixed: the completed-results copy was never swapped in after P3 Part D, although the Part D record said it was. It stayed in the dated build directory until 2026-10-12, when it was moved to `/depot/workshop/data/varcall-workshop_results`. The Part D record above is corrected. Until then the Episode 5A and 6 fallback blocks, which read the undated path, would have failed.
+- `scripts/evaluate.sh` in the results copy is now the `RTG_MEM` version (md5 `b99b4cda...`, as in `staged_results_manifest.tsv`).
+- `check_staged.sh`: 0 problems on all three copies (learner, ref, results), 2026-10-12.
+- Dated-path references in the repository changed to the undated path: the header comment of `negishi-run/staged_results_manifest.tsv` and the Part D record in this log. `regen_results.sh` still builds into `<STAGED_RESULTS>.<date>` and prints the swap commands; that is its design (a new copy never replaces the current one without a manual step), and its README row describes it generically (`varcall-workshop_results.<date>`). No episode, learner page or kit script names a dated path.
+
+### Phase 5 Part C, 2026-10-12 (kit run `kit5-2026-10-11`, tarball `varcall-p5-kit-kit5-2026-10-11-20261011-1047.tar.gz`, which holds the full run plus the rerun from `06-filter`)
+
+Run check: all 9 steps COMPLETED (markers PASS), no `### KIT-ERR`, no learner command failed; all 49 anchors and the 5 sentinels match `anchors.tsv`; the multiallelic stop check passed (1 site, 2 split records); `sources_check.txt` OK for every episode and learner script. Since the run, only Episode 6 prose changed (2026-10-12): `index.tsv`, `placeholders.tsv`, `steps.tsv` and `graph.txt` of the run equal a fresh build, so every command block is the one the kit ran. `evaluate.sh` memory at 24 cores, rerun: 1.16-27.14 GiB (2-58%), under the 80% stop line; the first run's 83% (task 3) was decided under "Phase 5 Part B" (`RTG_MEM`, live path task 1 only).
+
+Filled from the run (65 placeholders, 0 left): the 26 `-out-` spoilers verbatim; trimmed only trailing spaces (the `column -t` lines of `06-out-eval-*`). Not trimmed: the `MQ should be declared as Type=Float` lines (Episode 5A now points to its callout at the first one) and the `Concatenating ... seconds` lines (the text says the seconds vary). Value placeholders written into the prose, several rewritten around their values (below).
+
+Tool defaults, confirmed against the recorded 1.24 usage text: `--ns` `UNMAP,SECONDARY,QCFAIL,DUP`, `-q 0`, `-Q 1`, `-d 250`, anomalous pairs skipped unless `-A`, `-x` disables overlap detection, `call -P 1.1e-3`, `--ploidy` `[2]`, `norm --multi-overlaps` `[0]`, `filter -m +`, `-s`, `-S`. Episode 5A now also lists the anomalous-pair default.
+
+Text corrected from the run or the records (old, then new):
+- `[should-fix]` 5A, chr20:88,108 table: the overlap row changes nothing (35) and the base-quality row drops 3 bases (32), so "a row that changes nothing means that filter removes nothing" was wrong for overlaps. htslib 1.24 `sam.h` (`bam_mplp_init_overlaps`, checked in `staphb/htslib:1.24`) sets the lower-quality base of an overlapping pair to quality 0; `-Q 1` then drops it. Our data hold no quality below 2, so the floor removes only zeroed bases. The solution now names the two causes from the kit counts: 4 duplicates (all `T`; samtools: 4 duplicates, 0 non-proper pairs, 0 MAPQ 0 at the site) and 3 overlapping pairs (2 `T`, 1 `C`); 25,14 / 39 becomes 19,13 / 32. The mpileup bullet list now says the same and cites `sam.h` (added to `learners/reference.md`).
+- `[should-fix]` 5A, multiallelic site: chr20:88,865, a `CA` repeat with two insertion ALTs (+6 and +4 bases); HG002 `0/0`, HG003 `0/2` (26,0,4), HG004 `0/1` (15,17,0). The text described a `1/2` genotype; it now walks through HG003's `0/2` becoming `0/0` and `0/1`, the trimmed `G>GACACAC` / `G>GACAC` records, and keeps `1/2` as the general case.
+- `[should-fix]` 6, Ts/Tv of HG002 raw calls outside the v4.2.1 regions: "1.29" (memo, 1.285 rounded) became 1.28, what `bcftools stats` prints (26,876 / 20,920), in the spoiler text and the challenge solution.
+- `[should-fix]` 6, ROC solution: "indel precision rises less than it does for SNVs" is false against v5.0q (SNV 0.9843 to 0.9932, indel 0.8772 to 0.9023). Now stated as the share of wrong calls: SNV 1.6% to 0.7% (more than half), indel 12.3% to 9.8% (about a fifth). The v4.2.1 values quoted from the memo match the kit's ROC tables.
+- `[nice]` 6, hap.py memory: "never above 10.2 GiB in six runs" became five (P3 first run q0 and q20, P3 final, P5 run, P5 rerun).
+- `[nice]` 6, mask threshold table: "more than 0.2%" became "about 0.2% (2 x 0.5^10 = 0.195%)".
+- `[nice]` 6, "Predict the filters" question 3: now answers yes, with the matching counts, and the kit's mask reasons for HG002 (GQ alone 7,639, DP alone 1,920, both 1,707 of 11,266 newly masked).
+- 4 (correction 4): the MAPQ 0 gap is the 36,402 unmapped reads plus 34,519 of the 55,861 supplementary alignments, exactly 70,921 (`mapq0_counts.tsv`); "can account for the rest" removed.
+- 3 (correction 2): the 10th percentile drops from position 125 in R1 and 85-95 in R2 (checked in the six FastQC zips: values 25.0 to the read end, in-between values 27.4, 29.8, 32.2, 34.6).
+- Corrections 1, 3 and 5 confirmed against the run: binomial 5.4% / 10.8% (n = 39, recomputed); the "Why these reports look clean" callout; the module notice (the run shows the banner; the outputs leave it out).
+- Runtimes: 5A calling "2 to 4 minutes (133 to 254 seconds), reference run" became "test runs, 2 to 4 minutes" (kit 2.2-3.7 min); 6 hap.py "1.5 to 2.5 minutes (89 to 145 seconds)" kept as test runs (kit 1.5-2.5 min). Values the learner reproduces are no longer labeled "reference run"; values only the memo has keep the label (centromere PASS 12,390 and Ts/Tv 1.36, the v4.2.1 decomposition table, v4.2.1 F1 peak).
+- Added: hap.py UNK example, the artifact sentinel chr20:29,070,822 (HG002 `1/1`, `HighDP;LowMQ`, outside both HG002 benchmark BEDs), as allowed by the Part B decision.
+
+Every other number in 5A, 6 and the corrected passages matches the run or the records (checked line by line, including the 50 reads at chr20:85,259 in the Episode 4 `tview` output).
+
+Figures:
+- `[should-fix]`, decided: the two MultiQC `bcftools stats` exports are dropped from Episode 6 (slots and the paragraph removed). The PNG exports have no legend for their two lines, the SNV QUAL count plot is a few saturation spikes (near QUAL 220, 474, 730), and the depth plot is a low bump with a spike at the 500 bin. The percentile table carries the distributions. A kit-drawn histogram with the thresholds marked would teach better, but the prompt limits new images to MultiQC exports and the PR figure; `[nice]` P7 decision. `kit_multiqc_export 06-filter` still runs (ADAPTATIONS updated).
+- Precision-recall figure `episodes/fig/06/pr_hg002_v5.0q.png` from `negishi-run/pr_figure.py` on the kit's `qc/eval/` (matplotlib 3.10.8, Python 3.13.5), placed after the filtered summary in Step 5, with caption (precision axis starts at 0.868) and alt text written from the plot. The indel PASS point (0.779 / 0.930) lies above the indel QUAL curve: the mask and site filters beat any QUAL threshold at that recall. Credited in `learners/reference.md`.
+
+Schedule (plan section 4): the calling array's longest task was 3.7 min after a 1.8 min wait, well inside the 15 minutes after the 11:40 submission; `evaluate.sh` task 1 ran 2.5 min after a 1.3 min wait, inside the 10-minute "while hap.py runs" slot. Front matter unchanged (5A 30/30, 6 40/40). Live load: Episode 4 peak 48 cores per learner (960 for 20), 5A 20 (400), 6 24 (480).
+
+Remaining: `[check]` P9: `RTG_MEM=8g` unproven as a cap (unchanged). `[nice]` P7: live-path notes for Episodes 1-4.
+
+Checks: `build_kit.py` and `--check` pass (78 bash blocks, 9 steps, 0 placeholders, 0 figure slots; command columns of `index.tsv` identical to the run's); `validate_lesson()` clean; `build_lesson()` builds, titles render, only the stale P1 `prompt-01-scaffold.md` outside the lesson pages; no em or en dashes in changed files.
+
 ## Revision opportunities
+
+- `[should-fix]` P9: `check_staged.sh --results` should fail when the undated `STAGED_RESULTS` path is missing (and not pass on a dated directory given as DIR without saying so), and `regen_results.sh` should end by saying plainly that the swap is still pending; `make_staged_manifest.py` should write the undated path in the results manifest header (2026-10-12: the results copy sat in the dated directory from Part D until 2026-10-12).
+- `[nice]` P9: `restage.sh --scripts` (and `--example`) should rewrite only the manifest rows they change. Today `make_staged_manifest.py` writes one `--note` on every row, so a script update erases the provenance of the data, resources and example rows (2026-10-11: all 43 rows of `staged_manifest.tsv` lost their notes).
 
 ## Runtime record
 
@@ -394,3 +560,18 @@ P4 episode kit run `kit-2026-10-11`, 2026-10-10, account `rcac`, QoS `standby` (
 | `03-qc` session | 4 | 217 s | 2.23 | 3 s |
 | `align.sh`, per sample | 16 | 585-833 s | 13.34-13.47 | 3 s |
 | `04-alignqc` session | 4 | 233 s | 0.27 | about 110 s after alignment ended |
+
+P5 episode kit run `kit5-2026-10-11`, 2026-10-11 (rerun from `06-filter` with `RTG_MEM=8g`); wait from eligibility.
+
+| Step | Cores | Wall | MaxRSS (GiB) | Wait |
+|---|---|---|---|---|
+| `02-setup` (login node) | - | 43 s | - | - |
+| `03-qc` session | 4 | 4.0 min | 2.23 | 0.1 min |
+| `align.sh`, per sample | 16 | 11.2-12.6 min | 13.56 | 0.1 min |
+| `04-alignqc` session | 4 | 5.0 min | 0.45 | 1.8 min |
+| `call.sh`, per chunk | 2 | 2.2-3.7 min | 0.19 | 1.8 min |
+| `05-merge.sh` session | 4 | 0.5 min | <0.01 | 1.3 min |
+| `06-filter.sh` session (rerun) | 4 | 1.4 min | 0.55 | 1.3 min |
+| `evaluate.sh`, per task, first run (no `RTG_MEM`) | 24 | 1.5-2.5 min | 7.29-39.09 | - |
+| `evaluate.sh`, per task, rerun (`RTG_MEM=8g`) | 24 | 1.5-2.5 min | 1.16-27.14 | 1.3 min |
+| `06-evalsum` (login-node commands as a job) | 1 | 0.1 min | <0.01 | 0.2 min |

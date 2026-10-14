@@ -64,4 +64,4 @@ sentinel het_snv chr20:88108 T>C	FILTER PASS, HG002 GT 0/1, truth 0/1	exact	resu
 sentinel homalt_snv chr20:85259 G>A	FILTER PASS, HG002 GT 1/1, truth 1/1	exact	results/vcf/trio.filtered.vcf.gz
 sentinel indel chr20:86859 T>TTGGTATCTAG	FILTER PASS, HG002 GT 1/1, truth 1/1	exact	results/vcf/trio.filtered.vcf.gz
 sentinel trio_inconsistent chr20:338577 A>ATG	FILTER PASS, HG002 GT 0/1, truth 0/1	exact	results/vcf/trio.filtered.vcf.gz
-sentinel artifact chr20:29070822 T>G	FILTER HighDP;LowMQ, HG002 GT 1/1, truth not in any truth set	exact	results/vcf/trio.filtered.vcf.gz
+sentinel artifact chr20:29070822 T>G	FILTER HighDP;LowMQ, HG002 GT 1/1, truth outside every benchmark region	exact	results/vcf/trio.filtered.vcf.gz

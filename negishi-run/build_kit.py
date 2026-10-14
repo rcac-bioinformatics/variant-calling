@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""build_kit.py: generate the episode run kit (Episodes 2-4) from the lesson text, and check it.
+"""build_kit.py: generate the episode run kit (Episodes 2-6) from the lesson text, and check it.
 
 Usage:  python3 negishi-run/build_kit.py            check, then write negishi-run/generated/
         python3 negishi-run/build_kit.py --check    check only; also fails if generated/ exists and is stale
@@ -26,9 +26,11 @@ console output of the run block just above it; any other ID needs a handler in p
 Kit checks (the build fails on any): script or interactive text that differs from its canonical
 file; an account (--account=, -A) that is not KIT_ACCOUNT in config.sh; any --mem; a URL in a
 command that is not in data-prep/sources.tsv; a URL in Episodes 1-4 that learners/reference.md
-does not list; front-matter times that differ from the Prompt 04 table; a staged script whose md5
-in staged_manifest.tsv differs from its canonical file; a fallback path missing from
-staged_results_manifest.tsv; an extra block that writes; a bash fence without a marker.
+does not list; front-matter times that differ from the Prompt 04 and 05 tables; a staged script
+whose md5 in staged_manifest.tsv differs from its canonical file; a fallback path missing from
+staged_results_manifest.tsv; a "Short on time?" callout whose block is not a fallback or whose
+results-copy path is not in staged_results_manifest.tsv; an extra block that writes; a bash fence
+without a marker.
 
 Output is deterministic (sorted, no timestamps). Python 3.6, standard library only.
 """
@@ -48,16 +50,18 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.join(KIT, "py"))
 import summarize  # noqa: E402  (placeholder handlers; checked for coverage below)
 
-# Pages the kit reads, in learner order. Episodes 1 and 5A-8 are scanned by the checks only.
+# Pages the kit reads, in learner order. Episodes 1, 7 and 8 are scanned by the checks only.
 PAGES = [("setup", "learners/setup.md"),
          ("01", "episodes/01-intro-to-variant-calling.Rmd"),
          ("02", "episodes/02-data-and-project-setup.Rmd"),
          ("03", "episodes/03-read-qc.Rmd"),
-         ("04", "episodes/04-alignment-and-alignment-qc.Rmd")]
-OTHER_EPISODES = ["episodes/05a-calling-with-bcftools.Rmd", "episodes/06-filtering-and-evaluation.Rmd",
-                  "episodes/07-annotation.Rmd", "episodes/08-trio-candidate-variants.Rmd"]
-# Front matter (Prompt 04 table) and the live minutes of plan section 3.3
-TIMES = {"01": (35, 15, 30), "02": (20, 20, 20), "03": (15, 15, 15), "04": (45, 45, 70)}
+         ("04", "episodes/04-alignment-and-alignment-qc.Rmd"),
+         ("05a", "episodes/05a-calling-with-bcftools.Rmd"),
+         ("06", "episodes/06-filtering-and-evaluation.Rmd")]
+OTHER_EPISODES = ["episodes/07-annotation.Rmd", "episodes/08-trio-candidate-variants.Rmd"]
+# Front matter (Prompt 04 and Prompt 05 tables) and the live minutes of plan section 3.3
+TIMES = {"01": (35, 15, 30), "02": (20, 20, 20), "03": (15, 15, 15), "04": (45, 45, 70),
+         "05a": (30, 30, 45), "06": (40, 40, 60)}
 NOT_RUN_REASONS = ("download", "fallback", "laptop", "monitoring", "reference")
 RESULTS_ROOT = "/depot/workshop/data/varcall-workshop_results/"
 
@@ -261,12 +265,15 @@ for f, bl in sorted(INTERACTIVE.items()):
             "    episodes: %s\n    canonical: %s" % (f, k + 1, got[k] if k < len(got) else "(end)",
                                                     canon[k] if k < len(canon) else "(end)"))
 
-# extra blocks must not write anything or submit jobs
-WRITE_RE = re.compile(r'(^|[\s;|&])(>|>>|mkdir|rm|mv|cp|ln|touch|tee|sbatch|scancel|rsync|sed\s+-i)(\s|$)|\s-o\s')
+# extra blocks must not write anything or submit jobs. Text inside single or double quotes is
+# ignored (awk programs, filter expressions such as 'N_ALT>1'); everything outside is checked.
+WRITE_RE = re.compile(r'(^|[\s;|&(])(>|>>|mkdir|rm|mv|cp|ln|touch|tee|sbatch|scancel|rsync|sed\s+-i)(\s|$)|\s-o\s|\s--output[=\s]')
+QUOTED_RE = re.compile(r"'[^']*'|\"[^\"]*\"")
 for b in ALL_BLOCKS:
     if b.kind == "extra":
         for c in commands(b.text):
-            if WRITE_RE.search(c) or re.search(r'[^2&]>', c):
+            bare = QUOTED_RE.sub("''", c)
+            if WRITE_RE.search(bare) or re.search(r'[^2&]>', bare):
                 err("%s:%d: extra block writes or submits: %s" % (PARSED[b.page][0], b.start, c))
 
 # ---------------------------------------------------------------- check: accounts, --mem, URLs
@@ -347,6 +354,39 @@ for b in ALL_BLOCKS:
         err("%s:%d: fallback block does not read from %s" % (PARSED[b.page][0], b.start, RESULTS_ROOT))
 
 
+# "Short on time?" callouts (Prompt 05): every bash block inside one must be a fallback block, the
+# callout must hold at least one, and every results-copy path in it (blocks and prose) must match
+# a file in staged_results_manifest.tsv
+def short_on_time(page):
+    """(first line, last line) of each callout whose heading is Short on time?"""
+    lines, out, i = PARSED[page][5], [], 0
+    while i < len(lines):
+        if re.match(r'^:{3,}\s*callout\s*$', lines[i]):
+            j = i + 1
+            while j < len(lines) and not re.match(r'^:{3,}\s*$', lines[j]):
+                j += 1
+            if any(re.match(r'^##\s+Short on time\?\s*$', l) for l in lines[i + 1:j]):
+                out.append((i + 1, j + 1))
+            i = j
+        i += 1
+    return out
+
+
+for page, path in PAGES:
+    for lo, hi in short_on_time(page):
+        inside = [b for b in PARSED[page][1] if lo < b.start < hi]
+        if not any(b.kind == "not-run" and b.arg == "fallback" for b in inside):
+            err("%s:%d: \"Short on time?\" callout without a fallback block" % (path, lo))
+        for b in inside:
+            if b.lang == "bash" and not (b.kind == "not-run" and b.arg == "fallback"):
+                err("%s:%d: block in a \"Short on time?\" callout is not marked not-run fallback" % (path, b.start))
+        for ln in range(lo, hi):
+            for tok in re.findall(re.escape(RESULTS_ROOT) + r'[^\s`]+', PARSED[page][5][ln - 1]):
+                pat = tok[len(RESULTS_ROOT):]
+                if not any(fnmatch.fnmatch(p, pat) for p, r in RESULTS.items() if r[0] == "file"):
+                    err("%s:%d: \"Short on time?\" path not in staged_results_manifest.tsv: %s" % (path, ln, tok))
+
+
 # ---------------------------------------------------------------- the step graph
 def sint(block):
     """sinteractive line of a block -> (resources, text without that line)"""
@@ -369,18 +409,46 @@ def sint(block):
     return res, "\n".join(out) + "\n"
 
 
+INTERACTIVE_SBATCH_RE = re.compile(r'^(\s*)sbatch --array=(\d+) (\S+)\s*$')
+
+
+def kit_sbatch(block, text):
+    """An interactive block may submit part of a learner script's array (Episode 6 live path:
+    sbatch --array=1 evaluate.sh). The kit's learner step has already run the full array, so the
+    session only validates the command with sbatch --test-only."""
+    out = []
+    for line in text.splitlines():
+        if re.match(r'^\s*sbatch\b', line):
+            m = INTERACTIVE_SBATCH_RE.match(line)
+            if not m or m.group(3) not in LEARNER_SCRIPTS:
+                err("%s:%d: an interactive block may only run sbatch --array=N SCRIPT for a learner script: %s"
+                    % (PARSED[block.page][0], block.start, line.strip()))
+            else:
+                out.append("%s# KIT: the learner step %s ran the full array; validate the learner's command only"
+                           % (m.group(1), LEARNER_SCRIPTS[m.group(3)][0]))
+                out.append("%ssbatch --test-only --array=%s %s" % (m.group(1), m.group(2), m.group(3)))
+                continue
+        out.append(line)
+    return "\n".join(out) + "\n"
+
+
 STEPS = []  # dicts, in submission order
 
 
 def add_step(name, kind, deps, desc, **kw):
-    d = dict(name=name, kind=kind, deps=deps, desc=desc, ntasks=1, time="-", script="-", episode=name[:2])
+    d = dict(name=name, kind=kind, deps=deps, desc=desc, ntasks=1, time="-", script="-", episode=name.split("-")[0])
     d.update(kw)
     STEPS.append(d)
     return d
 
 
+# interactive file -> step; learner script -> (step, deps, description)
+STEP_OF_FILE = {"02-setup.sh": "02-setup", "03-qc.sh": "03-qc", "04-alignment-qc.sh": "04-alignqc",
+                "05-merge.sh": "05a-merge", "06-filter.sh": "06-filter", "06-evaluate-summary.sh": "06-evalsum"}
+LEARNER_SCRIPTS = {"align.sh": ("04-align", ["02-setup"], "Episode 4: align.sh array, submitted from scripts/"),
+                   "call.sh": ("05a-call", ["04-align"], "Episode 5A: call.sh array (8 regions), submitted from scripts/"),
+                   "evaluate.sh": ("06-evaluate", ["06-filter"], "Episode 6: evaluate.sh array (hap.py), submitted from scripts/")}
 SESSIONS = {}  # step -> [(block, text)]
-STEP_OF_FILE = {"02-setup.sh": "02-setup", "03-qc.sh": "03-qc", "04-alignment-qc.sh": "04-alignqc"}
 for f, step in sorted(STEP_OF_FILE.items()):
     if f not in INTERACTIVE:
         err("no episode blocks for interactive/%s" % f)
@@ -388,6 +456,7 @@ for f, step in sorted(STEP_OF_FILE.items()):
     pieces, res = [], None
     for b in INTERACTIVE[f]:
         r, text = sint(b)
+        text = kit_sbatch(b, text)
         if r is not None:
             if res is not None:
                 err("%s: two sinteractive lines for %s" % (b.ref, f))
@@ -396,19 +465,24 @@ for f, step in sorted(STEP_OF_FILE.items()):
         b.step = step
     SESSIONS[step] = (pieces, res)
 for b in ALL_BLOCKS:
-    if b.kind == "submit":
-        b.step = "04-align" if b.arg == "align.sh" else "-"
-    if b.kind == "script":
-        b.step = "04-align" if b.arg == "align.sh" else "-"
-for s in ("align.sh",):
-    if s not in SCRIPTS or s not in SUBMITS:
-        err("Episode 4 must show and submit %s" % s)
+    if b.kind in ("submit", "script"):
+        b.step = LEARNER_SCRIPTS[b.arg][0] if b.arg in LEARNER_SCRIPTS else "-"
+for s_ in sorted(LEARNER_SCRIPTS):
+    if s_ not in SCRIPTS or s_ not in SUBMITS:
+        err("the episodes must show and submit %s" % s_)
 
 
 def session_step(name, deps, desc):
+    """A step for the blocks of one interactive file. With a sinteractive line: a batch job with its
+    resources. Without one and without dependencies: the login node, inside submit_all.sh. Without
+    one but after a job (06-evalsum, typed on a login node once evaluate.sh has finished): a 1-task
+    batch job, because a login step cannot wait for a job."""
     pieces, res = SESSIONS.get(name, ([], None))
-    if res is None:
+    if res is None and not deps:
         return add_step(name, "login", deps, desc)
+    if res is None:
+        return add_step(name, "session", deps, desc + " (login-node commands, run as a 1-task job)", ntasks=1,
+                        nodes=1, time="00:15:00", account=ACCOUNT, qos=QOS, partition=PARTITION)
     for k, v in (("-A", ACCOUNT), ("-q", QOS), ("-p", PARTITION)):
         if res.get(k) != v:
             err("%s: sinteractive %s %s, expected %s" % (name, k, res.get(k), v))
@@ -417,15 +491,27 @@ def session_step(name, deps, desc):
                     partition=res.get("-p"))
 
 
+def learner_step(script):
+    name, deps, desc = LEARNER_SCRIPTS[script]
+    if script not in SCRIPTS:
+        return
+    hdr = dict(re.findall(r'^#SBATCH\s+--([\w-]+)=(\S+)', SCRIPTS[script].text, re.M))
+    add_step(name, "learner", deps, desc, script=script, ntasks=1, time=hdr.get("time", "-"),
+             cpus=hdr.get("cpus-per-task", "-"), array=hdr.get("array", "-"))
+
+
 session_step("02-setup", [], "setup page and Episode 2: copy, link, md5, sample sheet, reference, coordinates (login node)")
 session_step("03-qc", ["02-setup"], "Episode 3: FastQC and MultiQC (interactive session as a batch job)")
-if "align.sh" in SCRIPTS:
-    hdr = dict(re.findall(r'^#SBATCH\s+--([\w-]+)=(\S+)', SCRIPTS["align.sh"].text, re.M))
-    add_step("04-align", "learner", ["02-setup"], "Episode 4: align.sh array, submitted from scripts/",
-             script="align.sh", ntasks=1, time=hdr.get("time", "-"), cpus=hdr.get("cpus-per-task", "-"),
-             array=hdr.get("array", "-"))
+learner_step("align.sh")
 session_step("04-alignqc", ["04-align"], "Episode 4: flagstat, stats, mosdepth, MultiQC, view, flags, tview")
-if len(STEPS) != 4:
+learner_step("call.sh")
+session_step("05a-merge", ["05a-call"], "Episode 5A: example VCF, concat, norm, stats (interactive session as a batch job)")
+session_step("06-filter", ["05a-merge"], "Episode 6: distributions, filters, Ts/Tv (interactive session as a batch job)")
+learner_step("evaluate.sh")
+session_step("06-evalsum", ["06-evaluate"], "Episode 6: hap.py summaries and ROC rows")
+EXPECTED_STEPS = ["02-setup", "03-qc", "04-align", "04-alignqc", "05a-call", "05a-merge", "06-filter", "06-evaluate",
+                  "06-evalsum"]
+if [d["name"] for d in STEPS] != EXPECTED_STEPS:
     err("step graph incomplete: %s" % [d["name"] for d in STEPS])
 
 # ---------------------------------------------------------------- placeholders and figures
@@ -459,7 +545,7 @@ for page, path in PAGES:
         FIGURES.append((fid, path, line))
 for page, path in [(None, p) for p in OTHER_EPISODES]:
     if PH_RE.search(read(os.path.join(ROOT, path))):
-        err("%s: placeholders outside Episodes 2-4 are not filled by this kit" % path)
+        err("%s: placeholders outside the setup page and Episodes 2-6 are not filled by this kit" % path)
 
 # ---------------------------------------------------------------- generated files
 OUT = {}
@@ -487,7 +573,9 @@ def render_session(name, pieces):
 
 EXTRA_AFTER = {
     "03-qc": ['kit_multiqc_export 03-qc results/qc'],
-    "04-alignqc": ['kit_multiqc_export 04-alignqc results/qc_alignment results/bam'],
+    "04-alignqc": ['kit_multiqc_export 04-alignqc results/qc_alignment results/bam', 'kit_mapq0_counts'],
+    "05a-merge": ['kit_bcftools_usage', 'kit_site_counts'],
+    "06-filter": ['kit_multiqc_export 06-filter results/vcf', 'kit_filter_counts'],
 }
 
 
@@ -557,7 +645,7 @@ def build():
     g = ["# Step graph (submit_all.sh runs them in this order; deps are afterok)"]
     for d in STEPS:
         where = {"login": "login node", "session": "batch job (interactive block)", "learner": "learner sbatch"}[d["kind"]]
-        g.append("%-11s %-30s after: %s" % (d["name"], where, ", ".join(d["deps"]) or "-"))
+        g.append("%-12s %-30s after: %s" % (d["name"], where, ", ".join(d["deps"]) or "-"))
     put("graph.txt", "\n".join(g))
 
     ph = ["id\tfile\tline\tkind\tsource"]

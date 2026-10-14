@@ -1,5 +1,5 @@
 #!/bin/bash
-# submit_all.sh: run Episodes 2-4 as a new learner would (login node; about 2 minutes, then jobs).
+# submit_all.sh: run Episodes 2-6 as a new learner would (login node; about 2 minutes, then jobs).
 # Usage: bash negishi-run/submit_all.sh --run RUN_ID [--from STEP] [--qos standby|normal] [--force] [--dry-run]
 #   --run RUN_ID  a new ID starts a fresh learner copy in $KIT_RUNS/RUN_ID; an existing one continues it
 #   --from STEP   skip the steps before STEP in generated/steps.tsv (they must be done)
@@ -9,16 +9,21 @@
 #   --dry-run     submit nothing: check scripts with bash -n, print each sbatch command, and ask
 #                 SLURM to validate every job with sbatch --test-only
 # Steps (generated/steps.tsv, built from the episodes by build_kit.py):
-#   02-setup    login node: the setup-page and Episode 2 blocks, verbatim (rsync, ln -s, md5sum ...)
-#   03-qc       batch job with the resources of the Episode 3 sinteractive line
-#   04-align    the learner's scripts/align.sh, submitted from scripts/ as Episode 4 says
-#   04-alignqc  batch job with the resources of the Episode 4 sinteractive line, after 04-align
+#   02-setup     login node: the setup-page and Episode 2 blocks, verbatim (rsync, ln -s, md5sum ...)
+#   03-qc        batch job with the resources of the Episode 3 sinteractive line
+#   04-align     the learner's scripts/align.sh, submitted from scripts/ as Episode 4 says
+#   04-alignqc   batch job with the resources of the Episode 4 sinteractive line, after 04-align
+#   05a-call     the learner's scripts/call.sh, after 04-align
+#   05a-merge    batch job with the resources of the Episode 5A sinteractive line, after 05a-call
+#   06-filter    batch job with the resources of the Episode 6 sinteractive line, after 05a-merge
+#   06-evaluate  the learner's scripts/evaluate.sh, after 06-filter
+#   06-evalsum   1-task batch job (login-node commands that wait for evaluate.sh), after 06-evaluate
 # Job IDs go to $RUN/jobs.tsv. Then: bash negishi-run/collect.sh --run RUN_ID
 set -euo pipefail
 KIT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 export KIT_DIR
 RUN_ID=""; FROM=""; QOS=""; FORCE=0; DRYRUN=0
-usage() { sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
+usage() { sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
 while [ $# -gt 0 ]; do
   case $1 in
     --run) RUN_ID=$2; shift 2;;
@@ -143,7 +148,7 @@ while IFS=$'\t' read -r step kind deps _ _ _ _ _ script desc; do
       submit "$step" "$RUN" "${common[@]}" -o "$RUN/logs/$step.%j.out" -e "$RUN/logs/$step.%j.out" \
         "--export=ALL,RUN=$RUN,KIT_DIR=$KIT_DIR,KIT_GEN=$KIT_GEN" "$KIT_GEN/jobs/$step.sh";;
     learner)
-      # The learner submits the staged scripts/align.sh; it must be the script the episode shows
+      # The learner submits the staged script (align.sh, call.sh, evaluate.sh); it must be the one the episode shows
       bash -n "$KIT_GEN/learner-scripts/$script"
       if [ "$DRYRUN" = 1 ]; then
         submit "$step" "$KIT_GEN/learner-scripts" "${common[@]}" "--export=ALL,SCRATCH=$KIT_LEARNER_SCRATCH" "$script"

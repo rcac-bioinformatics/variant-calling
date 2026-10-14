@@ -15,6 +15,10 @@ module load biocontainers
 module load bcftools/1.24
 module load hap.py/0.3.9
 
+# hap.py runs the vcfeval engine of RTG Tools (Java). Without a cap, the same task peaked between
+# 1 and 39 GiB in different runs; RTG_MEM sets the memory that RTG Tools may use.
+export RTG_MEM=8g
+
 WORK=$SCRATCH/varcall-workshop
 REF=$WORK/ref/GRCh38_no_alt.fa
 SDF=$WORK/ref/GRCh38_no_alt.sdf
@@ -33,7 +37,7 @@ for CALLS in norm filtered; do
     bcftools view -s $SAMPLE -c 1 -Oz --write-index=tbi \
         -o $OUTDIR/$SAMPLE.$TRUTH.$CALLS.calls.vcf.gz $WORK/results/vcf/trio.$CALLS.vcf.gz
 
-    # 24 cores for memory (about 1.9 GB each), 16 threads: hap.py memory grows with threads
+    # 24 cores for memory (about 1.9 GB each), 16 threads
     hap.py $TRUTHDIR/$TRUTH_VCF $OUTDIR/$SAMPLE.$TRUTH.$CALLS.calls.vcf.gz \
         -f $TRUTHDIR/$TRUTH_BED \
         -r $REF \

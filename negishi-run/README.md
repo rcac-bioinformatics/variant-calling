@@ -1,6 +1,65 @@
 # Negishi run kit
 
-Phase 4 (current) runs the lesson's own commands: `build_kit.py` extracts every command of the setup page and Episodes 2-4, checks it against `pipeline/learner-scripts/`, and `submit_all.sh` runs it as a new learner on standby. Phase 3 (below) staged the data and ran the reference run that froze the anchors in `anchors.tsv`; phase 2 measured feasibility. Settings live in `config.sh`; external files in `../data-prep/sources.tsv`.
+Phase 5 (current) extends the episode run kit of Phase 4 to Episodes 5A and 6: `build_kit.py` extracts every command of the setup page and Episodes 2-6, checks it against `pipeline/learner-scripts/`, and `submit_all.sh` runs it as a new learner on standby. Phase 3 (below) staged the data and ran the reference run that froze the anchors in `anchors.tsv`; phase 2 measured feasibility. Settings live in `config.sh`; external files in `../data-prep/sources.tsv`.
+
+## Phase 5: the episode run kit for Episodes 2-6 (Prompt 05, Part B)
+
+The whole chain runs again from Episode 2 as a new learner: the alignment anchors are checked again, and calling, filtering and hap.py run on the learner's own BAMs. Steps (`generated/steps.tsv`), with the reference-run times:
+
+| Step | Where | What | Expected |
+|---|---|---|---|
+| `02-setup`, `03-qc`, `04-align`, `04-alignqc` | as in Phase 4 below | plus a kit-only MAPQ 0 count after `04-alignqc` | about 20 min plus waits |
+| `05a-call` | the learner's `scripts/call.sh`, array of 8 x 2 cores, after `04-align` | `mpileup` and `call` per region | 2-4 min per task (P3: 133-254 s) |
+| `05a-merge` | batch job, 4 tasks, after `05a-call` | example-VCF blocks, `concat`, `norm`, `stats`; then the kit-only bcftools usage text and chr20:88108 counts | 1-2 min (P3 merge: 13-16 s) |
+| `06-filter` | batch job, 4 tasks, after `05a-merge` | distributions, filters, Ts/Tv; then a kit-only MultiQC PNG export of the two `bcftools stats` files, filter counts, sentinels and region metrics | 2-4 min (P3 filter: 17 s; the kit-only metrics add the rest) |
+| `06-evaluate` | the learner's `scripts/evaluate.sh`, array of 4 x 24 cores, after `06-filter` | `bcftools view -s`, hap.py vcfeval on norm and filtered calls | 1.5-2.5 min per task (P3: 89-145 s) |
+| `06-evalsum` | 1-task batch job, after `06-evaluate` | `summary.csv` views and the ROC lookup (login-node commands) | under 1 min |
+
+Critical path about 35 minutes plus standby waits.
+
+On the laptop first:
+
+```bash
+cd ~/svn/variant-calling
+python3 negishi-run/build_kit.py
+python3 negishi-run/build_kit.py --check   # "all kit checks pass; generated/ matches a fresh build"
+rsync -av --relative ./episodes ./learners ./negishi-run ./pipeline ./data-prep aseethar@negishi.rcac.purdue.edu:/scratch/negishi/aseethar/variant-calling/
+```
+
+On a Negishi login node, in `tmux` or `screen`, from `/scratch/negishi/aseethar/variant-calling` (any new run ID):
+
+| Step | Command | Expected |
+|---|---|---|
+| 1 | `bash negishi-run/00_preflight.sh` | FAIL 0 |
+| 2 | `bash negishi-run/submit_all.sh --run kit5-2026-10-11 --dry-run` | 9 steps; 8 `sbatch --test-only` lines that say "to start at"; "0 sbatch --test-only failure(s)" |
+| 3 | `bash negishi-run/submit_all.sh --run kit5-2026-10-11` | runs `02-setup` on the login node, then submits the other 8 steps with `afterok` dependencies |
+| 4 | wait until `squeue -u $USER` is empty | about 35 min plus standby waits |
+| 5 | `bash negishi-run/collect.sh --run kit5-2026-10-11` | writes `$SCRATCH/varcall-kit/kit-runs/varcall-p5-kit-kit5-2026-10-11-<date>.tar.gz` and prints the `rsync` command |
+| 6 | on the laptop: run the printed `rsync`, then `tar -xzf <tarball> -C negishi-run/records/` | the records under `negishi-run/records/`, never at the repository root |
+
+Read `SUMMARY.md` first: per-step status, every anchor and sentinel (exact match; any FAIL is a stop item for Part C), the hap.py summaries, runtime against front matter, the memory headroom of each `evaluate.sh` task (sample, truth set, node, MaxRSS, wall time), the Episode 5A multiallelic stop check, the live-load table, the kit-only records, every placeholder value and every block's console output. Recovery is as in Phase 4 below; `kit_ep_done` also recognizes a finished `call.sh` (the eight chunk indexes) and `evaluate.sh` (eight `summary.csv` files newer than the run).
+
+The precision-recall figure is made on the laptop in Part C, from the tarball's `qc/eval/` folder: `python3 negishi-run/pr_figure.py <tarball dir>/qc/eval episodes/fig/06/pr_hg002_v5.0q.png`.
+
+### Phase 5 Part B rerun: `RTG_MEM` in `evaluate.sh` and the sentinel fix (2026-10-11)
+
+`evaluate.sh` now caps the memory of hap.py's vcfeval engine (`export RTG_MEM=8g`), and the kit's sentinel lookup applies the benchmark BEDs. The rerun starts at `06-filter`, not `06-evaluate`, because the sentinels are kit-only records of `06-filter`; `06-filter` takes about 2 minutes and rewrites the same files. Run ID stays `kit5-2026-10-11`.
+
+On the laptop: `build_kit.py`, `--check`, and the `rsync` as above.
+
+On a Negishi login node, from `/scratch/negishi/aseethar/variant-calling`:
+
+| Step | Command | Expected |
+|---|---|---|
+| 1 | `bash negishi-run/restage.sh --scripts` | the build's `scripts/` updated; `negishi-run/staged_manifest.tsv` rewritten (`scripts/evaluate.sh` md5 `b99b4cda77cc83c79337968944d60e4e`, 1734 bytes) |
+| 2 | `bash negishi-run/restage.sh --install` | asks before writing to Depot; `check_staged.sh` reports 0 problems on both copies |
+| 3 | `cp /depot/workshop/data/varcall-workshop/scripts/evaluate.sh $SCRATCH/varcall-kit/kit-runs/kit5-2026-10-11/scratch/varcall-workshop/scripts/evaluate.sh` | the run's learner copy gets the new script, as a learner who copies the scripts again would |
+| 4 | `bash negishi-run/submit_all.sh --run kit5-2026-10-11 --from 06-filter --force --dry-run` | 3 steps (`06-filter`, `06-evaluate`, `06-evalsum`), 3 `--test-only` lines that say "to start at" |
+| 5 | `bash negishi-run/submit_all.sh --run kit5-2026-10-11 --from 06-filter --force` | 3 jobs with `afterok` dependencies |
+| 6 | when `squeue -u $USER` is empty: `bash negishi-run/collect.sh --run kit5-2026-10-11` | a new tarball |
+| 7 | on the laptop: `rsync` the tarball and `negishi-run/staged_manifest.tsv` back; extract the tarball under `negishi-run/records/` | |
+
+Read in `SUMMARY.md`: all 49 anchors PASS (the artifact sentinel now reads "truth outside every benchmark region"); in the memory table, MaxRSS of every `evaluate.sh` task of the new array well under 80%; the 8 `summary.csv` files identical to those of the first array (`cmp` against the first tarball's `qc/eval/`); the `06-evalsum` console shows `sbatch --test-only --array=1 evaluate.sh` accepted.
 
 ## Phase 4: the episode run kit (Prompt 04, Part B)
 
