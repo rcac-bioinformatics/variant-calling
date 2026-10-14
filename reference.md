@@ -80,24 +80,35 @@ title: Reference
 
 ### Calling, filtering and evaluation
 
+- Allelic depth (AD)
 - Benchmark (truth set)
 - Confident regions
+- Depth cap (`mpileup -d`)
 - F1 score
 - False negative
 - False positive
 - FILTER field
 - Genotype likelihood
+- Genotype mask
 - Genotype quality (GQ)
+- Haplotype-aware comparison
 - Hard filter
+- INFO and FORMAT fields (site-level and per-sample)
 - Joint calling
+- Multiallelic site
 - Normalization (left-alignment, multiallelic splitting)
 - PL field
 - Precision
+- Prior (in `bcftools call`)
 - QUAL
 - Recall
+- ROC curve (precision and recall by threshold)
+- Site-level and genotype-level filters
 - Soft filter
 - Stratification
+- Test-set leakage (tuning on the benchmark)
 - True positive
+- UNK (not assessed)
 
 ### Annotation and interpretation
 
@@ -149,6 +160,24 @@ Tools:
 - fastp: <https://github.com/OpenGene/fastp>
 - GATK base quality score recalibration: <https://gatk.broadinstitute.org/hc/en-us/articles/360035890531-Base-Quality-Score-Recalibration-BQSR>
 
+### Sources cited in Episodes 5A and 6
+
+Specifications, methods and benchmarks:
+
+- VCF specification, version 4.3 (reserved INFO and FORMAT fields, QUAL, GQ, PL): <https://samtools.github.io/hts-specs/VCFv4.3.pdf>
+- Li H. (2011). A statistical framework for SNP calling, mutation discovery, association mapping and population genetical parameter estimation from sequencing data. Bioinformatics 27(21): 2987-2993. <https://doi.org/10.1093/bioinformatics/btr509>
+- Tan A., Abecasis G. R., Kang H. M. (2015). Unified representation of genetic variants. Bioinformatics 31(13): 2202-2204. <https://doi.org/10.1093/bioinformatics/btv112>
+- Krusche P. et al. (2019). Best practices for benchmarking germline small-variant calls in human genomes. Nature Biotechnology 37: 555-560. <https://doi.org/10.1038/s41587-019-0054-x>
+- GIAB HG002 v5.0q benchmark README, NIST: <https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/AshkenazimTrio/HG002_NA24385_son/latest/NIST_HG002_v5.0q_variant-benchmarksets_README.md>
+
+Tools:
+
+- bcftools manual, with the sections for [`filter`](https://samtools.github.io/bcftools/bcftools.html#filter) and [`isec`](https://samtools.github.io/bcftools/bcftools.html#isec). Default values in Episodes 5A and 6 come from the usage text of the pinned bcftools 1.24 (`bcftools mpileup`, `call`, `filter` and `norm` without arguments), which the workshop's run kit records.
+- htslib `sam.h` (version 1.24), the comment on `bam_mplp_init_overlaps`: how overlapping read pairs are handled in a pileup: <https://github.com/samtools/htslib/blob/1.24/htslib/sam.h>
+- hap.py user guide (vcfeval engine, `summary.csv` columns, UNK, ROC tables): <https://github.com/Illumina/hap.py/blob/master/doc/happy.md>
+- FastQC program options (`--nogroup`): <https://github.com/s-andrews/FastQC/blob/master/fastqc>; adapter list, including the poly-A and poly-G series: <https://github.com/s-andrews/FastQC/blob/master/Configuration/adapter_list.txt>
+
 Figures:
 
+- The precision-recall figure in Episode 6 is drawn by the workshop's run kit (`negishi-run/pr_figure.py`) from the hap.py ROC tables of a test run.
 - The FastQC contrast cartoons in Episode 3 are by Zandra Selina, CC BY 4.0, reused from the [RCAC RNA-seq workshop](https://github.com/rcac-bioinformatics/rnaseq-analysis).

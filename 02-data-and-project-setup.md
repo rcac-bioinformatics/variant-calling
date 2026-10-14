@@ -259,7 +259,7 @@ samtools faidx ref/GRCh38_no_alt.fa chr20:88098-88118
 ATTTCATTGTTGTGTCCTATT
 ```
 
-The first line is a message the biocontainers module prints when it is loaded; the region follows as a short FASTA record. The region is 21 bases: `samtools faidx` regions are 1-based and include both ends ([samtools faidx manual](https://www.htslib.org/doc/samtools-faidx.html)). Base 88,108, a `T`, sits in the middle. Remember this position; the child is heterozygous there, and we will come back to it in Episodes 4 and 5A.
+Loading the `biocontainers` module also prints a notice with a link to the RCAC biocontainers user guides; you will see it after every `module load biocontainers`, and the outputs in these episodes leave it out. The region is a short FASTA record. The region is 21 bases: `samtools faidx` regions are 1-based and include both ends ([samtools faidx manual](https://www.htslib.org/doc/samtools-faidx.html)). Base 88,108, a `T`, sits in the middle. Remember this position; the child is heterozygous there, and we will come back to it in Episodes 4 and 5A.
 
 :::::::::::::::::::::::::::::::::::::
 

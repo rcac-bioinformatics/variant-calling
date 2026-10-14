@@ -134,7 +134,7 @@ FastQC marks each module with a pass, warning or fail. These marks come from thr
 
 ### Per base sequence quality
 
-The distribution of base qualities at each position along the read. With binned qualities, the box plots in each FastQC report look blocky: medians, quartiles and percentiles can only take the four values (2, 11, 25, 37). That is binning, not a failure. In our files the median and both quartiles are 37 at every position; only the 10th percentile drops to 25 near the end of the read. MultiQC plots the mean, which stays near 35 to 36 and falls slightly over the last cycles.
+The distribution of base qualities at each position along the read. With binned qualities, the box plots in each FastQC report look blocky: medians, quartiles and percentiles can only take the four values (2, 11, 25, 37). That is binning, not a failure. In our files the median and both quartiles are 37 at every position; only the 10th percentile drops, to 25, the next bin down, over the last part of the read (from position 125 in R1, and from position 85 to 95 in R2, depending on the sample). Values between the bins, such as 27.4, 29.8, 32.2 and 34.6, are not qualities in the data: for reads longer than 50 bp FastQC groups neighboring positions (the `--nogroup` option of the [FastQC program](https://github.com/s-andrews/FastQC/blob/master/fastqc) turns this off) and reports one value per group, the average over its positions. A group of five positions with the 10th percentile at 37 in three and at 25 in two shows 32.2. MultiQC plots the mean, which stays near 35 to 36 and falls slightly over the last cycles.
 
 <div class="figure" style="text-align: center">
 <img src="fig/03/multiqc_per_base_quality.png" alt="MultiQC line plot of mean Phred score against read position for six files; all lines lie close together near 35 to 36 in the green zone and dip slightly over the last cycles"  />
@@ -201,7 +201,7 @@ Duplicates have two main sources: PCR amplification during library preparation, 
 
 ### Adapter content
 
-The fraction of reads that contain adapter sequence at each position. Adapters appear when a DNA fragment is shorter than the read length, so the sequencer reads past the end of the fragment into the adapter. Our fragments average about 400 bp (the insert sizes of the source alignments were 399.5 to 417.9 bp on average; feasibility memo), well above the 151 bp read length, so few reads should reach the adapter. FastQC 0.12 also counts poly-A and poly-G stretches in this module, and reports each adapter type as its own line.
+The fraction of reads that contain adapter sequence at each position. Adapters appear when a DNA fragment is shorter than the read length, so the sequencer reads past the end of the fragment into the adapter. Our fragments average about 400 bp (the insert sizes of the source alignments were 399.5 to 417.9 bp on average; feasibility memo), well above the 151 bp read length, so few reads should reach the adapter. FastQC 0.12 also counts poly-A and poly-G stretches in this module, and reports each adapter type as its own line. Its poly-A series counts reads that contain 12 A's in a row (FastQC's [adapter list](https://github.com/s-andrews/FastQC/blob/master/Configuration/adapter_list.txt)). Such runs also occur in the genome itself, and every read here came from an alignment to chromosome 20, so the poly-A series does not point to a library artifact and is no reason to trim.
 
 <div class="figure" style="text-align: center">
 <img src="fig/03/multiqc_adapter_content.png" alt="MultiQC line plot of the percentage of reads containing adapter sequence against read position; one group of lines rises steadily to about 1.5% at position 140, a second group stays near zero and rises to about 0.5% over the last 30 positions, all within the green pass zone"  />
@@ -212,6 +212,14 @@ The fraction of reads that contain adapter sequence at each position. Adapters a
 <img src="fig/03/contrast_adapter_content.png" alt="Two cartoon adapter content plots: a curve rising toward the end of the read, and a flat line at zero"  />
 <p class="caption">Contrast example, schematic and not data: adapter content rising toward the read end (short inserts, acceptable only for fragmented ancient DNA) and a flat line near zero. Cartoon by Zandra Selina, CC BY 4.0.</p>
 </div>
+
+::::::::::::::::::::::::::::::::::::::: callout
+
+## Why these reports look clean
+
+Our reads were selected from alignments to chromosome 20 (Episode 2; [feasibility memo](https://github.com/rcac-bioinformatics/variant-calling/blob/main/maintenance/plan/feasibility.md)). Pairs that aligned nowhere, such as adapter dimers or reads of a single repeated base, were never in those alignments, so they are largely absent from our FASTQ files. The QC of a raw sequencing run of the same libraries would look less clean than these reports.
+
+:::::::::::::::::::::::::::::::::::::::
 
 ::::::::::::::::::::::::::::::::::::::: challenge
 

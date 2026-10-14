@@ -59,7 +59,7 @@ This workshop teaches calling germline SNVs and small indels (under 50 bp) from 
 
 ### Toolchain
 
-Every tool is loaded with `module load biocontainers` followed by the tool module at an explicit version, for example `module load bcftools/1.24`. The versions are pinned because tool behavior changes between releases, bcftools in particular.
+Every tool is loaded with `module load biocontainers` followed by the tool module at an explicit version, for example `module load bcftools/1.24`. The versions are pinned because tool behavior changes between releases, bcftools in particular. Loading `biocontainers` prints a notice with a link to the RCAC biocontainers user guides; the outputs shown in the episodes leave it out.
 
 | Step | Modules | Where it runs | Episode |
 |:-----|:--------|:--------------|:--------|

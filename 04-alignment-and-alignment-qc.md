@@ -297,7 +297,7 @@ total 3.1G
 -rw-r--r-- 1 aseethar workshop   769 Oct 10 21:31 HG004.markdup.stats.txt
 ```
 
-The first two lines are the message the biocontainers module prints when it is loaded. Each sample has a BAM file (about 1 GB), its `.csi` index and the duplicate statistics from `markdup`. `samtools markdup --write-index` writes a CSI index rather than the older `.bai` format; samtools, bcftools and mosdepth read both.
+Each sample has a BAM file (about 1 GB), its `.csi` index and the duplicate statistics from `markdup`. `samtools markdup --write-index` writes a CSI index rather than the older `.bai` format; samtools, bcftools and mosdepth read both.
 
 :::::::::::::::::::::::::::::::::::::
 
@@ -519,7 +519,7 @@ Using the `samtools stats` output and the MultiQC report:
 
 ::::::::::::::::::::::::::::::::::: solution
 
-1. `samtools stats` reports 983,436 mapped reads with MAPQ 0 in HG002, 5.20% of 18,924,900 reads (HG003 5.28%, HG004 4.82%). `samtools view -c` counted 1,054,357, which is 70,921 more. `samtools stats` counts only mapped reads (its comment says "mapped and MQ=0") and leaves out supplementary alignments, while `samtools view -c` counts every record whose MAPQ is 0. The 36,402 unmapped reads also have MAPQ 0 in the file, and supplementary records (55,861 in all) can account for the rest.
+1. `samtools stats` reports 983,436 mapped reads with MAPQ 0 in HG002, 5.20% of 18,924,900 reads (HG003 5.28%, HG004 4.82%). `samtools view -c` counted 1,054,357, which is 70,921 more. `samtools stats` counts only mapped reads (its comment says "mapped and MQ=0") and leaves out supplementary alignments, while `samtools view -c` counts every record whose MAPQ is 0. The 36,402 unmapped reads also have MAPQ 0 in the file, and so do 34,519 of the 55,861 supplementary alignments: together exactly 70,921 (counted in the workshop's test run).
 2. In repeats and duplicated sequence: segmental duplications, the centromere, and other regions where a 151 bp read, or even a read pair, matches several places equally well.
 3. A MAPQ 0 read may come from another copy of the repeat. Differences between the copies would look like variants. Episode 6 shows that the raw calls in the centromere have a much lower transition/transversion ratio than calls elsewhere, the signature of many false calls.
 
@@ -659,7 +659,7 @@ The first three lines are a position ruler, the reference sequence, and a consen
 
 ::::::::::::::::::::::::::::::::::: solution
 
-1. Column 21 holds 39 reads: 14 show `C` or `c` and 25 match the reference `T`, and the consensus line shows `Y`. That is 36% `C`, fewer than half, but not unusual for a heterozygous site: with 39 reads, a perfectly balanced site gives 14 or fewer reads of one particular allele about 5% of the time (binomial, Episode 1). Expect the caller to report `0/1`. The benchmark for HG002 agrees: `0/1` at this position.
+1. Column 21 holds 39 reads: 14 show `C` or `c` and 25 match the reference `T`, and the consensus line shows `Y`. That is 36% `C`, fewer than half, but not unusual for a heterozygous site: with 39 reads, a perfectly balanced site gives 14 or fewer `C` reads 5.4% of the time, and 14 or fewer reads of either allele 10.8% of the time (binomial, Episode 1). Expect the caller to report `0/1`. Episode 5A shows how the caller actually decides: it compares the likelihoods of the three genotypes rather than testing the balance. The benchmark for HG002 agrees: `0/1` at this position.
 2. Start 20 bases earlier, at 85,239:
 
    <!-- kit: extra 04-alignment-qc.sh -->
