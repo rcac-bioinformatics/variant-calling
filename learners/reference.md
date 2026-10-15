@@ -121,6 +121,22 @@ title: Reference
 - MANE transcript
 - Sequence Ontology term
 - Transcript
+- Founder variant
+- Genetic ancestry group
+- Loss-of-function variant
+- Predicted effect (as opposed to a demonstrated function)
+
+### Family (trio) analysis
+
+- Cell-line mutation (clonal and subclonal)
+- Compound heterozygote
+- De novo candidate
+- Filtering funnel
+- Mendelian consistency rate
+- Parental mosaicism
+- PED file (pedigree)
+- Recessive model
+- Opposite homozygotes
 
 ### Running jobs on the cluster
 
@@ -177,7 +193,39 @@ Tools:
 - hap.py user guide (vcfeval engine, `summary.csv` columns, UNK, ROC tables): <https://github.com/Illumina/hap.py/blob/master/doc/happy.md>
 - FastQC program options (`--nogroup`): <https://github.com/s-andrews/FastQC/blob/master/fastqc>; adapter list, including the poly-A and poly-G series: <https://github.com/s-andrews/FastQC/blob/master/Configuration/adapter_list.txt>
 
+### Sources cited in Episodes 7 and 8
+
+Annotation:
+
+- Cingolani P. et al. (2012). A program for annotating and predicting the effects of single nucleotide polymorphisms, SnpEff. Fly 6(2): 80-92. <https://doi.org/10.4161/fly.19695>
+- SnpEff manual: <https://pcingola.github.io/SnpEff/>; input and output, the ANN field and the impact classes: <https://pcingola.github.io/SnpEff/snpeff/inputoutput/>; the ANN format specification: <https://pcingola.github.io/SnpEff/adds/VCFannotationformat_v1.0.pdf>
+- Sequence Ontology (the ontology files and their documentation): <https://github.com/The-Sequence-Ontology/SO-Ontologies>
+- HGVS nomenclature: <https://hgvs-nomenclature.org/>
+- Morales J. et al. (2022). A joint NCBI and EMBL-EBI transcript set for clinical genomics and research. Nature 604: 310-315. <https://doi.org/10.1038/s41586-022-04558-8>; MANE at NCBI: <https://www.ncbi.nlm.nih.gov/refseq/MANE/>
+- bcftools `+split-vep`: <https://samtools.github.io/bcftools/howtos/plugin.split-vep.html>
+
+Population frequencies and ancestry:
+
+- Karczewski K. J. et al. (2020). The mutational constraint spectrum quantified from variation in 141,456 humans. Nature 581: 434-443. <https://doi.org/10.1038/s41586-020-2308-7>
+- gnomAD v4.1 release: <https://gnomad.broadinstitute.org/news/2024-04-gnomad-v4-1/>; genetic ancestry groups in gnomAD: <https://gnomad.broadinstitute.org/help/ancestry>
+- Carmi S. et al. (2014). Sequencing an Ashkenazi reference panel supports population-targeted personal genomics and illuminates Jewish and European origins. Nature Communications 5: 4835. <https://doi.org/10.1038/ncomms5835>
+- National Academies of Sciences, Engineering, and Medicine (2023). Using Population Descriptors in Genetics and Genomics Research. The National Academies Press. <https://doi.org/10.17226/26902>
+
+Clinical interpretation databases:
+
+- ClinVar: <https://www.ncbi.nlm.nih.gov/clinvar/>; review status: <https://www.ncbi.nlm.nih.gov/clinvar/docs/review_status/>
+- Landrum M. J. et al. (2018). ClinVar: improving access to variant interpretations and supporting evidence. Nucleic Acids Research 46(D1): D1062-D1067. <https://doi.org/10.1093/nar/gkx1153>
+
+Trio analysis:
+
+- bcftools manual: [expressions](https://samtools.github.io/bcftools/bcftools.html#expressions), [`gtcheck`](https://samtools.github.io/bcftools/bcftools.html#gtcheck); bcftools plugins, including `+mendelian2`: <https://samtools.github.io/bcftools/howtos/plugins.html>
+- Kong A. et al. (2012). Rate of de novo mutations and the importance of father's age to disease risk. Nature 488: 471-475. <https://doi.org/10.1038/nature11396>
+- MacArthur D. G. et al. (2012). A systematic survey of loss-of-function variants in human protein-coding genes. Science 335: 823-828. <https://doi.org/10.1126/science.1215040>
+- Daniels C. et al. (2024). A robust benchmark for detecting low-frequency variants in the HG002 Genome In A Bottle NIST reference material. bioRxiv 2024.12.02.625685. <https://doi.org/10.1101/2024.12.02.625685>
+- IGV desktop: <https://igv.org/doc/desktop/>; batch commands: <https://igv.org/doc/desktop/UserGuide/tools/batch/>
+
 Figures:
 
 - The precision-recall figure in Episode 6 is drawn by the workshop's run kit (`negishi-run/pr_figure.py`) from the hap.py ROC tables of a test run.
+- The two IGV figures in Episode 8 are IGV 2.19.2 snapshots (module igv/2.19.1 on Negishi) of a test run's BAM files, filtered calls and trio benchmark regions, made with the run kit's IGV batch script in a Gateway desktop session.
 - The FastQC contrast cartoons in Episode 3 are by Zandra Selina, CC BY 4.0, reused from the [RCAC RNA-seq workshop](https://github.com/rcac-bioinformatics/rnaseq-analysis).
