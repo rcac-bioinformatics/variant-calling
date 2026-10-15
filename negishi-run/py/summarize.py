@@ -3,12 +3,14 @@
 
 Reads one episode-kit run (submit_all.sh) and writes into OUT_DIR:
   SUMMARY.md              per-step status with the first error of any failure; the alignment, calling,
-                          filtering and hap.py anchors and the sentinels against negishi-run/anchors.tsv
-                          (exact match); every hap.py summary.csv (SNV and indel, ALL and PASS); runtime
-                          against front matter; memory headroom of each evaluate.sh task; the live
-                          load per learner and for 20 learners; the kit-only records; the value of
-                          every {{kit:...}} placeholder; MultiQC plot exports; and the console output
-                          of every block the kit ran
+                          filtering, hap.py, Mendelian and funnel anchors and the sentinels against
+                          negishi-run/anchors.tsv (exact match); every hap.py summary.csv (SNV and
+                          indel, ALL and PASS); the annotation counts and the trio candidate tables
+                          against the reference-run memo; runtime against front matter; memory
+                          headroom of each evaluate.sh task and of the annotation and trio steps; the
+                          live load per learner and for 20 learners; the kit-only records; the value
+                          of every {{kit:...}} placeholder; MultiQC plot exports; and the console
+                          output of every block the kit ran
   placeholder_values.tsv  one row per placeholder: id, file, line, status, value (newlines as \\n)
   outputs/<id>.txt        full value of each placeholder (console text for -out- placeholders)
   outputs/blocks/<page>_<NN>.txt   console output of every block, as a learner would see it
@@ -566,7 +568,101 @@ def m_split_n(ctx):
     return str(len(n)) if n else None
 
 
+# ------------------------------------------------------------ Episodes 7 and 8 (P6)
+def step_tasks(ctx, step):
+    """sacct entries {job or task id: dict} of the last submission of a step (jobs.tsv)"""
+    jobs = read_tsv(os.path.join(ctx.run, "jobs.tsv"))
+    ids = [r["jobid"] for r in jobs if r["step"] == step and r["jobid"].isdigit()]
+    if not ids:
+        return {}
+    sacct = parse_sacct(os.path.join(ctx.rec, "sacct.tsv"))
+    return dict((k, v) for k, v in sacct.items() if k == ids[-1] or k.startswith(ids[-1] + "_"))
+
+
+def m_step_wall(step):
+    def f(ctx):
+        w = [v["elapsed"] for v in step_tasks(ctx, step).values() if v["elapsed"] is not None]
+        return ("%d seconds" % round(max(w))) if w else None
+    return f
+
+
+def m_step_rss(step):
+    def f(ctx):
+        t = list(step_tasks(ctx, step).values())
+        r = [v["rss"] for v in t if v["rss"] is not None]
+        if not r:
+            return None
+        cpus = max(int(v["cpus"] or 0) for v in t)
+        return "%.2f GiB of the %.1f GiB that %d cores provide" % (max(r), cpus * mem_per_core(ctx), cpus)
+    return f
+
+
+EXAMPLE_NEEDLE = "$2 == 44337201"  # Episode 7, the illustrative missense variant (chr20:44,337,201)
+
+
+def example_lines(ctx):
+    return [l for l in (ctx.block_by_text("07-tables", EXAMPLE_NEEDLE) or []) if l.strip() and not l.startswith("[W::")]
+
+
+def m_example_af(col):
+    def f(ctx):
+        for l in example_lines(ctx):
+            x = l.split("\t")
+            if len(x) >= 10 and x[1] == "44337201":
+                try:
+                    return "%s (%.1f%%)" % (x[col], 100 * float(x[col]))
+                except ValueError:
+                    return x[col]
+        return None
+    return f
+
+
+def m_example_gt(ctx):
+    for l in example_lines(ctx):
+        x = l.split("\t")
+        if len(x) == 3 and x[0] == "HG002":
+            return "`%s`, with `AD` %s (REF and ALT reads)" % (x[1], x[2])
+    return None
+
+
+def m_inspect_truth(site, truth_set):
+    """Episode 8: one truth set at an inspection site (records/kit-only/trio/inspection_truth.tsv)"""
+    def f(ctx):
+        p = kit_only(ctx, "trio", "inspection_truth.tsv")
+        if not os.path.exists(p):
+            return None
+        for line in open(p):
+            x = line.rstrip("\n").split("\t")
+            if len(x) < 5 or x[1] != site or x[2] != truth_set:
+                continue
+            if x[3] != "yes":
+                return "outside its benchmark regions"
+            if x[4] == "none":
+                return "homozygous reference (inside its benchmark regions, no record)"
+            out = []
+            for r in x[4].split(";"):
+                pos, al, gt = r.split(":", 2)
+                out.append("`%s` at %s with genotype `%s`" % (al, "{:,}".format(int(pos)), gt))
+            return "; ".join(out)
+        return None
+    return f
+
+
+# Part C decisions (2026-10-14): the bcftools 1.24 header warning is trimmed, identically, from every
+# Episode 7 and 8 output placeholder; each episode points back to the Episode 5A callout at its first output
+TRIM_PREFIX = ("07-out-", "08-out-")
+TRIM_LINE = "[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float"
+
+
 METRICS = {
+    "08-sol-error-truth-hg002": m_inspect_truth("chr20:13604987", "HG002_v5.0q"),
+    "08-sol-error-truth-hg003": m_inspect_truth("chr20:13604987", "HG003_v4.2.1"),
+    "08-sol-error-truth-hg004": m_inspect_truth("chr20:13604987", "HG004_v4.2.1"),
+    "07-sol-example-gt": m_example_gt,
+    "07-sol-example-af": m_example_af(8),
+    "07-sol-example-af-asj": m_example_af(9),
+    "07-sol-annotate-wall": m_step_wall("07-annotate"),
+    "07-sol-annotate-rss": m_step_rss("07-annotate"),
     "03-sol-q10-drop": m_q10_drop,
     "03-sol-q10-between": m_q10_between,
     "05a-def-skip-flags": m_usage("mpileup", "--skip-any-set"),
@@ -709,10 +805,14 @@ USAGE_QUOTED = [("mpileup", "--skip-any-set"), ("mpileup", "--min-MQ"), ("mpileu
 # Live jobs of Episodes 4, 5A and 6, grouped by what runs at the same time in the episode's flow
 LIVE_GROUPS = [("04", [["04-align"], ["04-alignqc"]]),
                ("05A", [["05a-call", "05a-merge"]]),
-               ("06", [["06-filter"], ["06-evaluate"], ["06-evalsum"]])]
+               ("06", [["06-filter"], ["06-evaluate"], ["06-evalsum"]]),
+               ("07", [["07-annotate"], ["07-tables"]]),
+               ("08", [["08-trio"]])]
 LIVE_LABEL = {"04-align": "align.sh array", "04-alignqc": "alignment QC session", "05a-call": "call.sh array",
               "05a-merge": "merge session (open while calling runs)", "06-filter": "filter session",
-              "06-evaluate": "evaluate.sh, task 1 only (live path)", "06-evalsum": "summary (login node)"}
+              "06-evaluate": "evaluate.sh, task 1 only (live path)", "06-evalsum": "summary (login node)",
+              "07-annotate": "annotate.sh (SnpEff, gnomAD)", "07-tables": "annotation tables session",
+              "08-trio": "trio session"}
 # array tasks a learner submits on the live path (Episode 6: sbatch --array=1 evaluate.sh)
 LIVE_ARRAY_TASKS = {"06-evaluate": 1}
 
@@ -800,7 +900,204 @@ def anchor_rows(ctx):
                 truth = "/".join(sorted(t.replace("|", "/").split("/")))
             got = "FILTER %s, HG002 GT %s, truth %s" % (r.get("FILTER"), r.get("HG002 GT"), truth)
         rows.append(("sentinel %s %s" % (role, label), got))
+    mend = {}
+    p = ctx.path("results", "trio", "mendelian2.txt")
+    if os.path.exists(p):
+        for line in open(p):
+            f = line.rstrip("\n").split("\t")
+            if len(f) >= 2 and f[0] in ("nmerr", "ngood"):
+                mend[f[0]] = f[1]
+    for k in ("nmerr", "ngood"):
+        rows.append(("mendelian2 %s" % k, mend.get(k)))
+    fun = {}
+    p = ctx.path("results", "trio", "funnel.tsv")
+    if os.path.exists(p):
+        for line in open(p):
+            f = line.rstrip("\n").split("\t")
+            if len(f) == 2:
+                fun[f[0]] = f[1]
+    for k in ("pass", "denovo_1_genotype", "denovo_2_evidence", "denovo_3_regions", "denovo_4_impact", "denovo_5_rare",
+              "recessive_1_genotype", "recessive_2_evidence", "recessive_3_regions", "recessive_4_impact",
+              "recessive_5_rare"):
+        rows.append(("funnel %s" % k, fun.get(k)))
     return rows
+
+
+# Episode 7: annotation counts of the reference-run memo (section 7; not frozen anchors), read from the
+# console of the 07-tables blocks (needle: text of the generated block) or from snpEff_summary.csv
+ANNOT_MEMO = [("HG002 PASS variants (HG002.ann.vcf.gz records)", "07-tables", "-s HG002 -c 1", 0, "115059"),
+              ("HG002 variants with a HIGH prediction", "07-tables", "INFO/ANN~\"[|]HIGH[|]\"' results/annot", 0, "3"),
+              ("HG002 protein-altering rows (worst consequence HIGH or MODERATE)", "07-tables",
+               "wc -l results/annot/HG002.protein_altering.tsv", 0, "240"),
+              ("rare protein-altering, gnomAD overall < 1% or absent", "07-tables", "$9 == \".\"", 0, "20"),
+              ("rare protein-altering, gnomAD asj < 1% or absent", "07-tables", "$9 == \".\"", 1, "12")]
+SNPEFF_MEMO = [("HIGH", "10"), ("MODERATE", "348"), ("LOW", "542"), ("MODIFIER", "197597")]
+
+
+def snpeff_impacts(ctx):
+    out, on = {}, False
+    p = ctx.path("results", "annot", "snpEff_summary.csv")
+    if os.path.exists(p):
+        for line in open(p, errors="replace"):
+            if line.startswith("# Effects by impact"):
+                on = True
+                continue
+            if on and line.startswith("#"):
+                break
+            f = [x.strip() for x in line.split(",")]
+            if on and len(f) >= 2 and f[0] in ("HIGH", "MODERATE", "LOW", "MODIFIER"):
+                out[f[0]] = f[1]
+    return out
+
+
+def first_ints(lines):
+    out = []
+    for l in lines or []:
+        m = re.match(r'^\s*(\d+)(\s|$)', l)
+        if m and not l.startswith("[W::"):
+            out.append(m.group(1))
+    return out
+
+
+def truth_class(r):
+    """classes of a de novo candidate's truth status (pipeline/py/report.py, BED checked first since
+    2026-10-14; memo section 6, corrected 2026-10-14)"""
+    v5, v4, f, m = (r.get("HG002_v5.0q"), r.get("HG002_v4.2.1"), r.get("HG003_v4.2.1"), r.get("HG004_v4.2.1"))
+    het = lambda x: x in ("GT=0/1", "GT=1/0")
+    if het(v4) and f == "absent_in_bed" and m == "absent_in_bed":
+        if het(v5):
+            return SUP_BOTH
+        if v5 == "outside_bed":
+            return SUP_V4
+    if v5 == v4 == f == m == "absent_in_bed":
+        return "hom-ref in every truth set"
+    if v5 == v4 == f == m == "other_allele":
+        return "other allele in every truth set"
+    return "other combinations"
+
+
+SUP_BOTH = "truth-supported in both HG002 benchmarks (het in v5.0q and v4.2.1, parents hom-ref)"
+SUP_V4 = "truth-supported in HG002 v4.2.1, outside the v5.0q benchmark (parents hom-ref)"
+TRUTH_MEMO = {SUP_BOTH: "7", SUP_V4: "27", "hom-ref in every truth set": "2",
+              "other allele in every truth set": "2", "other combinations": "3"}
+
+
+def trio_sections(ctx):
+    md, ko = [], os.path.join(ctx.rec, "kit-only", "trio")
+    md += ["## Episode 7: annotation counts against the reference-run memo (section 7)", "",
+           "| Count | Memo | This run | Result |", "|---|---|---|---|"]
+    for label, step, needle, i, want in ANNOT_MEMO:
+        n = first_ints(ctx.block_by_text(step, needle))
+        got = n[i] if len(n) > i else None
+        md.append("| %s | %s | %s | %s |" % (label, want, got or "(missing)", "PASS" if got == want else "**DIFF**"))
+    imp = snpeff_impacts(ctx)
+    for k, want in SNPEFF_MEMO:
+        got = imp.get(k)
+        md.append("| SnpEff effects, %s (whole trio file) | %s | %s | %s |" % (k, want, got or "(missing)",
+                                                                            "PASS" if got == want else "**DIFF**"))
+    md += ["", "A DIFF here is not an anchor failure (these counts are not frozen), but every number Episode 7 quotes "
+               "from the memo must then come from this run instead.", ""]
+
+    md += ["## Episode 8: de novo candidates after the region step, truth status (memo section 6)", ""]
+    ts = read_tsv(os.path.join(ko, "denovo_3_regions_truth_status.tsv"))
+    af = dict(((r["chrom"], r["pos"]), r) for r in read_tsv(os.path.join(ko, "denovo_3_regions.tsv")))
+    if not ts:
+        md += ["**missing** (records/kit-only/trio/denovo_3_regions_truth_status.tsv)", ""]
+    else:
+        cls = {}
+        for r in ts:
+            cls.setdefault(truth_class(r), []).append(r)
+        md += ["| Class | Memo | This run | Result |", "|---|---|---|---|"]
+        for c, want in sorted(TRUTH_MEMO.items()):
+            got = str(len(cls.get(c, [])))
+            md.append("| %s | %s | %s | %s |" % (c, want, got, "PASS" if got == want else "**DIFF**"))
+        inside = sum(1 for r in ts if r.get("trio_bed") == "absent_in_bed")
+        md += ["", "Inside the trio BED: %d of %d (all must be inside after the region step)." % (inside, len(ts)), ""]
+        sup = cls.get(SUP_BOTH, []) + cls.get(SUP_V4, [])
+        fr = []
+        for r in sup:
+            a = af.get((r["chrom"], r["pos"]), {}).get("child_alt_fraction", ".")
+            if a not in (".", None):
+                fr.append(float(a))
+        pos = sorted(int(r["pos"]) for r in sup)
+        win = max([sum(1 for q in pos if p <= q < p + 50000) for p in pos] or [0])
+        snv = sum(1 for r in sup if len(r["ref"]) == 1 and len(r["alt"]) == 1)
+        fs = sorted(fr)
+        med = (fs[len(fs) // 2] if len(fs) % 2 else (fs[len(fs) // 2 - 1] + fs[len(fs) // 2]) / 2) if fs else None
+        md += ["Truth-supported in HG002 v4.2.1 (both classes above, %d; memo, corrected 2026-10-14: 34): %d SNVs and %d "
+               "indels (memo 31 and 3); child ALT fraction mean %s, median %s (memo 0.44, 0.46), %d below 0.3 (memo 3); "
+               "most in any 50 kb window: %d (memo, corrected 2026-10-14: 10, chr20:11,132,316-11,179,241)."
+               % (len(sup), snv, len(sup) - snv, "%.2f" % (sum(fr) / len(fr)) if fr else "?",
+                  "%.2f" % med if med is not None else "?", sum(1 for x in fr if x < 0.3), win), ""]
+        md += ["| Position | REF>ALT | Class | trio BED | HG002 v5.0q | HG002 v4.2.1 | HG003 | HG004 | Child | Father | Mother | Child ALT fraction |",
+               "|---|---|---|---|---|---|---|---|---|---|---|---|"]
+        for r in ts:
+            a = af.get((r["chrom"], r["pos"]), {})
+            md.append("| %s:%s | %s>%s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |" % (
+                r["chrom"], r["pos"], r["ref"], r["alt"], truth_class(r).split(" (")[0],
+                "inside" if r.get("trio_bed") == "absent_in_bed" else r.get("trio_bed"), r.get("HG002_v5.0q"),
+                r.get("HG002_v4.2.1"), r.get("HG003_v4.2.1"), r.get("HG004_v4.2.1"), a.get("child", "?"),
+                a.get("father", "?"), a.get("mother", "?"), a.get("child_alt_fraction", "?")))
+        md.append("")
+    md += ["## Episode 8: benchmark scope of the 41 (records/kit-only/trio/denovo_3_regions_bench_scope.tsv)", "",
+           "A truth record counts only inside its own benchmark BED (Part C decision 1, 2026-10-14). Computed before "
+           "the kit record existed (memo, corrected 2026-10-14): v5.0q 9, v4.2.1 35, both 8, truth-supported 7.", ""]
+    sp = os.path.join(ko, "denovo_3_regions_bench_scope.tsv")
+    if os.path.exists(sp):
+        md += ["```"] + [l.rstrip("\n")[2:] for l in open(sp) if l.startswith("# ")] + ["```", ""]
+        md += ["Inside the HG002 v5.0q BED (last column: truth-supported under the rule):", "", "```"]
+        md += ["%s:%s %s>%s %s" % (r["chrom"], r["pos"], r["ref"], r["alt"], r["truth_supported"]) for r in read_tsv(sp)
+               if r["HG002_v5.0q_in_bed"] == "yes"] + ["```", ""]
+    else:
+        md += ["**missing**", ""]
+    ic = os.path.join(ko, "inspection_calls.tsv")
+    md += ["## Episode 8: filtered trio calls at the inspection sites (records/kit-only/trio/inspection_calls.tsv)", "", "```"]
+    md += ([l.rstrip("\n") for l in open(ic)] if os.path.exists(ic) else ["missing"]) + ["```", ""]
+    pa = read_tsv(os.path.join(ko, "denovo_parent_alt.tsv"))
+    if pa:
+        md += ["De novo genotype step: %s. Expected 231 (312 - 81) for the first if the GQ and DP parts of the evidence "
+               "step remove nothing (the genotype mask already applied them)." % "; ".join(
+                   "%s: %s" % (r["what"], r["count"]) for r in pa), ""]
+    rec = os.path.join(ko, "recessive_4_impact_annotation.tsv")
+    md += ["## Episode 8: the recessive impact-step variants (no gene names)", "",
+           "Which part of the rare filter (gnomAD overall and asj below 1%, or absent) removes each.", "",
+           "| Position | REF>ALT | Worst consequence | Impact | gnomAD AF | gnomAD AF asj | Fails |", "|---|---|---|---|---|---|---|"]
+    if os.path.exists(rec):
+        for line in open(rec):
+            f = line.rstrip("\n").split("\t")
+            if len(f) < 8:
+                continue
+            fails = []
+            for name, v in (("overall", f[6]), ("asj", f[7])):
+                try:
+                    if float(v) >= 0.01:
+                        fails.append("%s >= 1%%" % name)
+                except ValueError:
+                    pass
+            md.append("| %s:%s | %s>%s | %s | %s | %s | %s | %s |" % (f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7],
+                                                                    ", ".join(fails) or "**passes (should be 0)**"))
+    else:
+        md.append("| **missing** | | | | | | |")
+    md += ["", "## Episode 8: inspection sites (config.sh INSPECT_SITES)", "", "```"]
+    p = os.path.join(ko, "inspection_sites.tsv")
+    md.append(open(p).read().rstrip("\n") if os.path.exists(p) else "(missing)")
+    md += ["```", "", "The tview text of all three samples is in records/kit-only/trio/tview_inspection_sites.txt; the IGV "
+           "batch script for Part B in records/kit-only/igv/snapshots.batch.", ""]
+    md += ["## Episode 8: inspection sites in the truth sets (records/kit-only/trio/inspection_truth.tsv)", "", "```"]
+    p = os.path.join(ko, "inspection_truth.tsv")
+    md.append(open(p).read().rstrip("\n") if os.path.exists(p) else "(missing)")
+    md += ["```", "", "## Episode 8: IGV snapshots (igv/run_snapshots.sh, records/igv_snapshots.tsv)", ""]
+    p = os.path.join(ctx.rec, "igv_snapshots.tsv")
+    if os.path.exists(p):
+        rows = [l.rstrip("\n").split("\t") for l in open(p)][1:]
+        nf = sum(1 for r in rows if len(r) > 1 and r[1] == "FAIL")
+        md += ["%d FAIL, %d WARN; IGV version: %s" % (nf, sum(1 for r in rows if len(r) > 1 and r[1] == "WARN"),
+               open(os.path.join(ctx.rec, "igv_version.txt")).read().strip()
+               if os.path.exists(os.path.join(ctx.rec, "igv_version.txt")) else "not recorded"), "", "```"]
+        md += ["\t".join(r) for r in rows] + ["```", ""]
+    else:
+        md += ["not run yet (sbatch negishi-run/igv/run_snapshots.sh --run RUN_ID)", ""]
+    return md
 
 
 # ------------------------------------------------------------ the summary
@@ -876,8 +1173,7 @@ def main():
         anchors[r["metric"]] = r["value"]
     rows = anchor_rows(ctx)
     md += ["## Anchors (exact match with negishi-run/anchors.tsv)", "",
-           "Alignment, calling, filtering and hap.py anchors, and the sentinels. Mendelian and funnel anchors "
-           "belong to Episode 8 and are not run by this kit.", "",
+           "Alignment, calling, filtering, hap.py, Mendelian and funnel anchors, and the sentinels.", "",
            "| Anchor | Expected | This run | Result |", "|---|---|---|---|"]
     nbad = 0
     for name, got in rows:
@@ -926,6 +1222,8 @@ def main():
                                                           "%.3f-%.3f (%d tied rows)" % (ties[0], ties[-1], len(ties)), pk[3]))
     md += ["", "F1 peak of the unfiltered calls by QUAL (ROC tables; Episode 6 quotes the reference run: v5.0q SNV "
                "QUAL 117.7, v4.2.1 SNV about QUAL 156-160): " + ("; ".join(peaks) if peaks else "**ROC tables missing**") + ".", ""]
+
+    md += trio_sections(ctx)
 
     # runtime against front matter
     fm = {r["episode"]: r for r in read_tsv(os.path.join(gen, "frontmatter.tsv"))}
@@ -980,6 +1278,20 @@ def main():
                     k, label, nodes.get(k, "?"), cores, prov, "%.2f" % v["rss"] if v["rss"] is not None else "?",
                     used, " **over 80%**" if v["rss"] and prov and v["rss"] > 0.8 * prov else "", mins(v["elapsed"])))
     md.append("")
+    md += ["## Memory headroom of the annotation and trio steps", "",
+           "Stop item (Prompt 06 Part C): an annotation or trio task above 80% of the memory its cores provide. "
+           "annotate.sh gives SnpEff a 6 GB Java heap (-Xmx6g) on 4 cores.", "",
+           "| Step | Job | Node | Cores | Memory of its cores (GiB) | MaxRSS (GiB) | Used | Wall (min) |",
+           "|---|---|---|---|---|---|---|---|"]
+    for name in ("07-annotate", "07-tables", "08-trio"):
+        for k, v in sorted(step_tasks(ctx, name).items()):
+            cores = int(v["cpus"] or 0)
+            prov = cores * gib_core
+            used = "%.0f%%" % (100 * v["rss"] / prov) if v["rss"] is not None and prov else "?"
+            md.append("| %s | %s | %s | %s | %.1f | %s | %s%s | %s |" % (
+                name, k, nodes.get(k, "?"), cores, prov, "%.2f" % v["rss"] if v["rss"] is not None else "?", used,
+                " **over 80%**" if v["rss"] and prov and v["rss"] > 0.8 * prov else "", mins(v["elapsed"])))
+    md.append("")
 
     # live load: cores per learner for each live job, and for 20 learners
     md += ["## Live load (cores per learner and for 20 learners)", "",
@@ -1010,7 +1322,9 @@ def main():
         md += ["Status: %s" % ("all recorded" if not os.path.exists(st_p) else "**" + open(st_p).read().strip().replace("\n", "; ") + "**"), ""]
         for name in ("mapq0_counts.tsv", "site_88108.tsv", "filter_counts.tsv", "filter_values.norm.txt",
                      "filter_values.filtered.txt", "missing_gt.norm.tsv", "missing_gt.filtered.tsv", "mask_reasons.tsv",
-                     "sentinels.tsv"):
+                     "sentinels.tsv", "trio/funnel.tsv", "trio/denovo_parent_alt.tsv", "trio/inspection_sites.tsv",
+                     "trio/inspection_truth.tsv",
+                     "igv/snapshots.batch"):
             f = os.path.join(ko, name)
             md += ["### %s" % name, "", "```", open(f).read().rstrip("\n") if os.path.exists(f) else "(missing)", "```", ""]
         md += ["### bcftools 1.24 usage lines quoted by the episodes", "", "```"]
@@ -1020,12 +1334,18 @@ def main():
 
     # placeholders
     rows = ["id\tfile\tline\tstatus\tvalue"]
+    trimmed = []
     md += ["## Placeholder values", "", "| Placeholder | Where | Value |", "|---|---|---|"]
     for r in read_tsv(os.path.join(gen, "placeholders.tsv")):
         val = None
         if r["kind"] == "block":
             _, step, ref = r["source"].split(":", 2)
             lines = ctx.blocks(step).get(ref)
+            if lines is not None and r["id"].startswith(TRIM_PREFIX):
+                n_trim = sum(1 for l in lines if l == TRIM_LINE)
+                lines = [l for l in lines if l != TRIM_LINE]
+                if n_trim:
+                    trimmed.append("%s: %d" % (r["id"], n_trim))
             val = "\n".join(lines).rstrip("\n") if lines is not None else None
         else:
             try:
@@ -1043,6 +1363,8 @@ def main():
     with open(os.path.join(out, "placeholder_values.tsv"), "w") as fh:
         fh.write("\n".join(rows) + "\n")
     md.append("")
+    md += ["Trimmed from the Episode 7 and 8 outputs (Part C decisions, 2026-10-14: every line equal to `%s`): %s."
+           % (TRIM_LINE, "; ".join(trimmed) or "none"), ""]
 
     # figures
     md += ["## MultiQC plot exports", "", "| Figure slot | Where | File |", "|---|---|---|"]

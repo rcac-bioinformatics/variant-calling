@@ -1,0 +1,8 @@
+# gene_allowlist.tsv: gene symbols that tracked files may name even if .claude/notes/ lists them
+# (build_kit.py gene-name guard). One row per decision; every field is required, the log entry must
+# exist in maintenance/log/updates.md, and a symbol in the ACMG SF list of .claude/notes/ is refused.
+# Rule (P6 decision 3, 2026-10-14): an illustrative variant's gene may be named when the variant has
+# AF of 5% or more in gnomAD (overall or asj), the gene is not in ACMG SF v3.3, and ClinVar has no
+# record or calls it benign or likely benign. Add nothing else here.
+symbol	reason	decided	log_entry
+R3HDML	Episode 7 illustrative missense chr20:44,337,201 T>G; gnomAD v4.1 AF 0.100 overall, 0.197 asj; not in ACMG SF v3.3; ClinVar no record (checked 2026-10-14)	2026-10-14	Phase 6 Part A decisions and headless IGV snapshots, 2026-10-14

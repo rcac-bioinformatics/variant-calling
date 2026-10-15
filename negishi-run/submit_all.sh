@@ -1,5 +1,5 @@
 #!/bin/bash
-# submit_all.sh: run Episodes 2-6 as a new learner would (login node; about 2 minutes, then jobs).
+# submit_all.sh: run Episodes 2-8 as a new learner would (login node; about 2 minutes, then jobs).
 # Usage: bash negishi-run/submit_all.sh --run RUN_ID [--from STEP] [--qos standby|normal] [--force] [--dry-run]
 #   --run RUN_ID  a new ID starts a fresh learner copy in $KIT_RUNS/RUN_ID; an existing one continues it
 #   --from STEP   skip the steps before STEP in generated/steps.tsv (they must be done)
@@ -18,12 +18,15 @@
 #   06-filter    batch job with the resources of the Episode 6 sinteractive line, after 05a-merge
 #   06-evaluate  the learner's scripts/evaluate.sh, after 06-filter
 #   06-evalsum   1-task batch job (login-node commands that wait for evaluate.sh), after 06-evaluate
+#   07-annotate  the learner's scripts/annotate.sh, after 06-filter
+#   07-tables    batch job with the resources of the Episode 7 sinteractive line, after 07-annotate
+#   08-trio      batch job with the resources of the Episode 8 sinteractive line, after 07-annotate
 # Job IDs go to $RUN/jobs.tsv. Then: bash negishi-run/collect.sh --run RUN_ID
 set -euo pipefail
 KIT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 export KIT_DIR
 RUN_ID=""; FROM=""; QOS=""; FORCE=0; DRYRUN=0
-usage() { sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
+usage() { sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
 while [ $# -gt 0 ]; do
   case $1 in
     --run) RUN_ID=$2; shift 2;;
@@ -38,6 +41,12 @@ done
 # shellcheck source=negishi-run/kitrun.sh
 source "$KIT_DIR/kitrun.sh"
 [ -n "$RUN_ID" ] || kit_die "--run RUN_ID is required"
+# Jobs inherit this shell (--export=ALL). A bind variable from another module (igv/2.19.1 sets
+# SINGULARITY_BIND) makes every container print an INFO line that a learner never sees, and it
+# changes what the containers mount (Part C, 2026-10-14).
+for v in SINGULARITY_BIND APPTAINER_BIND; do
+  [ -z "${!v:-}" ] || kit_die "FAIL: $v is set in this shell (${!v}); a module such as igv/2.19.1 sets it, and every job would inherit it. Start a new login shell, or run: module purge; unset SINGULARITY_BIND APPTAINER_BIND; then submit again"
+done
 QOS=${QOS:-$KIT_QOS}
 case $QOS in standby|normal) ;; *) kit_die "--qos must be standby or normal";; esac
 STEPS_TSV=$KIT_GEN/steps.tsv
@@ -148,7 +157,7 @@ while IFS=$'\t' read -r step kind deps _ _ _ _ _ script desc; do
       submit "$step" "$RUN" "${common[@]}" -o "$RUN/logs/$step.%j.out" -e "$RUN/logs/$step.%j.out" \
         "--export=ALL,RUN=$RUN,KIT_DIR=$KIT_DIR,KIT_GEN=$KIT_GEN" "$KIT_GEN/jobs/$step.sh";;
     learner)
-      # The learner submits the staged script (align.sh, call.sh, evaluate.sh); it must be the one the episode shows
+      # The learner submits the staged script (align.sh, call.sh, evaluate.sh, annotate.sh); it must be the one the episode shows
       bash -n "$KIT_GEN/learner-scripts/$script"
       if [ "$DRYRUN" = 1 ]; then
         submit "$step" "$KIT_GEN/learner-scripts" "${common[@]}" "--export=ALL,SCRATCH=$KIT_LEARNER_SCRATCH" "$script"

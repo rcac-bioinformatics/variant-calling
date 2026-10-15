@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""build_kit.py: generate the episode run kit (Episodes 2-6) from the lesson text, and check it.
+"""build_kit.py: generate the episode run kit (Episodes 2-8) from the lesson text, and check it.
 
 Usage:  python3 negishi-run/build_kit.py            check, then write negishi-run/generated/
         python3 negishi-run/build_kit.py --check    check only; also fails if generated/ exists and is stale
@@ -17,7 +17,8 @@ hand-copied. Each bash fence carries an HTML comment on the line before it (invi
                                     (inspection, not in the canonical file); run by the kit, never
                                     allowed to write files
   <!-- kit: submit NAME -->        the commands that submit script NAME
-  <!-- kit: not-run REASON -->     shown, never run: download, fallback, laptop, monitoring, reference
+  <!-- kit: not-run REASON -->     shown, never run: download, fallback, laptop, desktop, monitoring,
+                                    reference
   <!-- kit: figure ID -->          (not before a fence) where a MultiQC plot export goes in Part C
 
 Placeholders {{kit:ID}} in the text are filled from the run: an ID containing "-out-" is the
@@ -30,7 +31,10 @@ does not list; front-matter times that differ from the Prompt 04 and 05 tables; 
 whose md5 in staged_manifest.tsv differs from its canonical file; a fallback path missing from
 staged_results_manifest.tsv; a "Short on time?" callout whose block is not a fallback or whose
 results-copy path is not in staged_results_manifest.tsv; an extra block that writes; a bash fence
-without a marker.
+without a marker; (Prompt 06) a gene symbol listed in .claude/notes/ in any tracked text file
+(skipped with a warning when that folder is absent, as on Negishi), except the symbols of
+gene_allowlist.tsv; and (Prompt 06b) an IGV batch script from kitrun.sh kit_igv_batch that fails
+kit_igv_batch_check.
 
 Output is deterministic (sorted, no timestamps). Python 3.6, standard library only.
 """
@@ -40,6 +44,7 @@ import os
 import re
 import shlex
 import shutil
+import subprocess
 import sys
 
 KIT = os.path.dirname(os.path.abspath(__file__))
@@ -50,19 +55,21 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.join(KIT, "py"))
 import summarize  # noqa: E402  (placeholder handlers; checked for coverage below)
 
-# Pages the kit reads, in learner order. Episodes 1, 7 and 8 are scanned by the checks only.
+# Pages the kit reads, in learner order. Episode 1 has no commands.
 PAGES = [("setup", "learners/setup.md"),
          ("01", "episodes/01-intro-to-variant-calling.Rmd"),
          ("02", "episodes/02-data-and-project-setup.Rmd"),
          ("03", "episodes/03-read-qc.Rmd"),
          ("04", "episodes/04-alignment-and-alignment-qc.Rmd"),
          ("05a", "episodes/05a-calling-with-bcftools.Rmd"),
-         ("06", "episodes/06-filtering-and-evaluation.Rmd")]
-OTHER_EPISODES = ["episodes/07-annotation.Rmd", "episodes/08-trio-candidate-variants.Rmd"]
-# Front matter (Prompt 04 and Prompt 05 tables) and the live minutes of plan section 3.3
+         ("06", "episodes/06-filtering-and-evaluation.Rmd"),
+         ("07", "episodes/07-annotation.Rmd"),
+         ("08", "episodes/08-trio-candidate-variants.Rmd")]
+OTHER_EPISODES = []
+# Front matter (Prompt 04, 05 and 06 tables) and the live minutes of plan section 3.3
 TIMES = {"01": (35, 15, 30), "02": (20, 20, 20), "03": (15, 15, 15), "04": (45, 45, 70),
-         "05a": (30, 30, 45), "06": (40, 40, 60)}
-NOT_RUN_REASONS = ("download", "fallback", "laptop", "monitoring", "reference")
+         "05a": (30, 30, 45), "06": (40, 40, 60), "07": (30, 30, 40), "08": (35, 40, 50)}
+NOT_RUN_REASONS = ("download", "fallback", "laptop", "desktop", "monitoring", "reference")
 RESULTS_ROOT = "/depot/workshop/data/varcall-workshop_results/"
 
 OPEN_RE = re.compile(r'^(\s*)```\s*([A-Za-z]*)\s*$')
@@ -319,6 +326,195 @@ for ep, (t, e, _) in sorted(TIMES.items()):
                                                                            fm.get("exercises"), t, e))
 
 
+# ---------------------------------------------------------------- check: protected gene names
+# P3 rule (Prompt 06): gene symbols of HIGH-impact, rare, recessive-impact and candidate variants,
+# and the ACMG SF list, stay in .claude/notes/ (gitignored); no tracked file may name one, except a
+# symbol in gene_allowlist.tsv. A TSV with a "gene" column gives that column; any other file gives
+# the first field of each line.
+NOTES = os.path.join(ROOT, ".claude", "notes")
+WARNINGS = []
+
+
+def protected_genes():
+    genes = set()
+    for f in sorted(os.listdir(NOTES)):
+        p = os.path.join(NOTES, f)
+        if not os.path.isfile(p):
+            continue
+        col = None
+        for line in read(p).splitlines():
+            if not line.strip() or line.startswith("#"):
+                continue
+            fields = line.split("\t")
+            if col is None and "gene" in fields:
+                col = fields.index("gene")
+                continue
+            v = fields[col] if col is not None and col < len(fields) else fields[0]
+            if re.match(r'^[A-Za-z][A-Za-z0-9-]*[A-Za-z0-9]$', v.strip()):
+                genes.add(v.strip())
+    return genes
+
+
+def tracked_files():
+    try:
+        out = subprocess.check_output(["git", "-C", ROOT, "ls-files", "-z"], stderr=subprocess.DEVNULL)
+        return [f for f in out.decode().split("\0") if f]
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
+# The one exception list: negishi-run/gene_allowlist.tsv (symbol, reason, decided, log_entry), each row
+# a dated decision with its entry in maintenance/log/updates.md (P6 decision 3, 2026-10-14).
+ALLOWLIST = os.path.join(KIT, "gene_allowlist.tsv")
+LOG = os.path.join(ROOT, "maintenance", "log", "updates.md")
+
+
+def gene_allowlist():
+    allow, log = set(), read(LOG) if os.path.isfile(LOG) else ""
+    if not os.path.isfile(ALLOWLIST):
+        return allow
+    for ln, line in enumerate(read(ALLOWLIST).splitlines(), 1):
+        if not line.strip() or line.startswith("#") or line.startswith("symbol\t"):
+            continue
+        f = [x.strip() for x in line.split("\t")]
+        if len(f) != 4 or not all(f):
+            err("negishi-run/gene_allowlist.tsv:%d: needs 4 fields (symbol, reason, decided, log_entry)" % ln)
+        elif not re.match(r'^\d{4}-\d{2}-\d{2}$', f[2]):
+            err("negishi-run/gene_allowlist.tsv:%d: decided must be a date (YYYY-MM-DD)" % ln)
+        elif f[3] not in log:
+            err("negishi-run/gene_allowlist.tsv:%d: log entry not found in maintenance/log/updates.md: %s" % (ln, f[3]))
+        else:
+            allow.add(f[0])
+    return allow
+
+
+def acmg_genes():
+    genes = set()
+    for f in sorted(os.listdir(NOTES)):
+        if "acmg" in f.lower() and os.path.isfile(os.path.join(NOTES, f)):
+            for line in read(os.path.join(NOTES, f)).splitlines():
+                if line.strip() and not line.startswith("#"):
+                    genes.add(line.split("\t")[0].strip())
+    return genes
+
+
+if not os.path.isdir(NOTES):
+    WARNINGS.append("gene-name guard skipped: .claude/notes/ is absent")
+else:
+    GENES = protected_genes()
+    ALLOWED = gene_allowlist()
+    for g in sorted(ALLOWED & acmg_genes()):
+        err("negishi-run/gene_allowlist.tsv: %s is in the ACMG SF list of .claude/notes/ and cannot be allowlisted" % g)
+    GENES -= ALLOWED
+    files = tracked_files()
+    if files is None:
+        WARNINGS.append("gene-name guard skipped: not a git checkout (git ls-files failed)")
+    elif GENES:
+        gene_re = re.compile(r'(?<![A-Za-z0-9_-])(%s)(?![A-Za-z0-9_-])' % "|".join(
+            re.escape(g) for g in sorted(GENES, key=len, reverse=True)))
+        for f in files:
+            p = os.path.join(ROOT, f)
+            if not os.path.isfile(p) or f.startswith(".claude/"):
+                continue
+            data = open(p, "rb").read()
+            if b"\0" in data:  # binary (figures)
+                continue
+            for ln, line in enumerate(data.decode("utf-8", "replace").splitlines(), 1):
+                for m in gene_re.finditer(line):
+                    err("%s:%d: protected gene symbol %s (listed in .claude/notes/)" % (f, ln, m.group(1)))
+
+
+# ---------------------------------------------------------------- check: IGV batch generator
+# Prompt 06b: run kitrun.sh kit_igv_batch on an empty run in a temporary directory and check what it
+# writes with kit_igv_batch_check (documented commands only, center line, sort base, exit last),
+# the staged reference name, and one snapshot per INSPECT_SITES entry with the fixed PNG name.
+IGV_BATCH_SAMPLE = None
+
+
+def igv_batch_check():
+    import tempfile
+    tmp = tempfile.mkdtemp(prefix="kit-igv-")
+    try:
+        sh = ('source "$KIT_DIR/kitrun.sh" || exit 9; RUN=$T/run; W=\\$W; RECORDS=$T/rec; '
+              'kit_igv_batch 2> /dev/null; cat "$RUN/igv/snapshots.batch"; echo "### CHECK"; '
+              'kit_igv_batch_check "$RUN/igv/snapshots.batch"')
+        env = dict(os.environ, KIT_DIR=KIT, PREP_DIR=os.path.join(tmp, "prep"), T=tmp)
+        for k in ("INSPECT_SITES", "IGV_HALF_WINDOW", "IGV_PANEL_HEIGHT", "SAMPLES"):
+            env.pop(k, None)
+        p = subprocess.Popen(["bash", "--noprofile", "--norc", "-c", sh], env=env, stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT, universal_newlines=True)
+        out = p.communicate()[0]
+    except OSError as e:
+        WARNINGS.append("IGV batch check skipped: bash failed (%s)" % e)
+        return None
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    batch, _, check = out.replace(tmp + "/run", "$RUN").partition("### CHECK\n")
+    if p.returncode != 0:
+        err("kitrun.sh kit_igv_batch: the batch fails kit_igv_batch_check:\n    " +
+            "\n    ".join((check or out).strip().splitlines()))
+    lines = batch.splitlines()
+    if "genome $W/ref/GRCh38_no_alt.fa" not in lines:
+        err("kitrun.sh kit_igv_batch: the genome line must load the staged reference $W/ref/GRCh38_no_alt.fa")
+    want = ["snapshot 08_%s_chr20_%s.png" % (x.split(":")[0], x.split(":")[-1])
+            for x in config_default("INSPECT_SITES").strip('"').split()]
+    if [l for l in lines if l.startswith("snapshot ")] != want:
+        err("kitrun.sh kit_igv_batch: snapshots differ from INSPECT_SITES in config.sh (expected %s)" % ", ".join(want))
+    return batch
+
+
+IGV_BATCH_SAMPLE = igv_batch_check()
+
+
+def truth_status_check():
+    """pipeline/py/report.py truth-status must check the BED before it reports a truth record
+    (Part C decision 2, 2026-10-14): a tiny fixture with one record inside and one outside the BED"""
+    import tempfile
+    tmp = tempfile.mkdtemp(prefix="kit-truth-")
+    try:
+        def w(name, text):
+            with open(os.path.join(tmp, name), "w") as fh:
+                fh.write(text)
+        w("cand.tsv", "model\tchrom\tpos\tref\talt\ndenovo\tchr20\t100\tC\tT\ndenovo\tchr20\t500\tA\tG\n"
+                      "denovo\tchr20\t150\tG\tA\ndenovo\tchr20\t160\tG\tA\n")
+        w("dump.tsv", "chr20\t100\tC\tT\t0|1\nchr20\t500\tA\tG\t0/1\nchr20\t160\tG\tC\t0/1\n")
+        w("bed.bed", "chr20\t50\t200\n")
+        p = subprocess.Popen([sys.executable, os.path.join(ROOT, "pipeline", "py", "report.py"), "truth-status",
+                              os.path.join(tmp, "cand.tsv"), os.path.join(tmp, "out.tsv"),
+                              "--truth", "T=%s=%s" % (os.path.join(tmp, "dump.tsv"), os.path.join(tmp, "bed.bed"))],
+                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+        log = p.communicate()[0]
+        got = [l.split("\t")[2:] for l in read(os.path.join(tmp, "out.tsv")).splitlines()
+               if l.startswith("denovo")] if p.returncode == 0 else log
+    except OSError as e:
+        WARNINGS.append("truth-status check skipped: %s" % e)
+        return
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    want = [["100", "C", "T", "GT=0/1"], ["500", "A", "G", "outside_bed"], ["150", "G", "A", "absent_in_bed"],
+            ["160", "G", "A", "other_allele"]]
+    if got != want:
+        err("pipeline/py/report.py truth-status: expected %s, got %s (a truth record outside the BED must be "
+            "outside_bed)" % (want, got))
+
+
+truth_status_check()
+
+# the snapshot job: the kit's SLURM header with KIT_ACCOUNT, and never --mem
+IGV_JOB = os.path.join(KIT, "igv", "run_snapshots.sh")
+if os.path.isfile(IGV_JOB):
+    hdr = [l for l in read(IGV_JOB).splitlines() if l.startswith("#SBATCH")]
+    want = ["#SBATCH --nodes=1", "#SBATCH --ntasks=1", "#SBATCH --cpus-per-task=4", "#SBATCH --account=%s" % ACCOUNT,
+            "#SBATCH --qos=%s" % QOS, "#SBATCH --partition=%s" % PARTITION, "#SBATCH --time=00:20:00",
+            "#SBATCH --job-name=igv-snapshots", "#SBATCH --output=cluster-%x.%j.out", "#SBATCH --error=cluster-%x.%j.err"]
+    if hdr != want:
+        err("negishi-run/igv/run_snapshots.sh: SLURM header differs from the kit pattern (account %s, 4 cores, 20 min)" % ACCOUNT)
+    if "--mem" in read(IGV_JOB):
+        err("negishi-run/igv/run_snapshots.sh: contains --mem")
+else:
+    err("negishi-run/igv/run_snapshots.sh is missing")
+
+
 # ---------------------------------------------------------------- check: staged manifests
 def manifest(name):
     rows = {}
@@ -444,10 +640,12 @@ def add_step(name, kind, deps, desc, **kw):
 
 # interactive file -> step; learner script -> (step, deps, description)
 STEP_OF_FILE = {"02-setup.sh": "02-setup", "03-qc.sh": "03-qc", "04-alignment-qc.sh": "04-alignqc",
-                "05-merge.sh": "05a-merge", "06-filter.sh": "06-filter", "06-evaluate-summary.sh": "06-evalsum"}
+                "05-merge.sh": "05a-merge", "06-filter.sh": "06-filter", "06-evaluate-summary.sh": "06-evalsum",
+                "07-annotation-tables.sh": "07-tables", "08-trio.sh": "08-trio"}
 LEARNER_SCRIPTS = {"align.sh": ("04-align", ["02-setup"], "Episode 4: align.sh array, submitted from scripts/"),
                    "call.sh": ("05a-call", ["04-align"], "Episode 5A: call.sh array (8 regions), submitted from scripts/"),
-                   "evaluate.sh": ("06-evaluate", ["06-filter"], "Episode 6: evaluate.sh array (hap.py), submitted from scripts/")}
+                   "evaluate.sh": ("06-evaluate", ["06-filter"], "Episode 6: evaluate.sh array (hap.py), submitted from scripts/"),
+                   "annotate.sh": ("07-annotate", ["06-filter"], "Episode 7: annotate.sh (SnpEff, gnomAD), submitted from scripts/")}
 SESSIONS = {}  # step -> [(block, text)]
 for f, step in sorted(STEP_OF_FILE.items()):
     if f not in INTERACTIVE:
@@ -509,8 +707,11 @@ session_step("05a-merge", ["05a-call"], "Episode 5A: example VCF, concat, norm, 
 session_step("06-filter", ["05a-merge"], "Episode 6: distributions, filters, Ts/Tv (interactive session as a batch job)")
 learner_step("evaluate.sh")
 session_step("06-evalsum", ["06-evaluate"], "Episode 6: hap.py summaries and ROC rows")
+learner_step("annotate.sh")
+session_step("07-tables", ["07-annotate"], "Episode 7: annotation tables by impact and frequency (interactive session as a batch job)")
+session_step("08-trio", ["07-annotate"], "Episode 8: sample order, Mendelian check, both funnels, inspection (interactive session as a batch job)")
 EXPECTED_STEPS = ["02-setup", "03-qc", "04-align", "04-alignqc", "05a-call", "05a-merge", "06-filter", "06-evaluate",
-                  "06-evalsum"]
+                  "06-evalsum", "07-annotate", "07-tables", "08-trio"]
 if [d["name"] for d in STEPS] != EXPECTED_STEPS:
     err("step graph incomplete: %s" % [d["name"] for d in STEPS])
 
@@ -545,7 +746,7 @@ for page, path in PAGES:
         FIGURES.append((fid, path, line))
 for page, path in [(None, p) for p in OTHER_EPISODES]:
     if PH_RE.search(read(os.path.join(ROOT, path))):
-        err("%s: placeholders outside the setup page and Episodes 2-6 are not filled by this kit" % path)
+        err("%s: placeholders outside the pages the kit reads are not filled by this kit" % path)
 
 # ---------------------------------------------------------------- generated files
 OUT = {}
@@ -576,6 +777,7 @@ EXTRA_AFTER = {
     "04-alignqc": ['kit_multiqc_export 04-alignqc results/qc_alignment results/bam', 'kit_mapq0_counts'],
     "05a-merge": ['kit_bcftools_usage', 'kit_site_counts'],
     "06-filter": ['kit_multiqc_export 06-filter results/vcf', 'kit_filter_counts'],
+    "08-trio": ['kit_trio_records', 'kit_igv_batch'],
 }
 
 
@@ -660,6 +862,8 @@ def build():
     for ep, (t, e, live) in sorted(TIMES.items()):
         fm.append("%s\t%d\t%d\t%d\t%d" % (ep, t, e, t + e, live))
     put("frontmatter.tsv", "\n".join(fm))
+    if IGV_BATCH_SAMPLE is not None:
+        put("igv/snapshots.batch.sample", IGV_BATCH_SAMPLE.rstrip("\n"))
     put("kit.conf", "ACCOUNT=%s\nPARTITION=%s\nQOS=%s\nMULTIQC_MODULE=%s" % (ACCOUNT, PARTITION, QOS, MULTIQC_MODULE))
 
 
@@ -669,6 +873,8 @@ def main():
     for rp, text in OUT.items():
         if "--mem" in text:
             err("generated/%s: contains --mem" % rp)
+    for w in WARNINGS:
+        print("build_kit: WARNING: " + w)
     if ERRORS:
         print("build_kit: %d kit check failure(s):" % len(ERRORS))
         for e in ERRORS:

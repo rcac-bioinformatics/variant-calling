@@ -4,6 +4,7 @@
 # of at most 10 minutes. Phase 3 adds: argument-quoting checks for every workshop module (the
 # 1.17 wrappers dropped embedded quotes), hap.py vcfeval with an RTG template, containers can
 # read Depot, the account in the learner scripts, and check_staged.sh on both staged copies.
+# Prompt 06b adds: IGV_SIF is readable, where xvfb-run is (host, image or neither), the IGV version.
 # Usage: bash negishi-run/00_preflight.sh [--no-srun]
 #   --no-srun  skip the compute-node job (network and module checks on a compute node)
 # Writes records/preflight.tsv (check, status, detail), records/preflight_summary.txt,
@@ -90,6 +91,26 @@ for m in $BCFTOOLS_COMPARE_MODULES; do
   if in_mod 1 "module load $m >/dev/null 2>&1" >/dev/null; then kit_row INFO "compare module $m" "installed; p-call-vcmp uses it"
   else kit_row INFO "compare module $m" "not installed; p-call-vcmp skips it"; fi
 done
+
+# ---------------------------------------------------------------- IGV image for headless snapshots (Prompt 06b)
+section "IGV image (igv/run_snapshots.sh)"
+if [ -r "$IGV_SIF" ]; then
+  kit_row PASS "IGV_SIF readable" "$IGV_SIF"
+  if command -v xvfb-run >/dev/null 2>&1; then kit_row PASS "xvfb-run" "host: $(command -v xvfb-run) (run_snapshots.sh uses it)"
+  elif x=$(singularity exec "$IGV_SIF" sh -c 'command -v xvfb-run' 2>/dev/null | tail -1) && [ -n "$x" ]; then kit_row PASS "xvfb-run" "image: $x (run_snapshots.sh runs it inside the image)"
+  else kit_row WARN "xvfb-run" "neither on the host nor in the image; snapshots need the desktop fallback (README, Phase 6)"; fi
+  # the version IGV reports (the image tag can differ: tagged 2.19.1, reported 2.19.2 on 2026-10-14);
+  # igv.sh --version first, else the about.properties of the IGV jar
+  # shellcheck disable=SC2016  # expanded inside the container
+  v=$( { timeout 120 singularity exec "$IGV_SIF" sh -c 'L=$(command -v igv.sh || echo /opt/igv/igv.sh); "$L" --version' 2>&1 || true
+         singularity exec "$IGV_SIF" sh -c 'for j in /opt/igv/lib/igv.jar /opt/igv/igv.jar; do [ -f "$j" ] && unzip -p "$j" resources/about.properties; done' 2>/dev/null || true
+       } | grep -m1 -oE '([Vv]ersion[ =:]*)?2\.[0-9]+\.[0-9]+[^ ]*' || true)
+  printf '%s\n' "${v:-none}" > "$R/igv_version.txt"
+  if [ -n "$v" ]; then kit_row PASS "IGV version string" "$v (image tag ${IGV_SIF##*igv:})"
+  else kit_row WARN "IGV version string" "not found by igv.sh --version or the jar; run_snapshots.sh reads it from the IGV log"; fi
+else
+  kit_row FAIL "IGV_SIF readable" "$IGV_SIF is missing or unreadable (set IGV_SIF in config.sh)"
+fi
 
 # ---------------------------------------------------------------- module --force purge
 section "module --force purge before module load biocontainers"

@@ -59,7 +59,8 @@ kit_load_run() {
 
 # Done: a PASS marker. The learner's scripts write none, so their last outputs must exist and be
 # newer than the run: align.sh the three BAM indexes, call.sh the eight chunk indexes (-W),
-# evaluate.sh one summary.csv per task and call set (4 tasks x norm, filtered).
+# evaluate.sh one summary.csv per task and call set (4 tasks x norm, filtered), annotate.sh the
+# index of trio.ann.vcf.gz (-W).
 kit_ep_done() {  # step
   local s n
   case $1 in
@@ -75,6 +76,8 @@ kit_ep_done() {  # step
       [ -d "$W/results/eval" ] || return 1
       n=$(find "$W/results/eval" -maxdepth 1 -name '*.summary.csv' -newer "$RUN/kit.env" | wc -l)
       [ "$n" -ge 8 ];;
+    07-annotate)
+      [ -s "$W/results/annot/trio.ann.vcf.gz.csi" ] && [ "$W/results/annot/trio.ann.vcf.gz.csi" -nt "$RUN/kit.env" ];;
     *) kit_is_done "$1";;
   esac
 }
@@ -264,4 +267,172 @@ kit_filter_counts() {
        ) > "$d/filter_counts.log" 2>&1; then
     kit_only_warn filter_counts "see $d/filter_counts.log"
   fi
+}
+
+# Episode 8 (Prompt 06): what the trio funnels kept, and why. For the de novo candidates after the
+# evidence step (81) and the region step (41), and the recessive candidates after the impact step (8):
+# QUAL, FILTER, and GT, DP, GQ and AD of child, father and mother; the child's ALT fraction; the
+# worst consequence and the gnomAD frequencies (no gene names: they stay out of the records that
+# SUMMARY.md prints). Truth status as in the P3 reference run (pipeline/py/report.py truth-status):
+# per truth set the truth genotype for the same allele, absent_in_bed (inside the benchmark BED,
+# no record: homozygous reference), other_allele, or outside_bed; the trio BED is a truth set with
+# no records, so absent_in_bed means inside it. Also: de novo genotype-step records with an ALT read
+# in a parent, the inspection sites (INSPECT_SITES in config.sh) with tview text of all three
+# samples and their records in each truth set (inspection_truth.tsv), and the funnel table.
+kit_trio_records() {
+  local d=$RECORDS/kit-only/trio
+  mkdir -p "$d"
+  if ! ( set +e
+         kit_load "$BCFTOOLS_MODULE" > /dev/null 2>&1
+         cd "$W" || exit 1
+         T=results/trio; TR=resources/truth
+         cp $T/funnel.tsv $T/mendelian2.txt $T/candidates.tsv "$d/" 2> /dev/null
+         Q='%CHROM\t%POS\t%REF\t%ALT\t%QUAL\t%FILTER[\t%GT:%DP:%GQ:%AD]\n'
+         for f in denovo_1_genotype denovo_2_evidence denovo_3_regions recessive_4_impact; do
+           { printf 'chrom\tpos\tref\talt\tqual\tfilter\tchild\tfather\tmother\tchild_alt_fraction\n'
+             bcftools query -f "$Q" "$T/$f.vcf.gz" 2> /dev/null | awk -F'\t' 'BEGIN { OFS = "\t" }
+               { split($7, g, ":"); n = split(g[4], ad, ","); s = 0; for (i = 1; i <= n; i++) s += ad[i]
+                 print $0, (s > 0 && n > 1) ? sprintf("%.3f", ad[2] / s) : "." }'
+           } > "$d/$f.tsv"
+         done
+         bcftools +split-vep -a ANN -s worst -f '%CHROM\t%POS\t%REF\t%ALT\t%Annotation\t%Annotation_Impact\t%INFO/gnomad_AF\t%INFO/gnomad_AF_asj\n' \
+           $T/recessive_4_impact.vcf.gz 2> /dev/null > "$d/recessive_4_impact_annotation.tsv"
+         printf 'what\tcount\n' > "$d/denovo_parent_alt.tsv"
+         printf 'genotype step, ALT read in father or mother\t%s\n' \
+           "$(bcftools view -H -i 'FMT/AD[1:1]>0 || FMT/AD[2:1]>0' $T/denovo_1_genotype.vcf.gz 2> /dev/null | wc -l)" >> "$d/denovo_parent_alt.tsv"
+         printf 'genotype step, a parent masked (./.) instead of 0/0\t%s\n' \
+           "$(bcftools view -H -i 'GT[0]="het" && (GT[1]="mis" || GT[2]="mis") && (GT[1]="RR" || GT[1]="mis") && (GT[2]="RR" || GT[2]="mis")' $T/pass.vcf.gz 2> /dev/null | wc -l)" >> "$d/denovo_parent_alt.tsv"
+         # truth status (dumps of the four truth VCFs; an empty dump for the trio BED)
+         : > "$RUN/kit-only.empty.dump.tsv"
+         args=(--truth "trio_bed=$RUN/kit-only.empty.dump.tsv=$TR/trio_v4.2.1_chr20.bed")
+         for x in HG002_v5.0q HG002_v4.2.1 HG003_v4.2.1 HG004_v4.2.1; do
+           bcftools query -f '%CHROM\t%POS\t%REF\t%ALT[\t%GT]\n' "$TR/${x}_chr20.vcf.gz" 2> /dev/null > "$RUN/kit-only.truth.$x.dump.tsv"
+           args+=(--truth "$x=$RUN/kit-only.truth.$x.dump.tsv=$TR/${x}_chr20.bed")
+         done
+         for f in denovo_2_evidence denovo_3_regions recessive_4_impact; do
+           bcftools query -f "${f%%_*}\t%CHROM\t%POS\t%REF\t%ALT\n" "$T/$f.vcf.gz" 2> /dev/null > "$RUN/kit-only.$f.candidates.tsv"
+           python3 "$REPO_DIR/pipeline/py/report.py" truth-status "$RUN/kit-only.$f.candidates.tsv" "$d/${f}_truth_status.tsv" "${args[@]}"
+         done
+         # benchmark scope of the 41 (Part C decision 1, 2026-10-14): report.py gives a truth record
+         # before it looks at the BED; this adds whether each HG002 record lies inside its own BED
+         python3 "$KIT_DIR/py/bench_scope.py" "$d/denovo_3_regions_truth_status.tsv" "$d/denovo_3_regions_bench_scope.tsv" \
+           --bed "HG002_v5.0q=$TR/HG002_v5.0q_chr20.bed" --bed "HG002_v4.2.1=$TR/HG002_v4.2.1_chr20.bed"
+         # inspection sites: the trio's records and the tview text of each sample (column 21)
+         printf 'role\tposition\tin denovo_3_regions\trecord\n' > "$d/inspection_sites.tsv"
+         for x in $INSPECT_SITES; do
+           role=${x%%:*}; pos=${x#*:}
+           r=$(bcftools query -r "$pos" -i "POS=${pos#*:}" -f "$Q" $T/denovo_3_regions.vcf.gz 2> /dev/null | head -1)
+           printf '%s\t%s\t%s\t%s\n' "$role" "$pos" "$([ -n "$r" ] && echo yes || echo no)" "${r:-absent}" >> "$d/inspection_sites.tsv"
+         done
+         # inspection sites in each truth set (decision 4, 2026-10-14): whether the site is inside that
+         # set's benchmark BED, and every truth record overlapping the candidate's REF span, with its GT
+         printf 'role\tposition\ttruth_set\tin_benchmark_bed\ttruth_records\n' > "$d/inspection_truth.tsv"
+         for x in $INSPECT_SITES; do
+           role=${x%%:*}; pos=${x#*:}; p=${pos#*:}
+           ref=$(bcftools query -r "$pos" -i "POS=$p" -f '%REF\n' $T/denovo_3_regions.vcf.gz 2> /dev/null | head -1)
+           e=$((p + ${#ref} - 1)); [ -n "$ref" ] || e=$p
+           for t in HG002_v5.0q HG002_v4.2.1 HG003_v4.2.1 HG004_v4.2.1; do
+             inb=$(awk -F'\t' -v c="${pos%%:*}" -v p="$p" '$1 == c && $2 < p && p <= $3 { f = 1; exit } END { print f ? "yes" : "no" }' "$TR/${t}_chr20.bed")
+             recs=$(bcftools query -r "${pos%%:*}:$p-$e" -f '%POS:%REF>%ALT:[%GT]\n' "$TR/${t}_chr20.vcf.gz" 2> /dev/null | paste -sd ';' -)
+             printf '%s\t%s\t%s\t%s\t%s\n' "$role" "$pos" "$t" "$inb" "${recs:-none}" >> "$d/inspection_truth.tsv"
+           done
+         done
+         # every record of the filtered trio calls overlapping each inspection site's REF span (Part C,
+         # 2026-10-14: the IGV VCF track shows more than one record at chr20:13,604,987)
+         printf 'role\tposition\tpos\tref\talt\tfilter\tchild\tfather\tmother\n' > "$d/inspection_calls.tsv"
+         for x in $INSPECT_SITES; do
+           role=${x%%:*}; pos=${x#*:}; p=${pos#*:}
+           ref=$(bcftools query -r "$pos" -i "POS=$p" -f '%REF\n' $T/denovo_3_regions.vcf.gz 2> /dev/null | head -1)
+           e=$((p + ${#ref} - 1)); [ -n "$ref" ] || e=$p
+           bcftools query -r "${pos%%:*}:$p-$e" -f "$role\t$pos\t%POS\t%REF\t%ALT\t%FILTER[\t%GT:%DP:%GQ:%AD]\n" \
+             results/vcf/trio.filtered.vcf.gz 2> /dev/null >> "$d/inspection_calls.tsv"
+         done
+         # where those records come from (Part C decision 3, 2026-10-14): every record within
+         # IGV_HALF_WINDOW of each site in the concatenated calls before norm (trio.raw.bcf), after
+         # norm -m -any (trio.norm.vcf.gz) and after filtering; read-only
+         printf 'role\tposition\tfile\tpos\tref\talt\tfilter\tchild\tfather\tmother\n' > "$d/inspection_calls_window.tsv"
+         for x in $INSPECT_SITES; do
+           role=${x%%:*}; pos=${x#*:}; p=${pos#*:}
+           for v in results/vcf/trio.raw.bcf results/vcf/trio.norm.vcf.gz results/vcf/trio.filtered.vcf.gz; do
+             bcftools query -r "${pos%%:*}:$((p - IGV_HALF_WINDOW))-$((p + IGV_HALF_WINDOW))" \
+               -f "$role\t$pos\t${v##*/}\t%POS\t%REF\t%ALT\t%FILTER[\t%GT:%DP:%AD]\n" "$v" 2> /dev/null >> "$d/inspection_calls_window.tsv"
+           done
+         done
+         kit_load "$SAMTOOLS_MODULE" > /dev/null 2>&1
+         for x in $INSPECT_SITES; do
+           pos=${x#*:}; p=${pos#*:}
+           for s in $SAMPLES; do
+             printf '### %s %s %s (samtools tview -d T -i -w 41 -p chr20:%s)\n' "${x%%:*}" "$pos" "$s" "$((p - 20))"
+             samtools tview -d T -i -w 41 -p "chr20:$((p - 20))" "results/bam/$s.markdup.bam" ref/GRCh38_no_alt.fa 2>&1
+           done
+         done > "$d/tview_inspection_sites.txt"
+       ) > "$d/trio_records.log" 2>&1; then
+    kit_only_warn trio_records "see $d/trio_records.log"
+  fi
+}
+
+# Episode 8 (Prompt 06, 06b): the IGV batch script for the inspection snapshots, written for this
+# run's learner files. igv/run_snapshots.sh renders it under Xvfb in a standby job; a desktop session
+# (igv -b FILE, or Tools > Run Batch Script) is the fallback. The PNGs go to $RUN/igv/snapshots/.
+# Only commands of the IGV batch documentation (https://igv.org/doc/desktop/UserGuide/tools/batch/):
+# genome, new, preference, load, snapshotDirectory, maxPanelHeight, goto, sort, snapshot, exit.
+# Display only (06b): the alignment center line, reads sorted by the base at the site, and exit so
+# that a headless IGV ends. Window: the site +/- IGV_HALF_WINDOW bases (read-level detail).
+kit_igv_batch() {
+  local b=$RUN/igv/snapshots.batch x pos p
+  mkdir -p "$RUN/igv/snapshots" "$RECORDS/kit-only/igv"
+  {
+    # genome before new: new needs a loaded genome (IGV 2.19.2 IGV.newSession throws a
+    # NullPointerException when IGV started without its default genome; P6 Part B, 2026-10-14)
+    printf 'genome %s\n' "$W/ref/GRCh38_no_alt.fa"
+    printf 'new\n'
+    printf 'preference SAM.SHOW_CENTER_LINE true\n'
+    for s in $SAMPLES; do printf 'load %s\n' "$W/results/bam/$s.markdup.bam"; done
+    printf 'load %s\n' "$W/results/vcf/trio.filtered.vcf.gz"
+    printf 'load %s\n' "$W/resources/truth/trio_v4.2.1_chr20.bed"
+    printf 'snapshotDirectory %s\n' "$RUN/igv/snapshots"
+    printf 'maxPanelHeight %s\n' "$IGV_PANEL_HEIGHT"
+    for x in $INSPECT_SITES; do
+      pos=${x#*:}; p=${pos#*:}
+      printf 'goto chr20:%s-%s\n' "$((p - IGV_HALF_WINDOW))" "$((p + IGV_HALF_WINDOW))"
+      printf 'sort base chr20:%s\n' "$p"
+      printf 'snapshot 08_%s_chr20_%s.png\n' "${x%%:*}" "$p"
+    done
+    printf 'exit\n'
+  } > "$b"
+  if ! kit_igv_batch_check "$b" > "$RECORDS/kit-only/igv/batch_check.txt" 2>&1; then
+    kit_only_warn igv_batch "batch script fails kit_igv_batch_check (see $RECORDS/kit-only/igv/batch_check.txt)"
+  fi
+  cp "$b" "$RECORDS/kit-only/igv/snapshots.batch"
+  kit_log "IGV batch script: $b (snapshots to $RUN/igv/snapshots/)"
+}
+
+# The shape every snapshot batch must have (build_kit.py --check and run_snapshots.sh): only the
+# commands above; genome first, then new and the center-line preference; each goto followed by a
+# sort base on one position inside its window, then a snapshot with a .png name; exit last. load
+# may name an index (load FILE index=INDEX, documented). Prints each problem; status 1 if any.
+kit_igv_batch_check() {  # batch file
+  awk '
+    function bad(m) { print "batch line " NR ": " m; nbad++ }
+    { n++; c = $1 }
+    n == 1 && c != "genome" { bad("first command must be genome (new needs a loaded genome)") }
+    n == 2 && c != "new" { bad("second command must be new") }
+    n == 3 && $0 != "preference SAM.SHOW_CENTER_LINE true" { bad("third line must be: preference SAM.SHOW_CENTER_LINE true") }
+    c !~ /^(new|preference|genome|load|snapshotDirectory|maxPanelHeight|goto|sort|snapshot|exit)$/ { bad("command not allowed: " c) }
+    c == "genome" { ng++ }
+    c == "load" && (NF < 2 || NF > 3 || (NF == 3 && $3 !~ /^index=./)) { bad("load takes FILE [index=INDEX]") }
+    c == "goto" { if (state == "goto") bad("goto without sort and snapshot"); state = "goto"
+                  split($2, a, /[:-]/); lo = a[2] + 0; hi = a[3] + 0; chr = a[1] }
+    c == "sort" { if (state != "goto") bad("sort must follow goto")
+                  split($3, a, ":"); if ($2 != "base" || a[1] != chr || a[2] + 0 < lo || a[2] + 0 > hi) bad("sort must be: sort base " chr ":<pos inside the goto window>")
+                  state = "sort" }
+    c == "snapshot" { if (state != "sort") bad("snapshot must follow goto and sort base"); if ($2 !~ /\.png$/) bad("snapshot needs a .png name"); state = ""; nshot++ }
+    c == "exit" { nexit++; exitline = NR }
+    END {
+      if (ng != 1) bad("exactly one genome line, found " ng + 0)
+      if (nshot < 1) bad("no snapshot")
+      if (state != "") bad("last goto has no snapshot")
+      if (nexit != 1 || exitline != NR) bad("the last line must be exit (and only once)")
+      exit nbad > 0
+    }' "$1"
 }

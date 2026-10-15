@@ -2,13 +2,16 @@
 # collect.sh: gather records into one tarball to bring back (login node, 1 to 3 minutes).
 # Usage: bash negishi-run/collect.sh --run RUN_ID   an episode kit run (submit_all.sh), Prompt 04 on
 #        bash negishi-run/collect.sh                the phase-2 records in $PREP_DIR (kept for the record)
-# --run writes $KIT_RUNS/varcall-p5-kit-<RUN_ID>-<date>.tar.gz with SUMMARY.md (py/summarize.py),
+# --run writes $KIT_RUNS/varcall-p6-kit-<RUN_ID>-<date>.tar.gz with SUMMARY.md (py/summarize.py),
 # placeholder_values.tsv, outputs/ (every placeholder and every block's console output), the
 # MultiQC plot exports (PNG), sacct records and the partition's memory per core, the kit-only
 # records (bcftools usage text, chr20:88108 counts, filter and MAPQ 0 counts, sentinels, region
-# metrics), small QC outputs (FastQC zips, MultiQC data, samtools and mosdepth summaries), the
-# bcftools stats files and the hap.py summaries, extended tables and ROC tables, learner job logs
-# and kit logs. Never BAM, VCF or FASTQ. Safe to rerun.
+# metrics; Prompt 06: trio candidate tables, truth status, inspection sites and their tview text,
+# the IGV batch script), small QC outputs (FastQC zips, MultiQC data, samtools and mosdepth
+# summaries), the bcftools stats files, the hap.py summaries, extended tables and ROC tables, the
+# SnpEff summary and the annotation and trio tables (TSV and text), the IGV snapshots if Part B has
+# made them (igv/run_snapshots.sh: PNGs, igv_snapshots.tsv, igv_version.txt and the trimmed
+# igv_run.log), learner job logs and kit logs. Never BAM, VCF or FASTQ. Safe to rerun.
 # The phase-2 mode tars $PREP_DIR/records only, with the sacct table and its summary, file sizes,
 # trimmed logs, the job table, and the filled-in docs/ood_igv_check.md.
 set -euo pipefail
@@ -22,7 +25,7 @@ if [ "${1:-}" = --run ]; then
   RUN=$(kit_run_dir "$2")
   export RUN
   kit_load_run
-  NAME=varcall-p5-kit-$RUN_ID-$(date +%Y%m%d-%H%M)
+  NAME=varcall-p6-kit-$RUN_ID-$(date +%Y%m%d-%H%M)
   C=$RUN/collect/$NAME
   mkdir -p "$C"/{records,qc,logs,learner-logs,generated}
   kit_log "collecting $RUN into $C"
@@ -38,7 +41,7 @@ if [ "${1:-}" = --run ]; then
   # memory per core of the partition (memory headroom of evaluate.sh in SUMMARY.md): CPUS MEMORY_MB
   sinfo -p "$KIT_PARTITION" -h -o '%c %m' 2>/dev/null | sort -u | head -1 > "$RECORDS/sinfo_cpu.txt" || kit_log "sinfo failed"
   # module versions actually loaded (each pinned module, as the episodes load it)
-  for m in "$BWA_MODULE" "$SAMTOOLS_MODULE" "$MOSDEPTH_MODULE" "$FASTQC_MODULE" "$MULTIQC_MODULE" "$BCFTOOLS_MODULE" "$HAPPY_MODULE"; do
+  for m in "$BWA_MODULE" "$SAMTOOLS_MODULE" "$MOSDEPTH_MODULE" "$FASTQC_MODULE" "$MULTIQC_MODULE" "$BCFTOOLS_MODULE" "$HAPPY_MODULE" "$SNPEFF_MODULE"; do
     printf '%s\t%s\n' "$m" "$( (kit_load "$m" >/dev/null 2>&1 && module -t list 2>&1 | grep -v biocontainers | tr '\n' ' ') || echo 'load failed')"
   done > "$RECORDS/module_versions.tsv"
   (cd "$REPO_DIR" && sha256sum -c "$KIT_GEN/sources.sha256" > "$RECORDS/sources_check.txt" 2>&1) || kit_log "WARN: episodes or learner scripts changed since the kit was built (records/sources_check.txt)"
@@ -52,6 +55,16 @@ if [ "${1:-}" = --run ]; then
   cpq "$C/qc/vcf" "$W"/results/vcf/*.stats.txt "$W/results/vcf/chunks.txt"
   cpq "$C/qc/eval" "$W"/results/eval/*.summary.csv "$W"/results/eval/*.extended.csv "$W"/results/eval/*.roc.*.csv.gz \
     "$W"/results/eval/*.metrics.json.gz "$W"/results/eval/*.runinfo.json
+  cpq "$C/qc/annot" "$W"/results/annot/snpEff_summary.csv "$W"/results/annot/snpEff_summary.genes.txt "$W"/results/annot/*.tsv
+  cpq "$C/qc/trio" "$W"/results/trio/*.tsv "$W"/results/trio/*.txt
+  cpq "$C/igv" "$RUN"/igv/snapshots.batch "$RUN"/igv/snapshots.bai.batch "$RUN"/igv/snapshots "$KIT_DIR/docs/ood_igv_check.md" \
+    "$RECORDS/igv_snapshots.tsv" "$RECORDS/igv_version.txt"
+  # IGV console output of igv/run_snapshots.sh, trimmed (the PNGs above are the snapshots themselves)
+  if [ -f "$RECORDS/igv_run.log" ] && [ "$(wc -l < "$RECORDS/igv_run.log")" -le 300 ]; then
+    cp "$RECORDS/igv_run.log" "$C/igv/"
+  elif [ -f "$RECORDS/igv_run.log" ]; then
+    { head -n 100 "$RECORDS/igv_run.log"; printf '\n... (trimmed) ...\n\n'; tail -n 200 "$RECORDS/igv_run.log"; } > "$C/igv/igv_run.log"
+  fi
   cpq "$C/logs" "$RUN"/logs/*
   cpq "$C/learner-logs" "$W"/scripts/cluster-*
   cpq "$C/generated" "$KIT_GEN"/*.tsv "$KIT_GEN"/*.txt "$KIT_GEN/sources.sha256" "$KIT_GEN/kit.conf"
