@@ -2,6 +2,73 @@
 
 Phase 5 (current) extends the episode run kit of Phase 4 to Episodes 5A and 6: `build_kit.py` extracts every command of the setup page and Episodes 2-6, checks it against `pipeline/learner-scripts/`, and `submit_all.sh` runs it as a new learner on standby. Phase 3 (below) staged the data and ran the reference run that froze the anchors in `anchors.tsv`; phase 2 measured feasibility. Settings live in `config.sh`; external files in `../data-prep/sources.tsv`.
 
+## Pre-merge tests
+
+Before merging a kit change, on the laptop (the gene-name cases read their symbols from `.claude/notes/`; without it they are reported as SKIPPED):
+
+```bash
+cd ~/svn/variant-calling
+bash negishi-run/tests/run_all.sh
+```
+
+Expected, in about 20 seconds: `kit mutations: 34 of 34 caught, 0 skipped`, `submit guard: 2 of 2`, `IGV stub tests: 13 of 13 as expected`, then `run_all: all 3 suites pass` and exit 0. The runner takes no arguments, works in a new `mktemp -d` directory and removes it (`KEEP_WORK=1` keeps it; `VERBOSE=1` prints every case). It needs bash, python3 and rsync, and calls no SLURM command and no container: `tests/mutate_kit.sh` applies one edit per case to a copy of the repository and expects `build_kit.py --check` to FAIL; `tests/submit_guard.sh` checks the `SINGULARITY_BIND`/`APPTAINER_BIND` guard of `submit_all.sh` and that a copy without it is caught; `tests/igv_stubs.sh` runs `igv/run_snapshots.sh` against the stubs in `tests/stubs/igv/`. It is a separate step, not part of `build_kit.py --check`: `--check` takes under a second and runs inside every mutation case and every `submit_all.sh`, so calling the suites from it would recurse.
+
+## Phase 6: Episodes 7 and 8 (Prompt 06, Part B)
+
+The P6 run continues the P5 run `kit5-2026-10-11`, so annotation and the trio steps use that learner's own filtered calls. Three new steps (`generated/steps.tsv`):
+
+| Step | Where | What | Expected |
+|---|---|---|---|
+| `07-annotate` | the learner's `scripts/annotate.sh`, 4 cores, after `06-filter` | SnpEff (MANE 1.2, staged database), then `bcftools annotate` with the gnomAD subset | about 1.5 min (P3: 86-98 s) |
+| `07-tables` | batch job, 4 tasks, after `07-annotate` | the Episode 7 tables session and its read-only extras | under 1 min (P3: 15-19 s) |
+| `08-trio` | batch job, 4 tasks, after `07-annotate` | the Episode 8 session (sample order, `+mendelian2`, both funnels, candidate table, `tview` at the two inspection sites); then the kit-only trio records (candidate tables, truth status, parental ALT reads, inspection sites) and the IGV batch script `$RUN/igv/snapshots.batch` | 1-2 min (P3 trio session: 29 s) |
+
+On the laptop first (as in Phase 5; `.claude/notes/` is not sent, so on Negishi `build_kit.py` prints "WARNING: gene-name guard skipped", which is expected):
+
+```bash
+cd ~/svn/variant-calling
+python3 negishi-run/build_kit.py
+python3 negishi-run/build_kit.py --check   # "all kit checks pass; generated/ matches a fresh build", 12 steps
+rsync -av --relative ./episodes ./learners ./negishi-run ./pipeline ./data-prep aseethar@negishi.rcac.purdue.edu:/scratch/negishi/aseethar/variant-calling/
+```
+
+On a Negishi login node, in `tmux` or `screen`, from `/scratch/negishi/aseethar/variant-calling`, in a shell without `SINGULARITY_BIND` or `APPTAINER_BIND`: `submit_all.sh` stops with "FAIL: SINGULARITY_BIND is set in this shell" otherwise, because every job inherits the shell (`--export=ALL`) and the `igv/2.19.1` module sets that variable (Part C, 2026-10-14). Run IGV in the desktop session, not in the shell that submits. The first P6 Part B run (2026-10-14) stopped at the snapshots: `igv -b` on a login node has no display (`java.awt.HeadlessException`). Negishi has no `Xvfb`, `xvfb-run` or `Xvnc` on login or compute nodes, nor in the IGV image (2026-10-14), so the snapshots come from a desktop session with the kit batch (below, "Desktop fallback"); this worked on 2026-10-14 (tarball `...-2034`). `igv/run_snapshots.sh` (Prompt 06b) is kept for its pre-flight (`--preflight-only`) and for an image with Xvfb later.
+
+| Step | Command | Expected |
+|---|---|---|
+| 1 | `bash negishi-run/00_preflight.sh` | FAIL 0; the IGV section shows `IGV_SIF readable` PASS, where `xvfb-run` is (host or image; WARN if neither: use the desktop fallback) and the IGV version string |
+| 2 | `ls $SCRATCH/varcall-kit/kit-runs/kit5-2026-10-11/markers/` | markers `02-setup` to `06-evalsum` PASS, and from the first Part B run `07-annotate`, `07-tables`, `08-trio`. If the run directory is gone (scratch purge), use the fresh-run row |
+| 3 | if `07-annotate` to `08-trio` are PASS: `bash negishi-run/submit_all.sh --run kit5-2026-10-11 --from 08-trio --force --dry-run`, then without `--dry-run`. Otherwise: `--from 07-annotate` (no `--force`) | reruns `08-trio` (its commands overwrite their own outputs, as a learner rerunning them would), which writes the new batch script (`sort base`, center line, `exit`) and the new kit-only record `trio/inspection_truth.tsv` |
+| fresh run | only if step 2 or 3 fails: `bash negishi-run/submit_all.sh --run kit6-<date> --dry-run`, then without `--dry-run` | 12 steps from Episode 2; about 45 min plus standby waits. Use that run ID below |
+| 4 | wait until `squeue -u $USER` is empty; `grep -c . $SCRATCH/varcall-kit/kit-runs/kit5-2026-10-11/igv/snapshots.batch` | the batch exists; its last line is `exit` |
+| 5 | `sbatch negishi-run/igv/run_snapshots.sh --run kit5-2026-10-11 --preflight-only` | optional, a few minutes: the pre-flight alone, rows in `kit-runs/<RUN_ID>/records/igv_snapshots.tsv` |
+| 6 | `sbatch negishi-run/igv/run_snapshots.sh --run kit5-2026-10-11` (from the repository root) | 4 cores, at most 20 min; `cluster-igv-snapshots.<jobid>.out` ends with "igv snapshots: 0 FAIL"; two PNGs in `kit-runs/<RUN_ID>/igv/snapshots/` |
+| 7 | only if `records/igv_run.log` shows IGV rejecting a `.csi` index (`igv_snapshots.tsv` has a WARN "index messages"): `IGV_MAKE_BAI=1 sbatch negishi-run/igv/run_snapshots.sh --run kit5-2026-10-11` | rows `created` and `removed` for each of the three `.bai` files in `igv_snapshots.tsv`, and "temporary .bai removed: 3 created, none left" |
+| 8 | look at both PNGs (copy them to the laptop, or open them in a desktop session) | reads at base level in all three BAM tracks, the VCF and BED tracks, the center line on the site, reads sorted by the base at the site |
+| 9 | `bash negishi-run/collect.sh --run kit5-2026-10-11` (or the fresh run's ID) | writes `$SCRATCH/varcall-kit/kit-runs/varcall-p6-kit-<RUN_ID>-<date>.tar.gz` with `igv/` (PNGs, `igv_snapshots.tsv`, `igv_version.txt`, trimmed `igv_run.log`, the batch) |
+| 10 | on the laptop: run the printed `rsync`, then `tar -xzf <tarball> -C negishi-run/records/` | the records under `negishi-run/records/`, never at the repository root |
+
+What `igv/run_snapshots.sh` does (settings in `config.sh`: `IGV_SIF`, `IGV_XVFB_SCREEN`, `IGV_MAKE_BAI`; `IGV_TIMEOUT` 15m and `IGV_MIN_PNG_BYTES` 10240 from the environment):
+
+- Pre-flight, inside the job: `xvfb-run` on the host first, then inside `IGV_SIF` (FAIL if neither); the batch shape (`kitrun.sh` `kit_igv_batch_check`); the `genome` line is the learner's `ref/GRCh38_no_alt.fa`, `readlink -f` resolves it and its `.fai` into `/depot/workshop/data/varcall-workshop_ref/` (`STAGED_REF`), and both match their size and md5 in `staged_ref_manifest.tsv` (decision 5); every `genome` and `load` path, the `.fai`, an index for each BAM and a `.tbi` or `.csi` for the VCF exist inside the container (`singularity exec IGV_SIF ls -lL`, so the `/depot` links are resolved there); the index type of each BAM (`align.sh` writes `.csi`: `samtools markdup --write-index`); the snapshot directory is created inside the run.
+- Run: `timeout 15m xvfb-run -a -s "-screen 0 1920x1200x24" singularity exec IGV_SIF igv.sh -b <batch>` (or, if `xvfb-run` is only in the image, both inside one `singularity exec`). The module's `igv.sh` is a shell function around `singularity run`, so the job calls the image directly.
+- Post-checks: both PNGs exist, are newer than the job and larger than 10,240 bytes (`file` records their dimensions); the "IGV Version" line goes to `records/igv_version.txt` (the image is tagged 2.19.1 and reported 2.19.2 on 2026-10-14; figure provenance uses the reported version); FAIL if `timeout` fired or the log has a `SEVERE` line.
+- `IGV_MAKE_BAI=1` (decision 5): `.bai` copies made with `samtools index -b` (`samtools/1.22.1`, as in the learner scripts) in `kit-runs/<RUN_ID>/igv/bai/`, loaded with `load <bam> index=<bai>` in a derived batch `igv/snapshots.bai.batch` (`index=` is documented for `load`), and removed when the job ends; only files the job created are removed, an existing file is never overwritten, and nothing next to the learner's BAMs is touched. Set it only after a run shows IGV rejecting `.csi`.
+
+The batch script (`kitrun.sh` `kit_igv_batch`, written by `08-trio` to `kit-runs/<RUN_ID>/igv/snapshots.batch`; a sample is `generated/igv/snapshots.batch.sample`) uses only commands of the IGV batch documentation (<https://igv.org/doc/desktop/UserGuide/tools/batch/>): `genome` first (the staged `GRCh38_no_alt.fa` through the learner's `ref/`), then `new` and `preference SAM.SHOW_CENTER_LINE true`, `load` (the run's three BAMs, `trio.filtered.vcf.gz`, the trio BED; no gene annotation track), `snapshotDirectory`, `maxPanelHeight 600`, then per site `goto` (the site +/- 30 bases), `sort base chr20:<site>` and `snapshot`, and `exit` last. It writes `08_denovo_truth_supported_chr20_11156729.png` (window chr20:11,156,699-11,156,759; chr20:2,202,238 until Part C decision 1, 2026-10-14) and `08_denovo_error_source_chr20_13604987.png` (chr20:13,604,957-13,605,017). The sites and the window are `INSPECT_SITES`, `IGV_HALF_WINDOW` and `IGV_PANEL_HEIGHT` in `config.sh`. `genome` comes before `new` because `new` needs a loaded genome: in the first desktop attempt (2026-10-14) IGV had started without its default genome, `new` threw a `NullPointerException` in `IGV.newSession`, and the batch stopped with an empty window. Tested on the laptop (IGV 2.19.2 Linux release with its bundled Java, under Xvfb, synthetic 3 kb genome): the old order reproduces that error when the default genome cannot load; the new order writes both PNGs in either case, IGV reads the `.csi` indexes of the BAMs and the VCF, and the center line and base sort show. On Negishi data (desktop, 2026-10-14) both PNGs were written with every track, the center line and the base sort; whether a 600-pixel panel shows every read at about 40x is a Part C check.
+
+Desktop fallback (and the self-paced learner path in Episode 8), in a Negishi graphical desktop session (Open OnDemand or ThinLinc; no app is named until `docs/ood_igv_check.md` records one), with the same batch file:
+
+```bash
+module load biocontainers
+module load igv/2.19.1
+igv.sh -b $SCRATCH/varcall-kit/kit-runs/kit5-2026-10-11/igv/snapshots.batch
+```
+
+If `-b` does not run it, start `igv.sh &` and use Tools > Run Batch Script with the same file. The batch ends with `exit`, so IGV closes when the snapshots are written. If IGV rejects a `.csi` index there, record the message; the fix is the job with `IGV_MAKE_BAI=1` (row 7), whose `.bai` copies do not outlive the job. Record the session, the IGV version and any change made by hand in `docs/ood_igv_check.md`.
+
+Read in `SUMMARY.md`: all 62 anchors PASS (the 49 of Phase 5 plus the 2 `mendelian2` rows and the 11 funnel rows; a run that only continues from `07-annotate` re-reads the P5 files for the first 49); the Episode 7 annotation counts against the memo; the truth status of the 41 de novo candidates (33, 2, 2, 4) and the parental ALT-read count (231); the 8 recessive impact-step variants and which frequency fails; both inspection sites "yes"; memory of `07-annotate`, `07-tables` and `08-trio` under 80% of their cores; every placeholder value.
+
 ## Phase 5: the episode run kit for Episodes 2-6 (Prompt 05, Part B)
 
 The whole chain runs again from Episode 2 as a new learner: the alignment anchors are checked again, and calling, filtering and hap.py run on the learner's own BAMs. Steps (`generated/steps.tsv`), with the reference-run times:

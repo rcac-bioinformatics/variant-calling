@@ -4,8 +4,9 @@
   truth-status CANDIDATES OUT --truth LABEL=DUMP=BED [...]
       CANDIDATES: model, chrom, pos, ref, alt (tab-separated, header allowed).
       DUMP: bcftools query -f '%CHROM\t%POS\t%REF\t%ALT[\t%GT]\n' of one truth VCF.
-      For each candidate and truth set: the truth genotype for the same allele, "absent_in_bed"
-      (the benchmark says homozygous reference there), "other_allele", or "outside_bed".
+      For each candidate and truth set: "outside_bed" when POS is outside that set's BED (checked
+      first, whatever the truth VCF holds there); inside it, the truth genotype for the same allele,
+      "other_allele", or "absent_in_bed" (the benchmark says homozygous reference there).
 
   sentinels OUT --truth DUMP=BED --parents DUMP=BED,DUMP=BED --trio-bed BED --cen BED
             --exclude-bed BED [...] --calls LABEL=DUMP [...]
@@ -89,15 +90,18 @@ def cmd_truth_status(a):
             model, chrom, pos, ref, alt = f[0], f[1], int(f[2]), f[3], f[4]
             row = [model, chrom, str(pos), ref, alt]
             for _, truth, bed in sets:
+                # the BED first: a truth record outside the benchmark regions is not a benchmark claim
+                # (fixed 2026-10-14; before, a record was reported before the BED was checked)
+                if not bed.has(chrom, pos):
+                    row.append("outside_bed")
+                    continue
                 gt, seen = truth_gt(truth, chrom, pos, ref, alt)
                 if gt is not None:
                     row.append("GT=" + gt)
                 elif seen:
                     row.append("other_allele")
-                elif bed.has(chrom, pos):
-                    row.append("absent_in_bed")
                 else:
-                    row.append("outside_bed")
+                    row.append("absent_in_bed")
             out.append("\t".join(row))
             n += 1
     with open(a.out, "w") as o:

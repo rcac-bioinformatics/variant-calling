@@ -1,0 +1,11 @@
+#!/bin/bash
+# stub singularity: "exec IMAGE CMD..." runs CMD on the host with the fake image's tools on PATH
+echo "singularity $*" >> "$STUB_LOG"
+echo "INFO:    Environment variable SINGULARITY_BIND is set, but APPTAINER_BIND is preferred" >&2
+[ "$1" = exec ] || exit 2
+shift; sif=$1; shift
+[ -f "$sif" ] || { echo "FATAL: image not found: $sif" >&2; exit 255; }
+PATH=$STUB_IMG:$PATH
+if [ "${STUB_XVFB_IN_IMAGE:-0}" = 1 ]; then PATH=$STUB_IMGX:$PATH; fi
+export PATH
+exec "$@"

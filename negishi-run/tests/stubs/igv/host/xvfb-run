@@ -1,0 +1,5 @@
+#!/bin/bash
+# stub xvfb-run: drop -a and -s ARG, set DISPLAY, run the rest
+echo "xvfb-run $*" >> "$STUB_LOG"
+while [ $# -gt 0 ]; do case $1 in -a) shift;; -s) shift 2;; *) break;; esac; done
+DISPLAY=:99 exec "$@"

@@ -1,0 +1,6 @@
+#!/bin/bash
+# stub samtools: "index -b ... BAM OUT" writes a small file at OUT
+echo "samtools $*" >> "$STUB_LOG"
+[ "$1" = index ] || exit 2
+out=${!#}
+printf 'BAI\1' > "$out"

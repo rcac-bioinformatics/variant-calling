@@ -98,3 +98,21 @@ SNPEFF_DB=${SNPEFF_DB:-GRCh38.mane.1.2.ensembl}
 # Learner-facing name of the reference in ref/ (symlinks to the NCBI-named files on Depot)
 REF_NAME=${REF_NAME:-GRCh38_no_alt}
 DET_CORES=${DET_CORES:-32}                 # determinism check: realign one sample at this core count
+# Episode 8 inspection sites (Prompt 06, Part A), ROLE:CHROM:POS, chosen from the P3 records
+# (q0/trio/denovo_3_regions_af.tsv and _truth_status.tsv): a truth-supported de novo candidate
+# and one not in the truth sets that shows an error source (a 4 bp deletion in a repeat; parents
+# carry other alleles in their truth sets and have 4 and 3 reads in AD). Part C decision 1
+# (2026-10-14): the truth-supported site is chr20:11,156,729 A>C, inside both HG002 benchmark BEDs
+# and one of the 47 kb cluster (child AD 13,19, father 27,0, mother 34,0; was chr20:2,202,238,
+# outside the v5.0q BED).
+INSPECT_SITES=${INSPECT_SITES:-"denovo_truth_supported:chr20:11156729 denovo_error_source:chr20:13604987"}
+# IGV snapshot window (site +/- this many bases) and panel height in pixels (kit_igv_batch)
+IGV_HALF_WINDOW=${IGV_HALF_WINDOW:-30}
+IGV_PANEL_HEIGHT=${IGV_PANEL_HEIGHT:-600}
+# Headless IGV snapshots (Prompt 06b, igv/run_snapshots.sh): the image the igv module's igv.sh
+# function runs (singularity run IMAGE igv.sh; observed on Negishi 2026-10-14; the image is tagged
+# 2.19.1, its log reports 2.19.2), the Xvfb screen, and whether to make temporary .bai copies of the
+# BAM indexes (1 only after a run shows IGV rejecting .csi; decision 5, 2026-10-14).
+IGV_SIF=${IGV_SIF:-/apps/biocontainers/images/quay.io_biocontainers_igv:2.19.1--hdfd78af_1.sif}
+IGV_XVFB_SCREEN=${IGV_XVFB_SCREEN:-1920x1200x24}
+IGV_MAKE_BAI=${IGV_MAKE_BAI:-0}
