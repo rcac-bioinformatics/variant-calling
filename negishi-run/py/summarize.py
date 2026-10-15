@@ -1050,6 +1050,10 @@ def trio_sections(ctx):
                if r["HG002_v5.0q_in_bed"] == "yes"] + ["```", ""]
     else:
         md += ["**missing**", ""]
+    nm = os.path.join(ko, "inspection_norm_missing.tsv")
+    md += ["## Episode 8: norm --multi-overlaps . at the inspection sites (records/kit-only/trio/inspection_norm_missing.tsv)", "",
+           "GT per record if norm filled in missing instead of reference (the not-run discussion of Episode 8).", "", "```"]
+    md += ([l.rstrip("\n") for l in open(nm)] if os.path.exists(nm) else ["missing (kit run before 2026-10-14 follow-up)"]) + ["```", ""]
     ic = os.path.join(ko, "inspection_calls.tsv")
     md += ["## Episode 8: filtered trio calls at the inspection sites (records/kit-only/trio/inspection_calls.tsv)", "", "```"]
     md += ([l.rstrip("\n") for l in open(ic)] if os.path.exists(ic) else ["missing"]) + ["```", ""]

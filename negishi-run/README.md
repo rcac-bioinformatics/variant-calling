@@ -2,6 +2,17 @@
 
 Phase 5 (current) extends the episode run kit of Phase 4 to Episodes 5A and 6: `build_kit.py` extracts every command of the setup page and Episodes 2-6, checks it against `pipeline/learner-scripts/`, and `submit_all.sh` runs it as a new learner on standby. Phase 3 (below) staged the data and ran the reference run that froze the anchors in `anchors.tsv`; phase 2 measured feasibility. Settings live in `config.sh`; external files in `../data-prep/sources.tsv`.
 
+## Pre-merge tests
+
+Before merging a kit change, on the laptop (the gene-name cases read their symbols from `.claude/notes/`; without it they are reported as SKIPPED):
+
+```bash
+cd ~/svn/variant-calling
+bash negishi-run/tests/run_all.sh
+```
+
+Expected, in about 20 seconds: `kit mutations: 34 of 34 caught, 0 skipped`, `submit guard: 2 of 2`, `IGV stub tests: 13 of 13 as expected`, then `run_all: all 3 suites pass` and exit 0. The runner takes no arguments, works in a new `mktemp -d` directory and removes it (`KEEP_WORK=1` keeps it; `VERBOSE=1` prints every case). It needs bash, python3 and rsync, and calls no SLURM command and no container: `tests/mutate_kit.sh` applies one edit per case to a copy of the repository and expects `build_kit.py --check` to FAIL; `tests/submit_guard.sh` checks the `SINGULARITY_BIND`/`APPTAINER_BIND` guard of `submit_all.sh` and that a copy without it is caught; `tests/igv_stubs.sh` runs `igv/run_snapshots.sh` against the stubs in `tests/stubs/igv/`. It is a separate step, not part of `build_kit.py --check`: `--check` takes under a second and runs inside every mutation case and every `submit_all.sh`, so calling the suites from it would recurse.
+
 ## Phase 6: Episodes 7 and 8 (Prompt 06, Part B)
 
 The P6 run continues the P5 run `kit5-2026-10-11`, so annotation and the trio steps use that learner's own filtered calls. Three new steps (`generated/steps.tsv`):

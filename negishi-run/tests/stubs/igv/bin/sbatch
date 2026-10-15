@@ -1,0 +1,8 @@
+#!/bin/bash
+# stub sbatch: refuse --mem and accounts other than rcac, then run a spool copy as a job would
+s=$1; shift
+if grep -q -- '--mem' "$s"; then echo "sbatch stub: --mem refused" >&2; exit 1; fi
+grep -q '^#SBATCH --account=rcac$' "$s" || { echo "sbatch stub: account is not rcac" >&2; exit 1; }
+echo "sbatch $s $*" >> "$STUB_LOG"
+cp "$s" "$STUB_SPOOL/slurm_script"
+SLURM_JOB_ID=4242 SLURM_SUBMIT_DIR=$PWD SLURM_CPUS_PER_TASK=4 SLURM_JOB_ACCOUNT=rcac bash "$STUB_SPOOL/slurm_script" "$@"

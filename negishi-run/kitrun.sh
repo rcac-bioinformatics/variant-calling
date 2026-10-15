@@ -358,6 +358,18 @@ kit_trio_records() {
                -f "$role\t$pos\t${v##*/}\t%POS\t%REF\t%ALT\t%FILTER[\t%GT:%DP:%AD]\n" "$v" 2> /dev/null >> "$d/inspection_calls_window.tsv"
            done
          done
+         # the Episode 8 discussion (Part C, 2026-10-14): what norm --multi-overlaps . would write in the
+         # same window of trio.raw.bcf; the canonical norm command is unchanged. Read-only: the split
+         # goes to a temporary file in $RUN, not to the learner's directory
+         printf 'role\tposition\tpos\tref\talt\tchild\tfather\tmother\n' > "$d/inspection_norm_missing.tsv"
+         for x in $INSPECT_SITES; do
+           role=${x%%:*}; pos=${x#*:}; p=${pos#*:}
+           tmp=$RUN/kit-only.norm_missing.$role.vcf
+           bcftools view -r "${pos%%:*}:$((p - IGV_HALF_WINDOW))-$((p + IGV_HALF_WINDOW))" -Ou results/vcf/trio.raw.bcf 2> /dev/null |
+             bcftools norm -f ref/GRCh38_no_alt.fa -m -any --multi-overlaps . -Ov -o "$tmp" - 2> /dev/null
+           bcftools query -f "$role\t$pos\t%POS\t%REF\t%ALT[\t%GT]\n" "$tmp" 2> /dev/null >> "$d/inspection_norm_missing.tsv"
+           rm -f "$tmp"
+         done
          kit_load "$SAMTOOLS_MODULE" > /dev/null 2>&1
          for x in $INSPECT_SITES; do
            pos=${x#*:}; p=${pos#*:}
