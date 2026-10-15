@@ -510,11 +510,43 @@ replicate concordance and known sites.</li>
 </ul></section><section id="07-annotation"><h2 class="section-heading"><a href="07-annotation.html">7. Annotating variants</a></h2>
 <hr class="half-width">
 <ul>
-<li>TBD(P6)</li>
+<li>SnpEff predicts each variant’s consequence from gene models: a
+Sequence Ontology term, an impact class, the gene, the transcript and
+HGVS names, in the <code>ANN</code> field.</li>
+<li>The database must match the reference build and its chromosome
+names; stage it and use <code>-nodownload</code> so every run uses the
+same files.</li>
+<li>One variant can have several predictions; MANE transcripts reduce,
+but do not remove, them. <code>split-vep -s worst</code> gives one row
+per variant.</li>
+<li>Almost all predictions are <code>MODIFIER</code>: filter on impact
+before you read.</li>
+<li>gnomAD frequencies need the ancestry-matched group as well as the
+global one: founder variants can look rare globally.</li>
+<li>A predicted effect, a frequency and a ClinVar record are evidence of
+different kinds; none of them shows what a variant does in a
+person.</li>
 </ul></section><section id="08-trio-candidate-variants"><h2 class="section-heading"><a href="08-trio-candidate-variants.html">8. Application: candidate variants in a family trio</a></h2>
 <hr class="half-width">
 <ul>
-<li>TBD(P6)</li>
+<li>Check sample order (<code>bcftools query -l</code>) and
+relationships before any trio filter: genotype expressions name samples
+by column.</li>
+<li>The Mendelian error rate (here 0.31% of evaluable PASS sites) is a
+quality measure that needs a family, not a truth set; de novo variants
+are drawn from the same sites as the errors.</li>
+<li>Missing genotypes are not reference genotypes; evidence filters must
+hold in every sample, at the genotype level.</li>
+<li>Report a funnel: what each filter removed and why. Both funnels here
+end at zero, and an empty list is a valid result.</li>
+<li>Base rates come first: about 1.5 germline de novo SNVs are expected
+on chromosome 20, so hundreds of naive candidates are almost all
+errors.</li>
+<li>The truth-supported candidates left after quality filters are real
+in the sequenced DNA but most likely cell-line mutations; reads from
+cell-line DNA cannot settle their origin.</li>
+<li>A candidate list justifies validation, not a statement about
+pathogenicity, causation or anyone’s health.</li>
 </ul></section>
 </div>
     </main>
@@ -565,8 +597,8 @@ replicate concordance and known sites.</li>
   "url": "https://rcac-bioinformatics.github.io/variant-calling/key-points.html",
   "identifier": "https://rcac-bioinformatics.github.io/variant-calling/key-points.html",
   "dateCreated": "2026-10-09",
-  "dateModified": "2026-10-14",
-  "datePublished": "2026-10-14"
+  "dateModified": "2026-10-15",
+  "datePublished": "2026-10-15"
 }
 
   </script><script>

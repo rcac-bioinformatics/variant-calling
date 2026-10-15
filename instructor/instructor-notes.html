@@ -773,9 +773,9 @@ still cover the run time.</p>
 <br><h3 id="04-alignment-and-alignment-qc-headingInstructor2">
 <a href="04-alignment-and-alignment-qc.html#headingInstructor2">Instructor Note</a><a class="anchor" aria-label="anchor" href="#04-alignment-and-alignment-qc-headingInstructor2"></a>
 </h3>
-<p>Graphical viewing is decided in P6 (IGV through a graphical session,
-or prepared snapshots). Until then, <code>samtools tview -d T</code> is
-the locus view for this episode. Learners can also run
+<p><code>samtools tview -d T</code> is the locus view for this episode;
+Episode 8 shows IGV snapshots of two sites and, self-paced, how to open
+IGV in a graphical desktop session. Learners can also run
 <code>samtools tview</code> without <code>-d T</code> for the
 interactive viewer (<code>?</code> for help, <code>q</code> to
 quit).</p>
@@ -913,14 +913,129 @@ on proxies beyond Ts/Tv.</p>
 <h3 id="07-annotation-headingInstructor1">
 <a href="07-annotation.html#headingInstructor1">Instructor Note</a><a class="anchor" aria-label="anchor" href="#07-annotation-headingInstructor1"></a>
 </h3>
-<p>Stub: content arrives in phase P6.</p>
+<p>Live path (40 minutes; plan section 4, with SnpEff running in the
+background):</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr>
+<th>Minutes</th>
+<th>Section</th>
+<th>Live or self-paced</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>3</td>
+<td>Step 1: submit <code>annotate.sh</code>
+</td>
+<td>live</td>
+</tr>
+<tr>
+<td>7</td>
+<td>While it runs: what the script does; why the database must match the
+reference</td>
+<td>live</td>
+</tr>
+<tr>
+<td>8</td>
+<td>What SnpEff predicts: consequences, impact classes, the ANN field,
+transcripts</td>
+<td>live</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Step 2: the tables session, the flood of MODIFIER annotations, HIGH
+and MODERATE counts</td>
+<td>live</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Step 3: frequencies and ancestry; challenge “One missense variant,
+two frequencies”</td>
+<td>live</td>
+</tr>
+<tr>
+<td>5</td>
+<td>ClinVar and the limits of annotation; key points</td>
+<td>live</td>
+</tr>
+</tbody>
+</table>
+<p>Self-paced: the challenges “How many HIGH-impact variants?” and
+“Predict, then check: ANN entries”, the callout on staged databases, and
+the common problems table. If <code>annotate.sh</code> has not finished
+when Step 2 starts, use the “Short on time?” copy.</p>
 <hr>
 <br></section><section id="08-trio-candidate-variants"><h2 class="section-heading"><a href="08-trio-candidate-variants.html">8. Application: candidate variants in a family trio</a></h2>
 <hr class="half-width">
 <h3 id="08-trio-candidate-variants-headingInstructor1">
 <a href="08-trio-candidate-variants.html#headingInstructor1">Instructor Note</a><a class="anchor" aria-label="anchor" href="#08-trio-candidate-variants-headingInstructor1"></a>
 </h3>
-<p>Stub: content arrives in phase P6.</p>
+<p>Live path (50 minutes; plan section 4, ending by 4:00):</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr>
+<th>Minutes</th>
+<th>Section</th>
+<th>Live or self-paced</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>5</td>
+<td>Step 1: session, sample order and relationships</td>
+<td>live</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Step 2: Mendelian consistency as QC</td>
+<td>live</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Step 3: the de novo funnel, filter by filter, including the
+missing-genotype trap</td>
+<td>live</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Step 4: the recessive funnel</td>
+<td>live</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Step 5: the funnel table; why both funnels end at zero</td>
+<td>live</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Step 6: the 41 de novo candidates, the base rate and the cell
+line</td>
+<td>live, discussion</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Step 7: inspecting two candidates (<code>tview</code> text and IGV
+snapshots)</td>
+<td>live</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Step 8: what the evidence supports; key points</td>
+<td>live</td>
+</tr>
+</tbody>
+</table>
+<p>Self-paced: the challenges “Which parental reads did the evidence
+step remove?” and “Predict the region step”, the relationship check
+(<code>gtcheck</code>), the IGV session spoiler, compound heterozygotes,
+and the confounders table.</p>
 <hr>
 <br></section></section>
 </div>
@@ -972,8 +1087,8 @@ on proxies beyond Ts/Tv.</p>
   "url": "https://rcac-bioinformatics.github.io/variant-calling/instructor/instructor-notes.html",
   "identifier": "https://rcac-bioinformatics.github.io/variant-calling/instructor/instructor-notes.html",
   "dateCreated": "2026-10-09",
-  "dateModified": "2026-10-14",
-  "datePublished": "2026-10-14"
+  "dateModified": "2026-10-15",
+  "datePublished": "2026-10-15"
 }
 
   </script><script>

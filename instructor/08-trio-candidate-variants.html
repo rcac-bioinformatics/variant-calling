@@ -281,16 +281,16 @@
     <div id="flush-collapsecurrent" class="accordion-collapse collapse show" data-bs-parent="#accordionFlushcurrent">
       <div class="accordion-body">
         <ul><li><a href="#the-question">The question</a></li>
-<li><a href="#checking-sample-order-and-relationships">Checking sample order and relationships</a></li>
-<li><a href="#mendelian-consistency-as-qc">Mendelian consistency as QC</a></li>
-<li><a href="#inheritance-filters">Inheritance filters</a></li>
-<li><a href="#evidence-filters">Evidence filters</a></li>
-<li><a href="#annotation-and-frequency-filters">Annotation and frequency filters</a></li>
-<li><a href="#the-filtering-funnel">The filtering funnel</a></li>
-<li><a href="#inspecting-candidates">Inspecting candidates</a></li>
-<li><a href="#base-rates-and-expectations">Base rates and expectations</a></li>
-<li><a href="#interpreting-the-candidate-list">Interpreting the candidate list</a></li>
+<li><a href="#step-1-sample-order-and-relationships">Step 1: Sample order and relationships</a></li>
+<li><a href="#step-2-mendelian-consistency-as-qc">Step 2: Mendelian consistency as QC</a></li>
+<li><a href="#step-3-the-de-novo-funnel">Step 3: The de novo funnel</a></li>
+<li><a href="#step-4-the-recessive-funnel">Step 4: The recessive funnel</a></li>
+<li><a href="#step-5-the-funnel">Step 5: The funnel</a></li>
+<li><a href="#step-6-the-41-de-novo-candidates">Step 6: The 41 de novo candidates</a></li>
+<li><a href="#step-7-inspecting-candidates">Step 7: Inspecting candidates</a></li>
+<li><a href="#step-8-what-the-evidence-supports">Step 8: What the evidence supports</a></li>
 <li><a href="#confounders-and-common-mistakes">Confounders and common mistakes</a></li>
+<li><a href="#summary">Summary</a></li>
         </ul></div><!--/div.accordion-body-->
     </div><!--/div.accordion-collapse-->
 
@@ -355,7 +355,7 @@
       </div>
       <hr></nav><main id="main-content" class="main-content"><div class="container lesson-content">
         <h1>8. Application: candidate variants in a family trio</h1>
-        <p>Last updated on 2026-10-14 |
+        <p>Last updated on 2026-10-15 |
 
         <a href="https://github.com/rcac-bioinformatics/variant-calling/edit/main/episodes/08-trio-candidate-variants.Rmd" class="external-link">Edit this page <i aria-hidden="true" data-feather="edit"></i></a></p>
 
@@ -402,6 +402,41 @@ significance.</li>
 </div>
 </div>
 </div>
+<section><h2 class="section-heading" id="the-question">The question<a class="anchor" aria-label="anchor" href="#the-question"></a></h2>
+<hr class="half-width"><p>A family trio, a child and both parents, lets us ask questions that
+one genome cannot answer. Two classic ones:</p>
+<ul><li>
+<strong>De novo</strong>: which variants does the child carry that
+neither parent has? Each of us carries a few new mutations that arose in
+a parent’s egg or sperm.</li>
+<li>
+<strong>Recessive</strong>: where does the child carry two copies of
+an ALT allele, one from each parent, who each carry one?</li>
+</ul><p>In a clinical or research study, such variants become candidates for
+explaining a condition in the child. <strong>HG002, HG003 and HG004 are
+reference samples, not patients</strong>: we use them because the
+benchmark tells us which calls are right. This episode is about the
+method, and about how many naive candidates turn out to be errors.
+Nothing here is a statement about the health of any of these people.</p>
+<p>The question for this episode: in HG002, which variants are
+consistent with a de novo or a recessive model, are predicted to alter a
+protein, and are rare in an ancestry-matched population? And how many of
+those candidates survive a closer look?</p>
+<div id="before-you-start" class="callout prereq">
+<div class="callout-square">
+<i class="callout-icon" data-feather="check"></i>
+</div>
+<span class="callout-header">Prerequisite</span>
+<div id="before-you-start" class="callout-inner">
+<h3 class="callout-title">Before you start</h3>
+<div class="callout-content">
+<p>You need <code>results/annot/trio.ann.vcf.gz</code> and its index
+from Episode 7 (or its “Short on time?” copy),
+<code>results/vcf/trio.filtered.vcf.gz</code> from Episode 6, and
+<code>data/trio.ped</code> from Episode 2.</p>
+</div>
+</div>
+</div>
 <div id="accordionInstructor1" class="accordion instructor-note accordion-flush">
 <div class="accordion-item">
 <button class="accordion-button instructor-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInstructor1" aria-expanded="false" aria-controls="collapseInstructor1">
@@ -409,22 +444,1440 @@ significance.</li>
 </button>
 <div id="collapseInstructor1" class="accordion-collapse collapse" aria-labelledby="headingInstructor1" data-bs-parent="#accordionInstructor1">
 <div class="accordion-body">
-<p>Stub: content arrives in phase P6.</p>
+<p>Live path (50 minutes; plan section 4, ending by 4:00):</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Minutes</th>
+<th>Section</th>
+<th>Live or self-paced</th>
+</tr></thead><tbody><tr><td>5</td>
+<td>Step 1: session, sample order and relationships</td>
+<td>live</td>
+</tr><tr><td>6</td>
+<td>Step 2: Mendelian consistency as QC</td>
+<td>live</td>
+</tr><tr><td>10</td>
+<td>Step 3: the de novo funnel, filter by filter, including the
+missing-genotype trap</td>
+<td>live</td>
+</tr><tr><td>4</td>
+<td>Step 4: the recessive funnel</td>
+<td>live</td>
+</tr><tr><td>6</td>
+<td>Step 5: the funnel table; why both funnels end at zero</td>
+<td>live</td>
+</tr><tr><td>8</td>
+<td>Step 6: the 41 de novo candidates, the base rate and the cell
+line</td>
+<td>live, discussion</td>
+</tr><tr><td>6</td>
+<td>Step 7: inspecting two candidates (<code>tview</code> text and IGV
+snapshots)</td>
+<td>live</td>
+</tr><tr><td>5</td>
+<td>Step 8: what the evidence supports; key points</td>
+<td>live</td>
+</tr></tbody></table><p>Self-paced: the challenges “Which parental reads did the evidence
+step remove?” and “Predict the region step”, the relationship check
+(<code>gtcheck</code>), the IGV session spoiler, compound heterozygotes,
+and the confounders table.</p>
 </div>
 </div>
 </div>
 </div>
-<section><h2 class="section-heading" id="the-question">The question<a class="anchor" aria-label="anchor" href="#the-question"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="checking-sample-order-and-relationships">Checking sample order and relationships<a class="anchor" aria-label="anchor" href="#checking-sample-order-and-relationships"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="mendelian-consistency-as-qc">Mendelian consistency as QC<a class="anchor" aria-label="anchor" href="#mendelian-consistency-as-qc"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="inheritance-filters">Inheritance filters<a class="anchor" aria-label="anchor" href="#inheritance-filters"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="evidence-filters">Evidence filters<a class="anchor" aria-label="anchor" href="#evidence-filters"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="annotation-and-frequency-filters">Annotation and frequency filters<a class="anchor" aria-label="anchor" href="#annotation-and-frequency-filters"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="the-filtering-funnel">The filtering funnel<a class="anchor" aria-label="anchor" href="#the-filtering-funnel"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="inspecting-candidates">Inspecting candidates<a class="anchor" aria-label="anchor" href="#inspecting-candidates"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="base-rates-and-expectations">Base rates and expectations<a class="anchor" aria-label="anchor" href="#base-rates-and-expectations"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="interpreting-the-candidate-list">Interpreting the candidate list<a class="anchor" aria-label="anchor" href="#interpreting-the-candidate-list"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="confounders-and-common-mistakes">Confounders and common mistakes<a class="anchor" aria-label="anchor" href="#confounders-and-common-mistakes"></a></h2>
+</section><section><h2 class="section-heading" id="step-1-sample-order-and-relationships">Step 1: Sample order and relationships<a class="anchor" aria-label="anchor" href="#step-1-sample-order-and-relationships"></a></h2>
+<hr class="half-width"><p>Every genotype expression in this episode names samples by their
+column: <code>GT[0]</code> is the first sample of the VCF,
+<code>GT[1]</code> the second, <code>GT[2]</code> the third. If the
+order is not what we think, a “de novo” filter silently becomes a filter
+for something else. Check it first, against the pedigree file from
+Episode 2:</p>
+<!-- kit: interactive 08-trio.sh -->
+<div class="codewrapper sourceCode" id="cb1">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1" aria-label="code-block-1-1"></a><span class="ex">sinteractive</span> <span class="at">-A</span> rcac <span class="at">-q</span> standby <span class="at">-p</span> cpu <span class="at">-N</span> 1 <span class="at">-n</span> 4 <span class="at">--time</span><span class="op">=</span>1:00:00</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1" aria-label="code-block-1-2"></a><span class="ex">module</span> load biocontainers</span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1" aria-label="code-block-1-3"></a><span class="ex">module</span> load bcftools/1.24</span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1" aria-label="code-block-1-4"></a><span class="bu">cd</span> <span class="va">$SCRATCH</span>/varcall-workshop</span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1" aria-label="code-block-1-5"></a><span class="va">ANN</span><span class="op">=</span>results/annot/trio.ann.vcf.gz</span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1" aria-label="code-block-1-6"></a><span class="va">T</span><span class="op">=</span>results/trio</span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1" aria-label="code-block-1-7"></a><span class="co"># 1. Sample order: the genotype expressions below use [0] child, [1] father, [2] mother</span></span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1" aria-label="code-block-1-8"></a><span class="ex">bcftools</span> query <span class="at">-l</span> <span class="va">$ANN</span></span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1" aria-label="code-block-1-9"></a><span class="fu">cat</span> data/trio.ped</span></code></pre>
+</div>
+<div id="accordionSpoiler1" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler1" aria-expanded="false" aria-controls="collapseSpoiler1">
+  <h3 class="accordion-header" id="headingSpoiler1">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler1" class="accordion-collapse collapse" aria-labelledby="headingSpoiler1" data-bs-parent="#accordionSpoiler1">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>HG002
+HG003
+HG004
+AJ	HG002	HG003	HG004	1	0
+AJ	HG003	0	0	1	0
+AJ	HG004	0	0	2	0</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>The outputs in this episode leave out the
+<code>[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float</code>
+lines that bcftools prints before them; the Episode 5A callout “MQ
+should be declared as Type=Float” explains them.</p>
+<p>The VCF lists HG002, HG003, HG004: child, father, mother, as the PED
+file says (columns: family, sample, father, mother, sex, phenotype). The
+order comes from the order of the BAM files in <code>call.sh</code>
+(Episode 5A), not from any rule; always check it.</p>
+<div class="section level3">
+<h3 id="are-they-really-related-as-stated">Are they really related as stated?<a class="anchor" aria-label="anchor" href="#are-they-really-related-as-stated"></a></h3>
+<p>Sample order says which column is which name. It does not prove that
+the person called “father” is the child’s father, or that two samples
+were not swapped in the lab. The genotypes can check this: a parent and
+child share at least one allele at every site, so <strong>opposite
+homozygotes</strong> (one <code>0/0</code>, the other <code>1/1</code>)
+should be rare between them, made only by errors and new mutations,
+while they are common between unrelated people.
+<code>bcftools gtcheck</code> compares every pair of samples in a file
+and reports how discordant their genotypes are (<a href="https://samtools.github.io/bcftools/bcftools.html#gtcheck" class="external-link">bcftools
+manual, <code>gtcheck</code></a>). The workshop’s scripts do not run it;
+the command for a self-paced look is:</p>
+<div id="accordionSpoiler2" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler2" aria-expanded="false" aria-controls="collapseSpoiler2">
+  <h3 class="accordion-header" id="headingSpoiler2">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> Checking relationships with gtcheck (not tested in the workshop) </h3>
+</button>
+<div id="collapseSpoiler2" class="accordion-collapse collapse" aria-labelledby="headingSpoiler2" data-bs-parent="#accordionSpoiler2">
+<div class="accordion-body">
+<!-- kit: not-run reference -->
+<div class="codewrapper sourceCode" id="cb3">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1" aria-label="code-block-3-1"></a><span class="ex">bcftools</span> gtcheck results/vcf/trio.filtered.vcf.gz</span></code></pre>
+</div>
+<p>Read the discordance of each pair: the two parent-child pairs should
+be clearly less discordant than the two parents with each other. A swap
+or a wrong parent shows up as a pair that does not fit. PLINK 2’s KING
+kinship estimate (self-paced Episode 9, when published) gives the same
+answer as a number: about 0.25 for parent and child.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-2-mendelian-consistency-as-qc">Step 2: Mendelian consistency as QC<a class="anchor" aria-label="anchor" href="#step-2-mendelian-consistency-as-qc"></a></h2>
+<hr class="half-width"><p>A child’s genotype must be explainable by one allele from each
+parent. A site where it is not is a <strong>Mendelian
+violation</strong>. Count them for the PASS calls:</p>
+<!-- kit: interactive 08-trio.sh -->
+<div class="codewrapper sourceCode" id="cb4">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1" aria-label="code-block-4-1"></a><span class="co"># 2. Mendelian consistency of the PASS calls, as a quality-control number</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1" aria-label="code-block-4-2"></a><span class="ex">bcftools</span> +mendelian2 <span class="at">-P</span> data/trio.ped <span class="at">-i</span> <span class="st">'FILTER="PASS"'</span> results/vcf/trio.filtered.vcf.gz <span class="op">&gt;</span> <span class="va">$T</span>/mendelian2.txt</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1" aria-label="code-block-4-3"></a><span class="fu">cat</span> <span class="va">$T</span>/mendelian2.txt</span></code></pre>
+</div>
+<div id="accordionSpoiler3" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler3" aria-expanded="false" aria-controls="collapseSpoiler3">
+  <h3 class="accordion-header" id="headingSpoiler3">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler3" class="accordion-collapse collapse" aria-labelledby="headingSpoiler3" data-bs-parent="#accordionSpoiler3">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>Identified 1 complete trio in the VCF file
+# Summary stats
+sites_ref_only	0	# sites skipped because there was no ALT allele
+sites_many_als	0	# skipped because of too many ALT alleles
+sites_fail	27763	# skipped because of failed -i/-e filter
+sites_no_GT	0	# skipped because of absent FORMAT/GT field
+sites_not_diploid	0	# skipped because FORMAT/GT not formatted diploid
+sites_no_rule	0	# number of sites with no applicable inheritance rule in at least one trio
+sites_missing	13177	# number of sites with missing or unusable GT information in at least one trio
+sites_merr	449	# number of sites with at least one definite Mendelian error
+sites_good	144536	# number of sites with at least one evaluable and Mendelian-consistent trio
+# Note: sites_missing, sites_merr, sites_good, and sites_no_rule are not mutually exclusive with multiple trios.
+# Per-trio stats, each column corresponds to one trio. List of trios is below.
+# The meaning of per-trio stats is the same as described above, ngood_alt is
+# the number of good genotypes with at least one non-reference allele, and is
+# included in the ngood counter
+ngood	144536
+ngood_alt	144536
+nmerr	449
+nmissing	13177
+nfail	0
+nno_rule	0
+# List of trios. Their ids are in the same order as the values listed in the stats lines above. For
+# example, the values for the first trio (id=1) and the third trio (id=3) are in the 2nd and the 4th
+# column and their stats can be obtained with the unix command
+#     cat stats.txt | grep ^n | cut -f1,2,4
+# TRIO	[2]id	[3]child	[4]father	[5]mother
+TRIO	1	HG002	HG003	HG004</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p><code>+mendelian2</code> is a bcftools plugin (<a href="https://samtools.github.io/bcftools/howtos/plugins.html" class="external-link">bcftools
+plugins</a>); <code>-P</code> reads the trio from the PED file, and
+<code>-i 'FILTER="PASS"'</code> skips sites that failed a filter
+(<code>sites_fail</code>). The lines to read:</p>
+<ul><li>
+<code>sites_merr</code>: 449 sites with a definite Mendelian
+error;</li>
+<li>
+<code>sites_good</code>: 144,536 sites that are consistent;</li>
+<li>
+<code>sites_missing</code>: 13,177 sites where at least one genotype
+is missing, mostly the genotype mask of Episode 6. These cannot be
+evaluated, so they count as neither.</li>
+</ul><p>The <strong>Mendelian error rate</strong> is 449 / (449 + 144,536) =
+0.31% of the PASS sites that could be evaluated. As a quality measure it
+needs no truth set, only a family: Episode 6 listed it among the
+proxies. Each violation has a cause, and only one cause is biology:</p>
+<ul><li>a <strong>genotype error</strong> in any of the three samples, for
+example a heterozygous site in a parent called <code>0/0</code> because
+few reads carried the ALT allele;</li>
+<li>a <strong>deletion or copy-number change</strong> in one person,
+which makes a heterozygous region look homozygous;</li>
+<li>
+<strong>mapping artifacts</strong> in repeats and segmental
+duplications, where reads from elsewhere pile up;</li>
+<li>a <strong>new mutation</strong> in the child, or in the cell line
+the DNA came from (Step 6).</li>
+</ul><p>A de novo variant <em>is</em> a Mendelian violation. So the de novo
+candidates we are about to select are drawn from the same small set of
+sites as the errors, and most of what we find there will be errors.</p>
+</section><section><h2 class="section-heading" id="step-3-the-de-novo-funnel">Step 3: The de novo funnel<a class="anchor" aria-label="anchor" href="#step-3-the-de-novo-funnel"></a></h2>
+<hr class="half-width"><p>Each step keeps the records that pass one filter and writes them to a
+new file, so we can count what each filter removes. First, keep only
+PASS sites of the annotated file:</p>
+<!-- kit: interactive 08-trio.sh -->
+<div class="codewrapper sourceCode" id="cb6">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" tabindex="-1" aria-label="code-block-6-1"></a><span class="co"># 3. PASS sites only</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1" aria-label="code-block-6-2"></a><span class="ex">bcftools</span> view <span class="at">-f</span> PASS <span class="at">-Oz</span> <span class="at">-W</span> <span class="at">-o</span> <span class="va">$T</span>/pass.vcf.gz <span class="va">$ANN</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1" aria-label="code-block-6-3"></a><span class="co"># 4. De novo: child heterozygous, both parents homozygous reference</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1" aria-label="code-block-6-4"></a><span class="ex">bcftools</span> view <span class="at">-i</span> <span class="st">'GT[0]="het" &amp;&amp; GT[1]="RR" &amp;&amp; GT[2]="RR"'</span> <span class="at">-Oz</span> <span class="at">-W</span> <span class="at">-o</span> <span class="va">$T</span>/denovo_1_genotype.vcf.gz <span class="va">$T</span>/pass.vcf.gz</span></code></pre>
+</div>
+<p><strong>Filter 1, genotype:</strong>
+<code>GT[0]="het" &amp;&amp; GT[1]="RR" &amp;&amp; GT[2]="RR"</code>:
+the child (column 0) heterozygous, the father (column 1) and the mother
+(column 2) homozygous for the reference allele. <code>het</code>,
+<code>RR</code> (reference-reference) and <code>AA</code> (ALT-ALT) are
+bcftools keywords for genotypes (<a href="https://samtools.github.io/bcftools/bcftools.html#expressions" class="external-link">bcftools
+manual, expressions</a>). <code>&amp;&amp;</code> joins conditions that
+may hold in different samples, which is what we need here (Episode
+6).</p>
+<div class="section level3">
+<h3 id="missing-is-not-reference">Missing is not reference<a class="anchor" aria-label="anchor" href="#missing-is-not-reference"></a></h3>
+<p>What about a parent whose genotype the mask of Episode 6 set to
+missing (<code>./.</code>)? <code>GT[1]="RR"</code> does not match a
+missing genotype, so such a site is not a candidate. That is right: a
+masked genotype is one we decided not to trust, often because the parent
+had few reads there. Count what we would add if missing parents were
+treated as reference:</p>
+<!-- kit: extra 08-trio.sh -->
+<div class="codewrapper sourceCode" id="cb7">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" tabindex="-1" aria-label="code-block-7-1"></a><span class="ex">bcftools</span> view <span class="at">-H</span> <span class="at">-i</span> <span class="st">'GT[0]="het" &amp;&amp; GT[1]="RR" &amp;&amp; GT[2]="RR"'</span> <span class="va">$T</span>/pass.vcf.gz <span class="kw">|</span> <span class="fu">wc</span> <span class="at">-l</span></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1" aria-label="code-block-7-2"></a><span class="ex">bcftools</span> view <span class="at">-H</span> <span class="at">-i</span> <span class="st">'GT[0]="het" &amp;&amp; (GT[1]="RR" || GT[1]="mis") &amp;&amp; (GT[2]="RR" || GT[2]="mis")'</span> <span class="va">$T</span>/pass.vcf.gz <span class="kw">|</span> <span class="fu">wc</span> <span class="at">-l</span></span></code></pre>
+</div>
+<div id="accordionSpoiler4" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler4" aria-expanded="false" aria-controls="collapseSpoiler4">
+  <h3 class="accordion-header" id="headingSpoiler4">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler4" class="accordion-collapse collapse" aria-labelledby="headingSpoiler4" data-bs-parent="#accordionSpoiler4">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code><span><span class="fl">312</span></span>
+<span><span class="fl">2411</span></span></code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>The first count is filter 1 (312, as in the funnel below). The second
+adds every site where a parent’s genotype is missing (<code>mis</code>).
+Those extra “candidates” rest on a parent we have no confident genotype
+for: if that parent has too few reads to see an ALT allele, the child
+may simply have inherited it. <strong>Treating missing genotypes as
+reference</strong> is a classic way to inflate a de novo list. Some
+tools and file conversions do it silently, for example when a missing
+genotype is written out as <code>0/0</code>.</p>
+</div>
+<div class="section level3">
+<h3 id="evidence-in-every-sample">Evidence in every sample<a class="anchor" aria-label="anchor" href="#evidence-in-every-sample"></a></h3>
+<!-- kit: interactive 08-trio.sh -->
+<div class="codewrapper sourceCode" id="cb9">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" tabindex="-1" aria-label="code-block-9-1"></a><span class="co"># 5. Evidence: GQ &gt;= 20 and DP &gt;= 10 in all three, no ALT reads in either parent</span></span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1" aria-label="code-block-9-2"></a><span class="ex">bcftools</span> view <span class="at">-i</span> <span class="st">'MIN(FMT/GQ)&gt;=20 &amp;&amp; MIN(FMT/DP)&gt;=10 &amp;&amp; FMT/AD[1:1]=0 &amp;&amp; FMT/AD[2:1]=0'</span> <span class="at">-Oz</span> <span class="at">-W</span> <span class="at">-o</span> <span class="va">$T</span>/denovo_2_evidence.vcf.gz <span class="va">$T</span>/denovo_1_genotype.vcf.gz</span></code></pre>
+</div>
+<p><strong>Filter 2, evidence:</strong> each condition is about the
+genotypes, not the site:</p>
+<ul><li>
+<code>MIN(FMT/GQ)&gt;=20</code>: the lowest genotype quality of the
+three samples is at least 20;</li>
+<li>
+<code>MIN(FMT/DP)&gt;=10</code>: each of the three has at least 10
+reads;</li>
+<li>
+<code>FMT/AD[1:1]=0 &amp;&amp; FMT/AD[2:1]=0</code>: <code>AD</code>
+holds the read counts for REF and ALT; <code>AD[1:1]</code> is sample 1
+(the father), second value (the ALT count). The father and the mother
+have <strong>no read at all</strong> with the ALT allele.</li>
+</ul><p>These must be genotype-level conditions. A site-level depth
+(<code>INFO/DP</code>) of 60 can be 55 reads in the child and 5 in the
+father; a de novo call needs enough reads in <em>each parent</em> to be
+confident that they lack the allele. A parent with one or two ALT reads
+may carry the variant at a low fraction (parental mosaicism) or be
+heterozygous and undersampled.</p>
+<div id="challenge-which-parental-reads-did-the-evidence-step-remove" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-which-parental-reads-did-the-evidence-step-remove" class="callout-inner">
+<h3 class="callout-title">Challenge: which parental reads did the
+evidence step remove?</h3>
+<div class="callout-content">
+<p>The evidence step takes the 312 records of filter 1 down to 81.</p>
+<ol style="list-style-type: decimal"><li>The genotype mask of Episode 6 already set every genotype with DP
+below 10 or GQ below 20 to missing, and filter 1 requires called
+genotypes. What can the <code>GQ</code> and <code>DP</code> conditions
+of filter 2 still remove?</li>
+<li>Predict how many of the 312 records have at least one ALT read in a
+parent, then check:</li>
+</ol><!-- kit: extra 08-trio.sh --><div class="codewrapper sourceCode" id="cb10">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" tabindex="-1" aria-label="code-block-10-1"></a><span class="ex">bcftools</span> view <span class="at">-H</span> <span class="at">-i</span> <span class="st">'FMT/AD[1:1]&gt;0 || FMT/AD[2:1]&gt;0'</span> <span class="va">$T</span>/denovo_1_genotype.vcf.gz <span class="kw">|</span> <span class="fu">wc</span> <span class="at">-l</span></span></code></pre>
+</div>
+</div>
+</div>
+</div>
+<div id="accordionSolution1" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution1" aria-expanded="false" aria-controls="collapseSolution1">
+  <h4 class="accordion-header" id="headingSolution1"> Show me the solution </h4>
+</button>
+<div id="collapseSolution1" class="accordion-collapse collapse" aria-labelledby="headingSolution1" data-bs-parent="#accordionSolution1">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code><span><span class="fl">231</span></span></code></pre>
+</div>
+<ol style="list-style-type: decimal"><li>Nothing: every genotype that survived the mask already has DP of at
+least 10 and GQ of at least 20. The conditions stay in the filter
+because they state the evidence we require, and because without the mask
+of Episode 6 they would do the work.</li>
+<li>312 - 81 = 231, if the parental ALT reads do all the work. The count
+above confirms it. Most naive de novo calls at this stage have the ALT
+allele in a parent, a few reads that the genotype call <code>0/0</code>
+overruled.</li>
+</ol></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section level3">
+<h3 id="regions-impact-and-frequency">Regions, impact and frequency<a class="anchor" aria-label="anchor" href="#regions-impact-and-frequency"></a></h3>
+<!-- kit: interactive 08-trio.sh -->
+<div class="codewrapper sourceCode" id="cb12">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" tabindex="-1" aria-label="code-block-12-1"></a><span class="co"># 6. Regions where the benchmark is trio-consistent in all three samples</span></span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1" aria-label="code-block-12-2"></a><span class="ex">bcftools</span> view <span class="at">-T</span> resources/truth/trio_v4.2.1_chr20.bed <span class="at">-Oz</span> <span class="at">-W</span> <span class="at">-o</span> <span class="va">$T</span>/denovo_3_regions.vcf.gz <span class="va">$T</span>/denovo_2_evidence.vcf.gz</span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1" aria-label="code-block-12-3"></a><span class="co"># 7. Predicted to change the protein (HIGH or MODERATE impact)</span></span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1" aria-label="code-block-12-4"></a><span class="ex">bcftools</span> view <span class="at">-i</span> <span class="st">'INFO/ANN~"[|]HIGH[|]" || INFO/ANN~"[|]MODERATE[|]"'</span> <span class="at">-Oz</span> <span class="at">-W</span> <span class="at">-o</span> <span class="va">$T</span>/denovo_4_impact.vcf.gz <span class="va">$T</span>/denovo_3_regions.vcf.gz</span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1" aria-label="code-block-12-5"></a><span class="co"># 8. Rare: below 1% (or absent) in gnomAD overall and in the Ashkenazi group</span></span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1" aria-label="code-block-12-6"></a><span class="ex">bcftools</span> view <span class="at">-i</span> <span class="st">'(INFO/gnomad_AF&lt;0.01 || INFO/gnomad_AF=".") &amp;&amp; (INFO/gnomad_AF_asj&lt;0.01 || INFO/gnomad_AF_asj=".")'</span> <span class="at">-Oz</span> <span class="at">-W</span> <span class="at">-o</span> <span class="va">$T</span>/denovo_5_rare.vcf.gz <span class="va">$T</span>/denovo_4_impact.vcf.gz</span></code></pre>
+</div>
+<p><strong>Filter 3, regions:</strong> <code>-T</code> keeps records
+inside the regions of a BED file. <code>trio_v4.2.1_chr20.bed</code> is
+the intersection of the three v4.2.1 benchmark regions of HG002, HG003
+and HG004, in the versions that exclude regions with
+Mendelian-inconsistent benchmark variants (<code>_noinconsistent</code>;
+the v4.2.1 README says that putative HG002 de novo variants are kept in
+them). Inside these regions, NIST is confident about all three
+genotypes. Outside them lies the sequence where calls are least
+reliable: in Episode 6, HG002’s PASS calls had a Ts/Tv of 2.30 inside
+the benchmark regions and 1.44 outside. The step is needed for two
+reasons: it removes the regions where errors concentrate, and it makes
+every remaining candidate checkable against the truth sets (Step 6).</p>
+<p><strong>Filter 4, impact:</strong> at least one <code>HIGH</code> or
+<code>MODERATE</code> prediction (Episode 7).</p>
+<p><strong>Filter 5, frequency:</strong> below 1% in gnomAD overall
+<em>and</em> in the Ashkenazi group, or absent. A variant common in the
+population cannot be a new mutation in this child, and is unlikely to
+explain a rare condition. <code>INFO/gnomad_AF="."</code> tests for a
+missing value: no gnomAD record.</p>
+<div id="challenge-predict-the-region-step" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-predict-the-region-step" class="callout-inner">
+<h3 class="callout-title">Challenge: predict the region step</h3>
+<div class="callout-content">
+<p>The region step takes the de novo candidates from 81 to 41, and the
+recessive candidates (next step) from 5,282 to 4,632.</p>
+<ol style="list-style-type: decimal"><li>The trio regions cover most of chromosome 20, yet the de novo step
+loses half its candidates and the recessive step about an eighth. Why
+the difference?</li>
+<li>What would you lose by skipping this step?</li>
+</ol></div>
+</div>
+</div>
+<div id="accordionSolution2" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution2" aria-expanded="false" aria-controls="collapseSolution2">
+  <h4 class="accordion-header" id="headingSolution2"> Show me the solution </h4>
+</button>
+<div id="collapseSolution2" class="accordion-collapse collapse" aria-labelledby="headingSolution2" data-bs-parent="#accordionSolution2">
+<div class="accordion-body">
+<ol style="list-style-type: decimal"><li>Errors are not spread evenly: they concentrate in repeats, segmental
+duplications and the centromere, which lie mostly outside the benchmark
+regions (Episode 6). De novo candidates are selected <em>for</em> being
+inconsistent with the parents, so they are enriched for errors, and many
+sit in those regions. Recessive candidates (child <code>1/1</code>, both
+parents <code>0/1</code>) are consistent with Mendelian inheritance and
+mostly real; they are spread more like ordinary variants.</li>
+<li>You would keep 40 more de novo candidates, most of them in sequence
+where the calls are unreliable and where no benchmark can say whether
+they are right. Skipping the step is defensible only if you can check
+every candidate another way.</li>
+</ol></div>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-4-the-recessive-funnel">Step 4: The recessive funnel<a class="anchor" aria-label="anchor" href="#step-4-the-recessive-funnel"></a></h2>
+<hr class="half-width"><p>The same steps, with a different genotype pattern:</p>
+<!-- kit: interactive 08-trio.sh -->
+<div class="codewrapper sourceCode" id="cb13">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb13-1"><a href="#cb13-1" tabindex="-1" aria-label="code-block-13-1"></a><span class="co"># Recessive: child homozygous ALT, both parents heterozygous; same evidence, regions, impact and frequency</span></span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1" aria-label="code-block-13-2"></a><span class="ex">bcftools</span> view <span class="at">-i</span> <span class="st">'GT[0]="AA" &amp;&amp; GT[1]="het" &amp;&amp; GT[2]="het"'</span> <span class="at">-Oz</span> <span class="at">-W</span> <span class="at">-o</span> <span class="va">$T</span>/recessive_1_genotype.vcf.gz <span class="va">$T</span>/pass.vcf.gz</span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1" aria-label="code-block-13-3"></a><span class="ex">bcftools</span> view <span class="at">-i</span> <span class="st">'MIN(FMT/GQ)&gt;=20 &amp;&amp; MIN(FMT/DP)&gt;=10'</span> <span class="at">-Oz</span> <span class="at">-W</span> <span class="at">-o</span> <span class="va">$T</span>/recessive_2_evidence.vcf.gz <span class="va">$T</span>/recessive_1_genotype.vcf.gz</span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1" aria-label="code-block-13-4"></a><span class="ex">bcftools</span> view <span class="at">-T</span> resources/truth/trio_v4.2.1_chr20.bed <span class="at">-Oz</span> <span class="at">-W</span> <span class="at">-o</span> <span class="va">$T</span>/recessive_3_regions.vcf.gz <span class="va">$T</span>/recessive_2_evidence.vcf.gz</span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1" aria-label="code-block-13-5"></a><span class="ex">bcftools</span> view <span class="at">-i</span> <span class="st">'INFO/ANN~"[|]HIGH[|]" || INFO/ANN~"[|]MODERATE[|]"'</span> <span class="at">-Oz</span> <span class="at">-W</span> <span class="at">-o</span> <span class="va">$T</span>/recessive_4_impact.vcf.gz <span class="va">$T</span>/recessive_3_regions.vcf.gz</span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1" aria-label="code-block-13-6"></a><span class="ex">bcftools</span> view <span class="at">-i</span> <span class="st">'(INFO/gnomad_AF&lt;0.01 || INFO/gnomad_AF=".") &amp;&amp; (INFO/gnomad_AF_asj&lt;0.01 || INFO/gnomad_AF_asj=".")'</span> <span class="at">-Oz</span> <span class="at">-W</span> <span class="at">-o</span> <span class="va">$T</span>/recessive_5_rare.vcf.gz <span class="va">$T</span>/recessive_4_impact.vcf.gz</span></code></pre>
+</div>
+<p><code>GT[0]="AA" &amp;&amp; GT[1]="het" &amp;&amp; GT[2]="het"</code>:
+the child homozygous for the ALT allele, both parents heterozygous. The
+evidence filter has no parental ALT-read condition: the parents are
+supposed to carry the allele. As in the challenge above, the
+<code>GQ</code> and <code>DP</code> conditions cannot remove anything
+after the genotype mask: <code>GT="AA"</code> and <code>GT="het"</code>
+never match a missing genotype, and every called genotype already has DP
+of at least 10 and GQ of at least 20. So the recessive evidence step
+keeps all 5,282 records. It stays in the funnel to state the evidence we
+require, and it would matter on calls without the mask.</p>
+</section><section><h2 class="section-heading" id="step-5-the-funnel">Step 5: The funnel<a class="anchor" aria-label="anchor" href="#step-5-the-funnel"></a></h2>
+<hr class="half-width"><p>Count the records at each step:</p>
+<!-- kit: interactive 08-trio.sh -->
+<div class="codewrapper sourceCode" id="cb14">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb14-1"><a href="#cb14-1" tabindex="-1" aria-label="code-block-14-1"></a><span class="co"># 9. The funnel: how many records survive each step</span></span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1" aria-label="code-block-14-2"></a><span class="cf">for</span> F <span class="kw">in</span> <span class="va">$T</span>/pass.vcf.gz <span class="va">$T</span>/denovo_<span class="pp">*</span>.vcf.gz <span class="va">$T</span>/recessive_<span class="pp">*</span>.vcf.gz<span class="kw">;</span> <span class="cf">do</span></span>
+<span id="cb14-3"><a href="#cb14-3" tabindex="-1" aria-label="code-block-14-3"></a>    <span class="bu">printf</span> <span class="st">'%s\t%s\n'</span> <span class="st">"</span><span class="va">$(</span><span class="fu">basename</span> <span class="va">$F</span> .vcf.gz<span class="va">)</span><span class="st">"</span> <span class="st">"</span><span class="va">$(</span><span class="ex">bcftools</span> view <span class="at">-H</span> <span class="va">$F</span> <span class="kw">|</span> <span class="fu">wc</span> <span class="at">-l</span><span class="va">)</span><span class="st">"</span></span>
+<span id="cb14-4"><a href="#cb14-4" tabindex="-1" aria-label="code-block-14-4"></a><span class="cf">done</span> <span class="op">&gt;</span> <span class="va">$T</span>/funnel.tsv</span>
+<span id="cb14-5"><a href="#cb14-5" tabindex="-1" aria-label="code-block-14-5"></a><span class="fu">cat</span> <span class="va">$T</span>/funnel.tsv</span></code></pre>
+</div>
+<div id="accordionSpoiler5" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler5" aria-expanded="false" aria-controls="collapseSpoiler5">
+  <h3 class="accordion-header" id="headingSpoiler5">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler5" class="accordion-collapse collapse" aria-labelledby="headingSpoiler5" data-bs-parent="#accordionSpoiler5">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>pass	158151
+denovo_1_genotype	312
+denovo_2_evidence	81
+denovo_3_regions	41
+denovo_4_impact	0
+denovo_5_rare	0
+recessive_1_genotype	5282
+recessive_2_evidence	5282
+recessive_3_regions	4632
+recessive_4_impact	8
+recessive_5_rare	0</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>The frozen values of this workshop, starting from 158,151 PASS
+records:</p>
+<table class="table"><colgroup><col width="25%"><col width="25%"><col width="25%"><col width="25%"></colgroup><thead><tr><th>Step</th>
+<th>Filter</th>
+<th>De novo</th>
+<th>Recessive</th>
+</tr></thead><tbody><tr><td>1 genotype</td>
+<td>child <code>het</code>, parents <code>RR</code> / child
+<code>AA</code>, parents <code>het</code>
+</td>
+<td>312</td>
+<td>5,282</td>
+</tr><tr><td>2 evidence</td>
+<td>GQ at least 20 and DP at least 10 in all three; de novo: no ALT read
+in either parent</td>
+<td>81</td>
+<td>5,282</td>
+</tr><tr><td>3 regions</td>
+<td>inside the trio benchmark regions</td>
+<td>41</td>
+<td>4,632</td>
+</tr><tr><td>4 impact</td>
+<td>at least one <code>HIGH</code> or <code>MODERATE</code>
+prediction</td>
+<td>0</td>
+<td>8</td>
+</tr><tr><td>5 frequency</td>
+<td>below 1% (or absent) in gnomAD overall and in the Ashkenazi
+group</td>
+<td>0</td>
+<td>0</td>
+</tr></tbody></table><p><strong>Both funnels end at zero.</strong> The de novo funnel stops
+at the impact step: none of the 41 candidates is predicted to change a
+protein. That is not surprising: in Episode 7, about 0.2% of HG002’s
+variants had a <code>HIGH</code> or <code>MODERATE</code> most severe
+prediction, so among 41 variants we would expect none. The recessive
+funnel keeps 8 protein-altering variants, and the frequency step removes
+all of them. See why, without gene names:</p>
+<!-- kit: extra 08-trio.sh -->
+<div class="codewrapper sourceCode" id="cb16">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb16-1"><a href="#cb16-1" tabindex="-1" aria-label="code-block-16-1"></a><span class="ex">bcftools</span> +split-vep <span class="at">-a</span> ANN <span class="at">-s</span> worst <span class="at">-f</span> <span class="st">'%POS\t%Annotation\t%INFO/gnomad_AF\t%INFO/gnomad_AF_asj\n'</span> <span class="va">$T</span>/recessive_4_impact.vcf.gz</span></code></pre>
+</div>
+<div id="accordionSpoiler6" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler6" aria-expanded="false" aria-controls="collapseSpoiler6">
+  <h3 class="accordion-header" id="headingSpoiler6">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler6" class="accordion-collapse collapse" aria-labelledby="headingSpoiler6" data-bs-parent="#accordionSpoiler6">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>3044461	missense_variant	0.173277	0.159078
+9307875	missense_variant	0.515974	0.704205
+38241114	missense_variant	0.280701	0.40841
+44051315	missense_variant	0.00573602	0.0414986
+45877334	missense_variant	0.577478	0.510951
+45891598	disruptive_inframe_deletion	0.655311	0.531521
+63562677	missense_variant	0.436001	0.417291
+63562775	missense_variant	0.249412	0.294118</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>The columns are position, most severe consequence, and the gnomAD
+frequencies overall and in the Ashkenazi group. Every one of the 8 is at
+1% or more in gnomAD, so none can be a rare recessive variant:
+homozygous carriers of common protein-altering variants are found in
+many healthy people. This is the reason a frequency filter belongs in
+the funnel.</p>
+<p>Finally, the candidate table that a study would hand on:</p>
+<!-- kit: interactive 08-trio.sh -->
+<div class="codewrapper sourceCode" id="cb18">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb18-1"><a href="#cb18-1" tabindex="-1" aria-label="code-block-18-1"></a><span class="co"># 10. The candidates, with genotypes, depths, alleles and frequencies (child, father, mother)</span></span>
+<span id="cb18-2"><a href="#cb18-2" tabindex="-1" aria-label="code-block-18-2"></a><span class="va">FIELDS</span><span class="op">=</span><span class="st">'%CHROM\t%POS\t%REF\t%ALT\t%Gene_Name\t%Annotation\t%Annotation_Impact\t%HGVS.p\t%INFO/gnomad_AF\t%INFO/gnomad_AF_asj[\t%GT:%DP:%GQ:%AD]\n'</span></span>
+<span id="cb18-3"><a href="#cb18-3" tabindex="-1" aria-label="code-block-18-3"></a><span class="bu">printf</span> <span class="st">'model\tchrom\tpos\tref\talt\tgene\tconsequence\timpact\thgvs_p\tgnomad_af\tgnomad_af_asj\tchild\tfather\tmother\n'</span> <span class="op">&gt;</span> <span class="va">$T</span>/candidates.tsv</span>
+<span id="cb18-4"><a href="#cb18-4" tabindex="-1" aria-label="code-block-18-4"></a><span class="ex">bcftools</span> +split-vep <span class="at">-a</span> ANN <span class="at">-s</span> worst <span class="at">-f</span> <span class="st">"denovo\t</span><span class="va">$FIELDS</span><span class="st">"</span> <span class="va">$T</span>/denovo_5_rare.vcf.gz <span class="op">&gt;&gt;</span> <span class="va">$T</span>/candidates.tsv</span>
+<span id="cb18-5"><a href="#cb18-5" tabindex="-1" aria-label="code-block-18-5"></a><span class="ex">bcftools</span> +split-vep <span class="at">-a</span> ANN <span class="at">-s</span> worst <span class="at">-f</span> <span class="st">"recessive\t</span><span class="va">$FIELDS</span><span class="st">"</span> <span class="va">$T</span>/recessive_5_rare.vcf.gz <span class="op">&gt;&gt;</span> <span class="va">$T</span>/candidates.tsv</span>
+<span id="cb18-6"><a href="#cb18-6" tabindex="-1" aria-label="code-block-18-6"></a><span class="fu">cat</span> <span class="va">$T</span>/candidates.tsv</span></code></pre>
+</div>
+<div id="accordionSpoiler7" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler7" aria-expanded="false" aria-controls="collapseSpoiler7">
+  <h3 class="accordion-header" id="headingSpoiler7">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler7" class="accordion-collapse collapse" aria-labelledby="headingSpoiler7" data-bs-parent="#accordionSpoiler7">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>model	chrom	pos	ref	alt	gene	consequence	impact	hgvs_p	gnomad_af	gnomad_af_asj	child	father	mother</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Only the header: no candidates. An empty list is a result, and a
+common one. Resist the temptation to loosen a threshold until a “nice”
+list appears: that is the trio version of tuning on the test set
+(Episode 6), and the list it produces is the filters’ doing, not the
+data’s.</p>
+</section><section><h2 class="section-heading" id="step-6-the-41-de-novo-candidates">Step 6: The 41 de novo candidates<a class="anchor" aria-label="anchor" href="#step-6-the-41-de-novo-candidates"></a></h2>
+<hr class="half-width"><p>The impact step emptied the de novo list, but the 41 candidates
+before it are worth a closer look: they passed every quality filter,
+inside the regions where the benchmark is confident. Print their
+genotypes and read counts (child, father, mother; <code>AD</code> is REF
+reads, ALT reads):</p>
+<!-- kit: extra 08-trio.sh -->
+<div class="codewrapper sourceCode" id="cb20">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb20-1"><a href="#cb20-1" tabindex="-1" aria-label="code-block-20-1"></a><span class="ex">bcftools</span> query <span class="at">-f</span> <span class="st">'%POS\t%REF\t%ALT[\t%GT:%AD]\n'</span> <span class="va">$T</span>/denovo_3_regions.vcf.gz</span></code></pre>
+</div>
+<div id="accordionSpoiler8" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler8" aria-expanded="false" aria-controls="collapseSpoiler8">
+  <h3 class="accordion-header" id="headingSpoiler8">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler8" class="accordion-collapse collapse" aria-labelledby="headingSpoiler8" data-bs-parent="#accordionSpoiler8">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>2202238	C	T	0/1:16,18	0/0:34,0	0/0:39,0
+3390371	CT	C	0/1:23,12	0/0:44,0	0/0:23,0
+7382842	C	A	0/1:20,12	0/0:43,0	0/0:37,0
+10429137	C	T	0/1:24,15	0/0:44,0	0/0:27,0
+11132316	A	G	0/1:20,15	0/0:26,0	0/0:33,0
+11134213	A	G	0/1:26,15	0/0:28,0	0/0:35,0
+11142983	A	G	0/1:10,17	0/0:30,0	0/0:23,0
+11143024	A	C	0/1:10,16	0/0:33,0	0/0:19,0
+11149076	G	A	0/1:23,11	0/0:42,0	0/0:39,0
+11156729	A	C	0/1:13,19	0/0:27,0	0/0:34,0
+11161443	A	G	0/1:20,6	0/0:41,0	0/0:32,0
+11165407	A	G	0/1:19,21	0/0:32,0	0/0:39,0
+11179079	A	G	0/1:11,9	0/0:43,0	0/0:27,0
+11179241	G	A	0/1:19,21	0/0:33,0	0/0:23,0
+11509736	G	A	0/1:15,15	0/0:38,0	0/0:35,0
+11860952	C	T	0/1:19,14	0/0:30,0	0/0:36,0
+12788964	A	C	0/1:24,23	0/0:31,0	0/0:31,0
+13604987	CATAT	C	0/1:6,3	0/0:4,0	0/0:3,0
+13911267	C	T	0/1:16,20	0/0:33,0	0/0:32,0
+14450826	G	A	0/1:23,6	0/0:42,0	0/0:27,0
+18487989	C	A	0/1:12,11	0/0:33,0	0/0:40,0
+18487996	C	G	0/1:12,10	0/0:33,0	0/0:39,0
+22097831	G	A	0/1:18,13	0/0:49,0	0/0:22,0
+22780342	C	T	0/1:13,15	0/0:33,0	0/0:34,0
+24504452	C	T	0/1:22,14	0/0:39,0	0/0:35,0
+31885288	T	C	0/1:26,4	0/0:27,0	0/0:32,0
+31885293	G	T	0/1:25,4	0/0:28,0	0/0:32,0
+32950012	A	AC	0/1:19,13	0/0:31,0	0/0:19,0
+36652410	C	CA	0/1:30,11	0/0:24,0	0/0:48,0
+42496452	C	T	0/1:22,22	0/0:29,0	0/0:33,0
+44266379	C	A	0/1:27,19	0/0:44,0	0/0:46,0
+47053475	G	T	0/1:37,9	0/0:35,0	0/0:38,0
+47138749	CA	C	0/1:21,10	0/0:45,0	0/0:30,0
+47928416	G	GTT	0/1:4,3	0/0:5,0	0/0:3,0
+55252401	GCACA	G	0/1:24,9	0/0:21,0	0/0:15,0
+55368617	A	G	0/1:17,15	0/0:34,0	0/0:38,0
+55450538	C	T	0/1:14,14	0/0:33,0	0/0:26,0
+57665372	C	T	0/1:18,17	0/0:31,0	0/0:47,0
+57830448	G	T	0/1:20,18	0/0:31,0	0/0:34,0
+59782723	C	T	0/1:24,12	0/0:34,0	0/0:45,0
+63923947	G	A	0/1:16,15	0/0:42,0	0/0:37,0</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="section level3">
+<h3 id="what-the-truth-sets-say">What the truth sets say<a class="anchor" aria-label="anchor" href="#what-the-truth-sets-say"></a></h3>
+<p>The workshop’s reference run looked up each of the 41 in the four
+truth sets (<a href="https://github.com/rcac-bioinformatics/variant-calling/blob/main/maintenance/plan/reference-run.md" class="external-link">reference-run
+memo</a>, section 6, corrected 2026-10-14). A truth set speaks only
+inside its benchmark regions, so the lookup first asks whether the
+position is inside them:</p>
+<table class="table"><colgroup><col width="20%"><col width="20%"><col width="20%"><col width="20%"><col width="20%"></colgroup><thead><tr><th>HG002 v5.0q</th>
+<th>HG002 v4.2.1</th>
+<th>HG003 v4.2.1</th>
+<th>HG004 v4.2.1</th>
+<th>Candidates</th>
+</tr></thead><tbody><tr><td>heterozygous</td>
+<td>heterozygous</td>
+<td>homozygous reference</td>
+<td>homozygous reference</td>
+<td>7</td>
+</tr><tr><td>outside the benchmark regions</td>
+<td>heterozygous</td>
+<td>homozygous reference</td>
+<td>homozygous reference</td>
+<td>27</td>
+</tr><tr><td>homozygous reference</td>
+<td>homozygous reference</td>
+<td>homozygous reference</td>
+<td>homozygous reference</td>
+<td>2</td>
+</tr><tr><td>another allele at the same position</td>
+<td>another allele</td>
+<td>another allele</td>
+<td>another allele</td>
+<td>2</td>
+</tr><tr><td>other combinations</td>
+<td></td>
+<td></td>
+<td></td>
+<td>3</td>
+</tr></tbody></table><p>“Heterozygous” means the position is inside that benchmark’s regions
+and its truth VCF has the child’s allele with a heterozygous genotype;
+“homozygous reference” means inside the regions and absent from the
+truth VCF.</p>
+<p>So <strong>the HG002 v4.2.1 benchmark supports 34 of the 41 as
+variants present in HG002 and absent from both parents</strong>: 31 SNVs
+and 3 indels. The v5.0q benchmark, which NIST recommends for HG002,
+supports 7 of them and contradicts none; the other 27 lie outside its
+benchmark regions, where it makes no claim. In the child, the ALT reads
+of the 34 make up 0.44 of the reads on average (median 0.46), as
+expected for a heterozygous variant present in nearly every cell. In
+both parents, none of the 41 has a single ALT read. Ten of the 34 lie
+within 47 kb of each other, between chr20:11,132,316 and 11,179,241.</p>
+</div>
+<div class="section level3">
+<h3 id="base-rates">Base rates<a class="anchor" aria-label="anchor" href="#base-rates"></a></h3>
+<p>How many germline de novo mutations should we expect? The human
+germline mutation rate is about 1.2 x 10^-8 per base per generation (<a href="https://doi.org/10.1038/nature11396" class="external-link">Kong et al. 2012</a>). A
+child inherits two copies of chromosome 20, each 64.4 Mb:</p>
+<p>1.2 x 10^-8 x 2 x 64,444,167 = 1.55 expected new SNVs on chromosome
+20.</p>
+<p>New mutations arrive independently, so the number in one child
+follows a Poisson distribution, and the chance of none at all is e^-1.55
+= 0.21: about one child in five has no germline de novo SNV on
+chromosome 20. (With the expectation rounded to 1.5, e^-1.5 = 0.22.) The
+benchmark regions cover less than the whole chromosome, so the
+expectation inside them is lower still.</p>
+<p>Against an expectation of about 1.5, <strong>312</strong> candidates
+after the genotype step means that most of them must be errors: the base
+rate, not the filter, should set our level of skepticism. Even 41 is
+more than twenty times the expectation. Yet 34 are supported by the
+v4.2.1 benchmark, and ten of them sit within 47 kb: independent germline
+mutations at a rate of 1.5 per chromosome would almost never cluster
+like that.</p>
+</div>
+<div class="section level3">
+<h3 id="the-dna-comes-from-a-cell-line">The DNA comes from a cell line<a class="anchor" aria-label="anchor" href="#the-dna-comes-from-a-cell-line"></a></h3>
+<p>The HG002 reference DNA is extracted from a lymphoblastoid
+<strong>cell line</strong>, grown from the donor’s blood cells (<a href="https://doi.org/10.1101/2024.12.02.625685" class="external-link">Daniels et
+al. 2024</a>). Mutations that arose early in the life of that cell line,
+or in the cell that founded it, are present in nearly every cell of the
+DNA we sequenced, and they look exactly like germline de novo variants:
+heterozygous in the child, absent from both parents. The truth-supported
+candidates are therefore best described as <strong>real variants in the
+DNA that was sequenced, most likely clonal cell-line mutations rather
+than germline de novo mutations</strong>. Short reads from this DNA
+cannot tell the two origins apart; that would take, for example, DNA
+from another tissue of the donor.</p>
+<p>NIST has published a benchmark of such variants in HG002 (Daniels et
+al. 2024). The authors write that mosaic variants in HG002 may come
+“from mutations that have arisen during the cell line generation and
+culturing process”, and they report variants at allele fractions of 5%
+to 30%, a <strong>subclonal</strong> set. That is the caveat: our
+truth-supported candidates sit near 0.5, a <strong>clonal</strong>
+fraction, so they are not the variants that benchmark describes, and the
+paper does not tell us their origin. It does show that cell-line
+mutations exist in this DNA.</p>
+<p>Which explanation fits the other 7? They include the clearest errors:
+a pair of SNVs 5 bp apart at chr20:31,885,288 and 31,885,293 with only
+about 13% ALT reads in the child and homozygous reference in every truth
+set, and two indels in repeats (an <code>AT</code> repeat and a run of
+<code>T</code>s) with fewer than 10 reads counted in <code>AD</code> in
+every sample (one of them is the second site of Step 7).</p>
+</div>
+</section><section><h2 class="section-heading" id="step-7-inspecting-candidates">Step 7: Inspecting candidates<a class="anchor" aria-label="anchor" href="#step-7-inspecting-candidates"></a></h2>
+<hr class="half-width"><p>A candidate list is a list of positions to look at. We inspect two of
+the 41, chosen to show the two cases above:</p>
+<ul><li>
+<strong>chr20:11,156,729 A&gt;C</strong>, child <code>0/1</code>,
+both parents <code>0/0</code>, heterozygous in both HG002 benchmarks and
+homozygous reference in both parents’ benchmarks: a truth-supported
+candidate, one of the ten in the 47 kb cluster;</li>
+<li>
+<strong>chr20:13,604,987 CATAT&gt;C</strong> (a 4 bp deletion),
+child <code>0/1</code>, both parents <code>0/0</code>, in an
+<code>AT</code> repeat where the truth sets record an inherited 2 bp
+deletion: a candidate made by overlapping indel records.</li>
+</ul><p><code>samtools tview -d T</code> prints the reads as text, as in
+Episode 4: column 21 is the site, <code>.</code> and <code>,</code> are
+reads that match the reference on the forward and reverse strand,
+letters are other bases, and <code>*</code> marks a deleted base. Load
+samtools in the same session and look at the first site in all three
+samples:</p>
+<!-- kit: extra 08-trio.sh -->
+<div class="codewrapper sourceCode" id="cb22">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb22-1"><a href="#cb22-1" tabindex="-1" aria-label="code-block-22-1"></a><span class="ex">module</span> load samtools/1.22.1</span>
+<span id="cb22-2"><a href="#cb22-2" tabindex="-1" aria-label="code-block-22-2"></a><span class="ex">samtools</span> tview <span class="at">-d</span> T <span class="at">-i</span> <span class="at">-w</span> 41 <span class="at">-p</span> chr20:11156709 results/bam/HG002.markdup.bam ref/GRCh38_no_alt.fa</span>
+<span id="cb22-3"><a href="#cb22-3" tabindex="-1" aria-label="code-block-22-3"></a><span class="ex">samtools</span> tview <span class="at">-d</span> T <span class="at">-i</span> <span class="at">-w</span> 41 <span class="at">-p</span> chr20:11156709 results/bam/HG003.markdup.bam ref/GRCh38_no_alt.fa</span>
+<span id="cb22-4"><a href="#cb22-4" tabindex="-1" aria-label="code-block-22-4"></a><span class="ex">samtools</span> tview <span class="at">-d</span> T <span class="at">-i</span> <span class="at">-w</span> 41 <span class="at">-p</span> chr20:11156709 results/bam/HG004.markdup.bam ref/GRCh38_no_alt.fa</span></code></pre>
+</div>
+<div id="accordionSpoiler9" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler9" aria-expanded="false" aria-controls="collapseSpoiler9">
+  <h3 class="accordion-header" id="headingSpoiler9">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler9" class="accordion-collapse collapse" aria-labelledby="headingSpoiler9" data-bs-parent="#accordionSpoiler9">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>  11156711  11156721  11156731
+AAGCTCTTTACATTTACTTAATAGATAAGTATTCTTAGGCA
+....................M....................
+,,,,,, .............C....................
+,,,,,,,,        .........................
+...................    ,,,,,,,,,,,,,,,,,,
+....................C.......
+....................C..............
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,c,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+....................C....................
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+....................C....................
+,,,,,,,,,,,,,,,,,,,,c,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,c,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,c,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,c,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,c,,,,,,,,,t,,,,,,,,,,
+.........................................
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+....................C....................
+.........................................
+....................C....................
+....................C....................
+....................C....................
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,c,,,,,,,,,,,,,,,,,,,,
+.........................................
+.........................................
+.........................................
+.........................................
+,,,,,,,,,,,,,,,,,,,,c,,,,,,,,,,,,,,,,,,,,
+....................C....................
+....................C....................
+,,,,,,,,,,,,,,,,,,,,c,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,c,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,c,,,,,,,,,,,,,,,,,,,,
+....................C....................
+....................C....................
+.........................................
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+  ,,,,,,,,,,,,,,,,,,c,,,,,,,,,,,,,,,,,,,,
+                       ,,,,,,,,,,,,,,,,,,
+                       ,,,,,,,,,,,,,,,,,,
+  11156711  11156721  11156731
+AAGCTCTTTACATTTACTTAATAGATAAGTATTCTTAGGCA
+.........................................
+..,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+...         ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,       ,,,,,,,,,,,,,,,,,,,,,,,,
+............              ...............
+................          ,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,        ............
+......................                  .
+,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+.........................................
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+.........................................
+.........................................
+.........................................
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+.........................................
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,t,,
+.........................................
+.........................................
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+  11156711  11156721  11156731
+AAGCTCTTTACATTTACTTAATAGATAAGTATTCTTAGGCA
+.........................................
+,........................................
+,,,,,, ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+.......                              ....
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,                             ..
+...........
+................
+,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,
+.........................
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+.........................................
+.........................................
+.........................................
+.........................................
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+.........................................
+.........................................
+.........................................
+.........................................
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+.........................................
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+.........................................
+.........................................
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+.........................................
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+.........................................
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+.........................................
+.........................................
+.........................................
+.........................................
+ ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+  .......................................</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>In the child, more than half of the reads in column 21 carry
+<code>C</code> (upper case on the forward strand, lower case on the
+reverse); in the father and the mother, every read matches the
+reference. Many reads, both strands, an allele fraction near one half,
+and nothing in either parent: what a real heterozygous variant absent
+from the parents looks like. The <code>AD</code> counts of the call are
+lower than the rows here (child 13 REF and 19 ALT, father 27,0, mother
+34,0) because <code>mpileup</code> skips duplicates and counts an
+overlapping read pair once (Episode 5A); <code>tview</code> shows every
+read.</p>
+<p>The same site in IGV:</p>
+<figure style="text-align: center"><img src="../fig/08/igv_chr20_11156729.png" alt="IGV window of 62 bases centered on chr20:11,156,729. A variant track at the top has one blue bar at the center; its genotype rows are blue for HG002 and grey for HG003 and HG004. Three read panels follow. In HG002's panel the reads at the top carry a blue C at the center line and the coverage bar there is split blue and green; the reads below match the reference. In HG003's and HG004's panels every read is grey at the center, with only a few scattered mismatches elsewhere. The reference sequence and a solid blue benchmark-region bar run along the bottom." class="figure mx-auto d-block"><figcaption>
+chr20:11,156,729 A&gt;C in IGV 2.19.2, a de novo candidate supported by
+both HG002 benchmarks (v5.0q and v4.2.1) and one of the ten candidates
+in the 47 kb cluster. Tracks, top to bottom: the filtered trio calls
+(one record; HG002 heterozygous, HG003 and HG004 homozygous reference),
+then coverage and reads of HG002, HG003 and HG004, the reference
+sequence, and the trio benchmark regions. The dashed lines mark the
+site; reads are sorted by their base there. IGV shows every read not
+marked as a duplicate, so its counts can differ from the AD of mpileup
+(Episode 5A). The call: HG002 0/1 with AD 13,19 (DP 32), HG003 0/0 with
+27,0, HG004 0/0 with 34,0.
+</figcaption></figure><p>Now the second site:</p>
+<!-- kit: extra 08-trio.sh -->
+<div class="codewrapper sourceCode" id="cb24">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb24-1"><a href="#cb24-1" tabindex="-1" aria-label="code-block-24-1"></a><span class="ex">samtools</span> tview <span class="at">-d</span> T <span class="at">-i</span> <span class="at">-w</span> 41 <span class="at">-p</span> chr20:13604967 results/bam/HG002.markdup.bam ref/GRCh38_no_alt.fa</span>
+<span id="cb24-2"><a href="#cb24-2" tabindex="-1" aria-label="code-block-24-2"></a><span class="ex">samtools</span> tview <span class="at">-d</span> T <span class="at">-i</span> <span class="at">-w</span> 41 <span class="at">-p</span> chr20:13604967 results/bam/HG003.markdup.bam ref/GRCh38_no_alt.fa</span>
+<span id="cb24-3"><a href="#cb24-3" tabindex="-1" aria-label="code-block-24-3"></a><span class="ex">samtools</span> tview <span class="at">-d</span> T <span class="at">-i</span> <span class="at">-w</span> 41 <span class="at">-p</span> chr20:13604967 results/bam/HG004.markdup.bam ref/GRCh38_no_alt.fa</span></code></pre>
+</div>
+<div id="accordionSpoiler10" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler10" aria-expanded="false" aria-controls="collapseSpoiler10">
+  <h3 class="accordion-header" id="headingSpoiler10">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler10" class="accordion-collapse collapse" aria-labelledby="headingSpoiler10" data-bs-parent="#accordionSpoiler10">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>    13604971  13604981  13604991
+GTCTACATAAAGACATAATACATATATATATATATATATAT
+.........................................
+........  ,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+,,,,,,,,,  ..........**..................
+,,,,,,,,,               ,,,,,,,,,,,,,,,,,
+...............          ,,,,,,,,,,,,,,,,
+................         ,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,      ,,,,,,,,,,,,,
+.........T.............          ,,,,,,,,
+................................       ,,
+.....................................
+......................................
+.........................................
+.....................**..................
+.....................**..................
+.....................****................
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+.....................**..................
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+...A.........T.......**.............A....
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+,,a,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+.....................**..................
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+,,a,,a,,,,,,,,,,,,,**,a,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+.....................****................
+.....................**..................
+.....................**..................
+,,,,,,,,,,,,,,,,,,,,,****,,,,,,,,,,,,,,,,
+.....................**..................
+   ..................**..................
+    13604971  13604981  13604991
+GTCTACATAAAGACATAATACATATATATATATATATATAT
+.........................................
+.....         ,,,,,,,**,,,,,,,,,,,,,,,,,,
+..........      ,,,,,**,,,,,,,,,,,,,,,,,,
+..........             ,,,,,,,,,,,,,,,,,,
+.................          ,,,,,,,,c,,,,,
+..................          ,,,,,,,,,,,,,
+..................          ,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,               ,,,,,,,,
+..............................   ,,,,,,,,
+..............................    .......
+.................................  ,,,,,,
+.....................................   .
+.........................................
+.........................................
+.....................**..................
+.....................**..................
+.....................**..................
+,,a,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+t,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+.....................**..................
+.....................**..................
+.....................**..................
+.....................**..................
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,t,,,,,,,**,a,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+.....................**..................
+.....................**..................
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+.....................**..................
+,,,,,,,,,,,,,,,,,,,,,**,,,a,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+                                    .....
+                                        ,
+    13604971  13604981  13604991
+GTCTACATAAAGACATAATACATATATATATATATATATAT
+.........................................
+.....        ............................
+,,,,,         .......**..................
+,,,,,                  ,,,,,,,,,,,,,,,,,,
+,,,,,,,                             .....
+,,,,,,,                             ,,,,,
+,,,,,,,                                ,,
+,,,,,,,,,,                             ,,
+,,,,,,,,,,,,
+,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,c,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+.........................................
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+.....................**..................
+.....................**..................
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+...........T.........**..................
+.....................**..................
+.........................................
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+.........................................
+.........................................
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+.........................................
+.....................**..................
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,**,,,,,,,,,,,,,,,,,,</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>The deletion removes <code>ATAT</code> at the start of a run of 13
+<code>AT</code> repeats (the reference line of the output). The truth
+sets record an inherited 2 bp deletion here, inside all their benchmark
+regions: HG002 <code>CAT&gt;C</code> at 13,604,987 with genotype
+<code>1|1</code> (v5.0q), the father, HG003, <code>CAT&gt;C</code> at
+13,604,987 with genotype <code>1/1</code>, and the mother, HG004,
+<code>CAT&gt;CATAT,C</code> at 13,604,987 with genotype
+<code>2/1</code>, one copy of the 2 bp deletion and one 2 bp
+insertion.</p>
+<p>Our calls see that deletion too, in other records at the same
+position. The workshop’s run kit recorded all three records of the
+filtered calls at chr20:13,604,987 (<code>GT</code>, then
+<code>DP</code> and <code>AD</code>):</p>
+<table class="table"><colgroup><col width="25%"><col width="25%"><col width="25%"><col width="25%"></colgroup><thead><tr><th>Record</th>
+<th>HG002 (child)</th>
+<th>HG003 (father)</th>
+<th>HG004 (mother)</th>
+</tr></thead><tbody><tr><td>
+<code>CAT&gt;C</code>, 2 bp deletion</td>
+<td>
+<code>1/0</code>, DP 29, AD 6,20</td>
+<td>
+<code>1/1</code>, DP 31, AD 4,27</td>
+<td>
+<code>1/0</code>, DP 21, AD 3,10</td>
+</tr><tr><td>
+<code>C&gt;CAT</code>, 2 bp insertion</td>
+<td>
+<code>0/0</code>, AD 6,0</td>
+<td>
+<code>0/0</code>, AD 4,0</td>
+<td>
+<code>0/1</code>, AD 3,8</td>
+</tr><tr><td>
+<code>CATAT&gt;C</code>, 4 bp deletion (the candidate)</td>
+<td>
+<code>0/1</code>, AD 6,3</td>
+<td>
+<code>0/0</code>, AD 4,0</td>
+<td>
+<code>0/0</code>, AD 3,0</td>
+</tr></tbody></table><p>For the parents, the first two records agree with the truth sets: the
+father homozygous for the 2 bp deletion, the mother with one 2 bp
+deletion and one 2 bp insertion. For the child, the truth sets record
+two copies of the 2 bp deletion, and our calls one copy plus a 4 bp
+deletion seen in 3 reads.</p>
+<p>Where does the candidate record come from? Before normalization,
+<code>bcftools call</code> wrote <strong>one record</strong> here with
+three ALT alleles (the 2 bp deletion, the 2 bp insertion and the 4 bp
+deletion): child <code>1/3</code>, father <code>1/1</code>, mother
+<code>1/2</code>. <code>bcftools norm -m -any</code> split it into one
+record per ALT allele, and in each record it fills in the reference
+allele for the other ALT alleles (<code>--multi-overlaps</code>, default
+<code>0</code>; Episode 5A, Step 5). So on the 4 bp record the father’s
+<code>1/1</code> and the mother’s <code>1/2</code> both become
+<code>0/0</code>, and the child’s <code>1/3</code> becomes
+<code>0/1</code>: a child heterozygous, both parents reference, exactly
+the de novo pattern. <code>AD</code> keeps only the REF count and that
+record’s ALT count: the father’s 4,0 against a <code>DP</code> of 31
+says that 27 of his reads support another allele, the 2 bp deletion of
+the record above.</p>
+<p>The de novo expression
+<code>GT[0]="het" &amp;&amp; GT[1]="RR" &amp;&amp; GT[2]="RR"</code>
+looks at one record at a time, and cannot see an overlapping allele in a
+neighboring record. Before trusting a de novo call in a repeat, compare
+<code>AD</code> with <code>DP</code> in each parent, and look at the
+other records at the same position.</p>
+<figure style="text-align: center"><img src="../fig/08/igv_chr20_13604987.png" alt="IGV window of 62 bases centered on chr20:13,604,987, where the reference sequence at the bottom turns into a long run of AT repeats. The variant track at the top shows three stacked blue bars of different lengths starting at the site: about four bases, about two bases, and a thin insertion mark. Below it, the genotype rows are blue for HG002 across the longest bar, cyan for HG003 and blue for HG004 over the shorter bar. Coverage dips at the site in all three samples. In HG002's panel most reads have a short black gap labelled 2 at the site and three reads a longer gap labelled 4; in HG003's panel most reads have the gap labelled 2; in HG004's panel the top eight reads carry a purple insertion mark at the site and many others the gap labelled 2. Further from the site some reads end inside the repeat." class="figure mx-auto d-block"><figcaption>
+chr20:13,604,987 in IGV 2.19.2, at the start of an AT repeat. Tracks,
+top to bottom: the filtered trio calls (three overlapping records at
+this position: the 4 bp deletion that became the de novo candidate, the
+2 bp deletion and the 2 bp insertion), then coverage and reads of HG002,
+HG003 and HG004, the reference sequence, and the trio benchmark regions.
+The dashed lines mark the site; reads are sorted by their base there.
+IGV shows every read not marked as a duplicate, so its counts can differ
+from the AD of mpileup (Episode 5A). Most reads of all three samples
+carry the 2 bp deletion that the truth sets record as inherited; a few
+HG002 reads carry the 4 bp deletion, and HG004 reads also carry the 2 bp
+insertion. On the 4 bp record the call is HG002 0/1 with AD 6,3 (DP 29),
+HG003 0/0 with 4,0 (DP 31) and HG004 0/0 with 3,0 (DP 21).
+</figcaption></figure><p>The region step cannot remove this candidate, because the repeat lies
+inside the benchmark regions. The split also defeats the evidence
+filter: after <code>norm</code> the parents keep their
+<code>FORMAT/DP</code> of 31 and 21, so <code>MIN(FMT/DP)&gt;=10</code>
+holds, but on this record their <code>AD</code> is 4,0 and 3,0, so “no
+ALT read in either parent” holds too.</p>
+<div id="discussion-missing-instead-of-reference" class="callout discussion">
+<div class="callout-square">
+<i class="callout-icon" data-feather="message-circle"></i>
+</div>
+<span class="callout-header">Discussion</span>
+<div id="discussion-missing-instead-of-reference" class="callout-inner">
+<h3 class="callout-title">Discussion: missing instead of reference</h3>
+<div class="callout-content">
+<p><code>bcftools norm</code> can fill in the missing allele instead of
+the reference allele when it splits a record:
+<code>--multi-overlaps .</code> instead of the default <code>0</code>.
+The workshop keeps the default (Episode 5A); this variant of the command
+is not run:</p>
+<!-- kit: not-run reference -->
+<div class="codewrapper sourceCode" id="cb26">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb26-1"><a href="#cb26-1" tabindex="-1" aria-label="code-block-26-1"></a><span class="ex">bcftools</span> norm <span class="at">-f</span> ref/GRCh38_no_alt.fa <span class="at">-m</span> <span class="at">-any</span> <span class="at">--multi-overlaps</span> . <span class="at">-Oz</span> <span class="at">-W</span> <span class="at">-o</span> results/vcf/trio.norm.missing.vcf.gz results/vcf/trio.raw.bcf</span></code></pre>
+</div>
+<p>What would it write for the 4 bp record at chr20:13,604,987, and
+would the de novo genotype filter still select it? What would it cost
+elsewhere?</p>
+<div id="accordionSpoiler11" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler11" aria-expanded="false" aria-controls="collapseSpoiler11">
+  <h3 class="accordion-header" id="headingSpoiler11">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> One answer (not tested in the workshop) </h3>
+</button>
+<div id="collapseSpoiler11" class="accordion-collapse collapse" aria-labelledby="headingSpoiler11" data-bs-parent="#accordionSpoiler11">
+<div class="accordion-body">
+<p>On the 4 bp record, the alleles that belong to the other two records
+become missing instead of reference: the father’s <code>1/1</code> and
+the mother’s <code>1/2</code> become <code>./.</code>.
+<code>GT[1]="RR"</code> does not match a missing genotype (Step 3,
+“Missing is not reference”), so the de novo expression no longer selects
+the record. The cost: at every split site, a sample that carries another
+ALT allele gets a partly or fully missing genotype on each record, and
+every count and filter downstream must handle it.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="accordionSpoiler12" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler12" aria-expanded="false" aria-controls="collapseSpoiler12">
+  <h3 class="accordion-header" id="headingSpoiler12">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> Looking at the reads yourself in IGV (self-paced) </h3>
+</button>
+<div id="collapseSpoiler12" class="accordion-collapse collapse" aria-labelledby="headingSpoiler12" data-bs-parent="#accordionSpoiler12">
+<div class="accordion-body">
+<p>IGV (<a href="https://igv.org/doc/desktop/" class="external-link">IGV desktop</a>) shows
+the same reads graphically. It needs a graphical desktop: on the Negishi
+Gateway (Open OnDemand), start the <strong>Desktop</strong> app
+(partition <code>cpu</code>, QoS <code>standby</code>, wall time up to 4
+hours under standby); it takes 2 to 3 minutes to start. In a terminal
+inside that desktop:</p>
+<!-- kit: not-run desktop -->
+<div class="codewrapper sourceCode" id="cb27">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb27-1"><a href="#cb27-1" tabindex="-1" aria-label="code-block-27-1"></a><span class="ex">module</span> load biocontainers</span>
+<span id="cb27-2"><a href="#cb27-2" tabindex="-1" aria-label="code-block-27-2"></a><span class="ex">module</span> load igv/2.19.1</span>
+<span id="cb27-3"><a href="#cb27-3" tabindex="-1" aria-label="code-block-27-3"></a><span class="ex">igv.sh</span> <span class="kw">&amp;</span></span></code></pre>
+</div>
+<!-- TBD(P6 Part C): seconds from igv.sh to the IGV main window (docs/ood_igv_check.md, operator fills it); the only IGV timing in this note (decision 8: IGV runtime n/a, not a timed live job). -->
+<p>Then, in IGV: <strong>Genomes &gt; Load Genome from File</strong> and
+choose <code>ref/GRCh38_no_alt.fa</code> in your workshop directory;
+<strong>File &gt; Load from File</strong> and choose the three BAM files
+in <code>results/bam/</code>,
+<code>results/vcf/trio.filtered.vcf.gz</code> and
+<code>resources/truth/trio_v4.2.1_chr20.bed</code>; type
+<code>chr20:11156699-11156759</code> in the locus box. The module runs
+IGV 2.19.2 (module igv/2.19.1: the version IGV reports at startup). The
+figures in this episode were made the same way, from an IGV batch script
+(<a href="https://igv.org/doc/desktop/UserGuide/tools/batch/" class="external-link">IGV batch
+commands</a>).</p>
+</div>
+</div>
+</div>
+</div>
+<p>Type <code>exit</code> to leave the interactive session.</p>
+<div id="short-on-time" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="short-on-time" class="callout-inner">
+<h3 class="callout-title">Short on time?</h3>
+<div class="callout-content">
+<p>If your annotation or trio session did not finish, copy the annotated
+calls and the trio results from the results copy, and read the outputs
+above:</p>
+<!-- kit: not-run fallback -->
+<div class="codewrapper sourceCode" id="cb28">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb28-1"><a href="#cb28-1" tabindex="-1" aria-label="code-block-28-1"></a><span class="fu">cp</span> /depot/workshop/data/varcall-workshop_results/results/annot/trio.ann.vcf.gz<span class="pp">*</span> <span class="va">$SCRATCH</span>/varcall-workshop/results/annot/</span>
+<span id="cb28-2"><a href="#cb28-2" tabindex="-1" aria-label="code-block-28-2"></a><span class="fu">cp</span> /depot/workshop/data/varcall-workshop_results/results/trio/<span class="pp">*</span>.vcf.gz<span class="pp">*</span> <span class="va">$SCRATCH</span>/varcall-workshop/results/trio/</span>
+<span id="cb28-3"><a href="#cb28-3" tabindex="-1" aria-label="code-block-28-3"></a><span class="fu">cp</span> /depot/workshop/data/varcall-workshop_results/results/trio/<span class="pp">*</span>.tsv <span class="va">$SCRATCH</span>/varcall-workshop/results/trio/</span>
+<span id="cb28-4"><a href="#cb28-4" tabindex="-1" aria-label="code-block-28-4"></a><span class="fu">cp</span> /depot/workshop/data/varcall-workshop_results/results/trio/mendelian2.txt <span class="va">$SCRATCH</span>/varcall-workshop/results/trio/</span></code></pre>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-8-what-the-evidence-supports">Step 8: What the evidence supports<a class="anchor" aria-label="anchor" href="#step-8-what-the-evidence-supports"></a></h2>
+<hr class="half-width"><p>A written interpretation separates two questions that are easy to mix
+up:</p>
+<ol style="list-style-type: decimal"><li>
+<strong>Call quality:</strong> is the variant really in the DNA we
+sequenced? Evidence: reads, genotype quality, depth in every sample, the
+parents’ reads, the region, a truth set if one exists, and in the end an
+independent assay.</li>
+<li>
+<strong>Biological significance:</strong> if it is real, does it
+matter? Evidence: predicted consequence, population frequency, prior
+reports, and, far beyond this workshop, functional and clinical
+studies.</li>
+</ol><p>A template for this analysis:</p>
+<div id="interpretation-template" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="interpretation-template" class="callout-inner">
+<h3 class="callout-title">Interpretation template</h3>
+<div class="callout-content">
+<ul><li>
+<strong>Data:</strong> HG002 (child), HG003 (father), HG004
+(mother); Illumina short reads, chromosome 20 only, about 40x; bcftools
+1.24 calls, filtered as in Episode 6.</li>
+<li>
+<strong>QC:</strong> sample order and relationships checked;
+Mendelian error rate 0.31% of evaluable PASS sites.</li>
+<li>
+<strong>Filters, in order:</strong> genotype pattern; GQ at least 20
+and DP at least 10 in all three samples, and no parental ALT reads (de
+novo); trio benchmark regions; <code>HIGH</code> or
+<code>MODERATE</code> predicted impact (SnpEff, MANE 1.2); gnomAD v4.1
+below 1% overall and in the Ashkenazi group.</li>
+<li>
+<strong>Result:</strong> de novo 312, 81, 41, 0, 0; recessive 5,282,
+5,282, 4,632, 8, 0. No candidate remains.</li>
+<li>
+<strong>Call quality:</strong> 34 of the 41 de novo candidates after
+the region step are supported by the GIAB v4.2.1 benchmark, 7 of them
+also by v5.0q (the other 27 are outside the v5.0q benchmark regions); at
+clonal allele fractions in DNA from a cell line, their origin (germline
+or cell line) cannot be determined from these data.</li>
+<li>
+<strong>Justified conclusion:</strong> with these filters, the data
+contain no rare, protein-altering candidate for either model on
+chromosome 20. Had candidates remained, the justified output would be a
+ranked list for orthogonal validation (for example Sanger sequencing or
+a second technology), with the filters stated.</li>
+<li>
+<strong>Not justified:</strong> any claim of pathogenicity or
+causation, and any statement about the health of the people who provided
+these samples.</li>
+</ul></div>
+</div>
+</div>
+<p>Why so careful, even with a candidate in hand? Healthy people each
+carry about 100 predicted loss-of-function variants, with about 20 genes
+inactivated in both copies (<a href="https://doi.org/10.1126/science.1215040" class="external-link">MacArthur et
+al. 2012</a>). A rare variant that looks damaging is common in a healthy
+genome. It is a reason to look further, not a diagnosis.</p>
+<div id="discussion-one-candidate-left" class="callout discussion">
+<div class="callout-square">
+<i class="callout-icon" data-feather="message-circle"></i>
+</div>
+<span class="callout-header">Discussion</span>
+<div id="discussion-one-candidate-left" class="callout-inner">
+<h3 class="callout-title">Discussion: one candidate left</h3>
+<div class="callout-content">
+<p>Suppose a looser frequency threshold (5% instead of 1%) had left one
+recessive candidate: a <code>MODERATE</code> missense variant,
+homozygous in the child, at 2% in gnomAD’s Ashkenazi group. What would
+you write about it? What would you check before writing anything?</p>
+</div>
+</div>
+</div>
+<div id="accordionSpoiler13" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler13" aria-expanded="false" aria-controls="collapseSpoiler13">
+  <h3 class="accordion-header" id="headingSpoiler13">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> Compound heterozygotes (self-paced, concept only) </h3>
+</button>
+<div id="collapseSpoiler13" class="accordion-collapse collapse" aria-labelledby="headingSpoiler13" data-bs-parent="#accordionSpoiler13">
+<div class="accordion-body">
+<p>A recessive condition can also come from two <em>different</em>
+variants in the same gene, one inherited from each parent: the child is
+heterozygous for both, a <strong>compound heterozygote</strong>. Finding
+them takes a step our funnel does not have: group the child’s
+heterozygous candidates by gene, and keep genes with at least one
+variant from the father (father heterozygous, mother <code>0/0</code>)
+and at least one from the mother (the reverse). The parents’ genotypes
+phase the child’s variants, which is a second advantage of a trio. The
+workshop’s scripts do not include this step.</p>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="confounders-and-common-mistakes">Confounders and common mistakes<a class="anchor" aria-label="anchor" href="#confounders-and-common-mistakes"></a></h2>
+<hr class="half-width"><table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Mistake or confounder</th>
+<th>What it does</th>
+<th>What to do</th>
+</tr></thead><tbody><tr><td>wrong sample order</td>
+<td>a de novo filter selects something else</td>
+<td>
+<code>bcftools query -l</code> against the PED file, every time</td>
+</tr><tr><td>missing genotypes treated as reference</td>
+<td>candidates resting on a parent with no confident genotype</td>
+<td>match <code>RR</code> explicitly; never convert <code>./.</code> to
+<code>0/0</code>
+</td>
+</tr><tr><td>site-level instead of genotype-level evidence</td>
+<td>enough reads at the site, too few in a parent</td>
+<td>
+<code>FMT/DP</code>, <code>FMT/GQ</code> and <code>FMT/AD</code> per
+sample</td>
+</tr><tr><td>low parental coverage</td>
+<td>a heterozygous parent looks <code>0/0</code>
+</td>
+<td>require parental depth and zero parental ALT reads</td>
+</tr><tr><td>deletions and copy-number changes</td>
+<td>apparent Mendelian errors, false homozygosity</td>
+<td>check depth across the region; look at the reads</td>
+</tr><tr><td>repeats, segmental duplications, reference errors</td>
+<td>mis-mapped reads make variants that are not there</td>
+<td>restrict to confident regions; inspect the reads</td>
+</tr><tr><td>parental mosaicism</td>
+<td>a parent carries the variant in some cells, with a few ALT
+reads</td>
+<td>do not dismiss parental ALT reads as noise</td>
+</tr><tr><td>sample swaps</td>
+<td>relationships are not what the PED file says</td>
+<td>check relationships (<code>gtcheck</code>, kinship)</td>
+</tr><tr><td>cell-line DNA</td>
+<td>cell-line mutations look like de novo variants</td>
+<td>know where the DNA came from; validate in another tissue</td>
+</tr><tr><td>global frequency for an Ashkenazi individual</td>
+<td>founder variants look rare</td>
+<td>use the ancestry-matched group as well</td>
+</tr><tr><td>the transcript chosen during annotation</td>
+<td>a variant is coding in one transcript, not another</td>
+<td>know which transcript set you used (MANE here)</td>
+</tr><tr><td>thresholds tuned until a “nice” list appears</td>
+<td>the list reflects the filters, not the data</td>
+<td>set thresholds before looking; report them</td>
+</tr><tr><td>overinterpretation</td>
+<td>a candidate becomes a diagnosis</td>
+<td>separate call quality from significance; validate</td>
+</tr></tbody></table></section><section><h2 class="section-heading" id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a></h2>
 <hr class="half-width"><div id="keypoints1" class="callout keypoints">
 <div class="callout-square">
 <i class="callout-icon" data-feather="key"></i>
@@ -432,7 +1885,24 @@ significance.</li>
 <span class="callout-header">Key Points</span>
 <div class="callout-inner">
 <div class="callout-content">
-<ul><li>TBD(P6)</li>
+<ul><li>Check sample order (<code>bcftools query -l</code>) and
+relationships before any trio filter: genotype expressions name samples
+by column.</li>
+<li>The Mendelian error rate (here 0.31% of evaluable PASS sites) is a
+quality measure that needs a family, not a truth set; de novo variants
+are drawn from the same sites as the errors.</li>
+<li>Missing genotypes are not reference genotypes; evidence filters must
+hold in every sample, at the genotype level.</li>
+<li>Report a funnel: what each filter removed and why. Both funnels here
+end at zero, and an empty list is a valid result.</li>
+<li>Base rates come first: about 1.5 germline de novo SNVs are expected
+on chromosome 20, so hundreds of naive candidates are almost all
+errors.</li>
+<li>The truth-supported candidates left after quality filters are real
+in the sequenced DNA but most likely cell-line mutations; reads from
+cell-line DNA cannot settle their origin.</li>
+<li>A candidate list justifies validation, not a statement about
+pathogenicity, causation or anyone’s health.</li>
 </ul></div>
 </div>
 </div>
@@ -500,8 +1970,8 @@ any links that you are not going to use.
   "url": "https://rcac-bioinformatics.github.io/variant-calling/instructor/08-trio-candidate-variants.html",
   "identifier": "https://rcac-bioinformatics.github.io/variant-calling/instructor/08-trio-candidate-variants.html",
   "dateCreated": "2026-10-09",
-  "dateModified": "2026-10-14",
-  "datePublished": "2026-10-14"
+  "dateModified": "2026-10-15",
+  "datePublished": "2026-10-15"
 }
 
   </script><script>

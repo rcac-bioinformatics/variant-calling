@@ -508,7 +508,37 @@ and site filters give higher precision at that recall than any QUAL
 threshold alone.
 </figcaption></figure><hr></section><section id="07-annotation"><h2 class="section-heading"><a href="07-annotation.html">7. Annotating variants</a></h2>
 <hr class="half-width"></section><section id="08-trio-candidate-variants"><h2 class="section-heading"><a href="08-trio-candidate-variants.html">8. Application: candidate variants in a family trio</a></h2>
-<hr class="half-width"></section>
+<hr class="half-width">
+<h3 id="08-trio-candidate-variants-figure-1">Figure 1</h3>
+<p aria-hidden="true">Image 1 of 1: ‘IGV window of 62 bases centered on chr20:11,156,729. A variant track at the top has one blue bar at the center; its genotype rows are blue for HG002 and grey for HG003 and HG004. Three read panels follow. In HG002's panel the reads at the top carry a blue C at the center line and the coverage bar there is split blue and green; the reads below match the reference. In HG003's and HG004's panels every read is grey at the center, with only a few scattered mismatches elsewhere. The reference sequence and a solid blue benchmark-region bar run along the bottom.’</p>
+<figure style="text-align: center"><img src="fig/08/igv_chr20_11156729.png" alt="IGV window of 62 bases centered on chr20:11,156,729. A variant track at the top has one blue bar at the center; its genotype rows are blue for HG002 and grey for HG003 and HG004. Three read panels follow. In HG002's panel the reads at the top carry a blue C at the center line and the coverage bar there is split blue and green; the reads below match the reference. In HG003's and HG004's panels every read is grey at the center, with only a few scattered mismatches elsewhere. The reference sequence and a solid blue benchmark-region bar run along the bottom." class="figure mx-auto d-block"><figcaption>
+chr20:11,156,729 A&gt;C in IGV 2.19.2, a de novo candidate supported by
+both HG002 benchmarks (v5.0q and v4.2.1) and one of the ten candidates
+in the 47 kb cluster. Tracks, top to bottom: the filtered trio calls
+(one record; HG002 heterozygous, HG003 and HG004 homozygous reference),
+then coverage and reads of HG002, HG003 and HG004, the reference
+sequence, and the trio benchmark regions. The dashed lines mark the
+site; reads are sorted by their base there. IGV shows every read not
+marked as a duplicate, so its counts can differ from the AD of mpileup
+(Episode 5A). The call: HG002 0/1 with AD 13,19 (DP 32), HG003 0/0 with
+27,0, HG004 0/0 with 34,0.
+</figcaption></figure><hr>
+<h3 id="08-trio-candidate-variants-figure-2">Figure 2</h3>
+<p aria-hidden="true">Image 1 of 1: ‘IGV window of 62 bases centered on chr20:13,604,987, where the reference sequence at the bottom turns into a long run of AT repeats. The variant track at the top shows three stacked blue bars of different lengths starting at the site: about four bases, about two bases, and a thin insertion mark. Below it, the genotype rows are blue for HG002 across the longest bar, cyan for HG003 and blue for HG004 over the shorter bar. Coverage dips at the site in all three samples. In HG002's panel most reads have a short black gap labelled 2 at the site and three reads a longer gap labelled 4; in HG003's panel most reads have the gap labelled 2; in HG004's panel the top eight reads carry a purple insertion mark at the site and many others the gap labelled 2. Further from the site some reads end inside the repeat.’</p>
+<figure style="text-align: center"><img src="fig/08/igv_chr20_13604987.png" alt="IGV window of 62 bases centered on chr20:13,604,987, where the reference sequence at the bottom turns into a long run of AT repeats. The variant track at the top shows three stacked blue bars of different lengths starting at the site: about four bases, about two bases, and a thin insertion mark. Below it, the genotype rows are blue for HG002 across the longest bar, cyan for HG003 and blue for HG004 over the shorter bar. Coverage dips at the site in all three samples. In HG002's panel most reads have a short black gap labelled 2 at the site and three reads a longer gap labelled 4; in HG003's panel most reads have the gap labelled 2; in HG004's panel the top eight reads carry a purple insertion mark at the site and many others the gap labelled 2. Further from the site some reads end inside the repeat." class="figure mx-auto d-block"><figcaption>
+chr20:13,604,987 in IGV 2.19.2, at the start of an AT repeat. Tracks,
+top to bottom: the filtered trio calls (three overlapping records at
+this position: the 4 bp deletion that became the de novo candidate, the
+2 bp deletion and the 2 bp insertion), then coverage and reads of HG002,
+HG003 and HG004, the reference sequence, and the trio benchmark regions.
+The dashed lines mark the site; reads are sorted by their base there.
+IGV shows every read not marked as a duplicate, so its counts can differ
+from the AD of mpileup (Episode 5A). Most reads of all three samples
+carry the 2 bp deletion that the truth sets record as inherited; a few
+HG002 reads carry the 4 bp deletion, and HG004 reads also carry the 2 bp
+insertion. On the 4 bp record the call is HG002 0/1 with AD 6,3 (DP 29),
+HG003 0/0 with 4,0 (DP 31) and HG004 0/0 with 3,0 (DP 21).
+</figcaption></figure><hr></section>
 </div>
     </main>
 </div>
@@ -558,8 +588,8 @@ threshold alone.
   "url": "https://rcac-bioinformatics.github.io/variant-calling/images.html",
   "identifier": "https://rcac-bioinformatics.github.io/variant-calling/images.html",
   "dateCreated": "2026-10-09",
-  "dateModified": "2026-10-14",
-  "datePublished": "2026-10-14"
+  "dateModified": "2026-10-15",
+  "datePublished": "2026-10-15"
 }
 
   </script><script>

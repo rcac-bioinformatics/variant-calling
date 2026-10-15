@@ -271,14 +271,14 @@
 
     <div id="flush-collapsecurrent" class="accordion-collapse collapse show" data-bs-parent="#accordionFlushcurrent">
       <div class="accordion-body">
-        <ul><li><a href="#consequence-annotation-with-snpeff">Consequence annotation with SnpEff</a></li>
-<li><a href="#reading-the-ann-field">Reading the ANN field</a></li>
-<li><a href="#impact-classes-and-transcripts">Impact classes and transcripts</a></li>
-<li><a href="#population-allele-frequencies-from-gnomad">Population allele frequencies from gnomAD</a></li>
-<li><a href="#ancestry-matched-frequencies">Ancestry-matched frequencies</a></li>
-<li><a href="#filtering-and-tabulating-annotated-variants">Filtering and tabulating annotated variants</a></li>
+        <ul><li><a href="#introduction">Introduction</a></li>
+<li><a href="#step-1-submit-the-annotation-job">Step 1: Submit the annotation job</a></li>
+<li><a href="#what-snpeff-predicts">What SnpEff predicts</a></li>
+<li><a href="#step-2-tables-by-impact-and-frequency">Step 2: Tables by impact and frequency</a></li>
+<li><a href="#step-3-population-frequencies-and-ancestry">Step 3: Population frequencies and ancestry</a></li>
 <li><a href="#clinvar-and-its-limits">ClinVar and its limits</a></li>
-<li><a href="#annotation-caveats">Annotation caveats</a></li>
+<li><a href="#common-problems">Common problems</a></li>
+<li><a href="#summary">Summary</a></li>
         </ul></div><!--/div.accordion-body-->
     </div><!--/div.accordion-collapse-->
 
@@ -352,7 +352,7 @@
       </div>
       <hr></nav><main id="main-content" class="main-content"><div class="container lesson-content">
         <h1>7. Annotating variants</h1>
-        <p>Last updated on 2026-10-14 |
+        <p>Last updated on 2026-10-15 |
 
         <a href="https://github.com/rcac-bioinformatics/variant-calling/edit/main/episodes/07-annotation.Rmd" class="external-link">Edit this page <i aria-hidden="true" data-feather="edit"></i></a></p>
 
@@ -396,26 +396,923 @@ HGVS).</li>
 </div>
 </div>
 </div>
+<section><h2 class="section-heading" id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a></h2>
+<hr class="half-width"><p>After Episode 6 we have calls we trust, with labels for the ones we
+do not. A call says <em>where</em> the genome differs from the reference
+and <em>which</em> genotype each person has. It does not say what the
+difference might do, or whether it is common. Annotation adds both:</p>
+<ul><li>a <strong>predicted consequence</strong> for each variant: which
+gene and transcript it falls in, and what it would change in the
+transcript or the protein;</li>
+<li>a <strong>population allele frequency</strong>: how often the same
+allele is seen in a large reference population.</li>
+</ul><p>Both are predictions and summaries made by other people’s tools and
+data. They help us sort variants, and Episode 8 uses them to narrow a
+list of candidates. They are not measurements of what a variant does in
+a person.</p>
+<div id="before-you-start" class="callout prereq">
+<div class="callout-square">
+<i class="callout-icon" data-feather="check"></i>
+</div>
+<span class="callout-header">Prerequisite</span>
+<div id="before-you-start" class="callout-inner">
+<h3 class="callout-title">Before you start</h3>
+<div class="callout-content">
+<p>You need <code>results/vcf/trio.filtered.vcf.gz</code> and its index
+from Episode 6, and the script <code>scripts/annotate.sh</code>. If you
+do not have the filtered calls, use the “Short on time?” copy in Episode
+6, Step 3.</p>
+</div>
+</div>
+</div>
 <div id="accordionInstructor1" class="accordion instructor-note accordion-flush">
 <div class="accordion-item">
 <button class="accordion-button instructor-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInstructor1" aria-expanded="false" aria-controls="collapseInstructor1">
   <h3 class="accordion-header" id="headingInstructor1">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="edit-2"></i></div> Instructor Note </h3>
 </button>
-<div id="collapseInstructor1" class="accordion-collapse collapse" aria-labelledby="headingInstructor1" data-bs-parent="#accordionInstructor1">
+<div id="collapseInstructor1" class="accordion-collapse collapse" data-bs-parent="#accordionInstructor1" aria-labelledby="headingInstructor1">
 <div class="accordion-body">
-<p>Stub: content arrives in phase P6.</p>
+<p>Live path (40 minutes; plan section 4, with SnpEff running in the
+background):</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Minutes</th>
+<th>Section</th>
+<th>Live or self-paced</th>
+</tr></thead><tbody><tr><td>3</td>
+<td>Step 1: submit <code>annotate.sh</code>
+</td>
+<td>live</td>
+</tr><tr><td>7</td>
+<td>While it runs: what the script does; why the database must match the
+reference</td>
+<td>live</td>
+</tr><tr><td>8</td>
+<td>What SnpEff predicts: consequences, impact classes, the ANN field,
+transcripts</td>
+<td>live</td>
+</tr><tr><td>10</td>
+<td>Step 2: the tables session, the flood of MODIFIER annotations, HIGH
+and MODERATE counts</td>
+<td>live</td>
+</tr><tr><td>7</td>
+<td>Step 3: frequencies and ancestry; challenge “One missense variant,
+two frequencies”</td>
+<td>live</td>
+</tr><tr><td>5</td>
+<td>ClinVar and the limits of annotation; key points</td>
+<td>live</td>
+</tr></tbody></table><p>Self-paced: the challenges “How many HIGH-impact variants?” and
+“Predict, then check: ANN entries”, the callout on staged databases, and
+the common problems table. If <code>annotate.sh</code> has not finished
+when Step 2 starts, use the “Short on time?” copy.</p>
 </div>
 </div>
 </div>
 </div>
-<section><h2 class="section-heading" id="consequence-annotation-with-snpeff">Consequence annotation with SnpEff<a class="anchor" aria-label="anchor" href="#consequence-annotation-with-snpeff"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="reading-the-ann-field">Reading the ANN field<a class="anchor" aria-label="anchor" href="#reading-the-ann-field"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="impact-classes-and-transcripts">Impact classes and transcripts<a class="anchor" aria-label="anchor" href="#impact-classes-and-transcripts"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="population-allele-frequencies-from-gnomad">Population allele frequencies from gnomAD<a class="anchor" aria-label="anchor" href="#population-allele-frequencies-from-gnomad"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="ancestry-matched-frequencies">Ancestry-matched frequencies<a class="anchor" aria-label="anchor" href="#ancestry-matched-frequencies"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="filtering-and-tabulating-annotated-variants">Filtering and tabulating annotated variants<a class="anchor" aria-label="anchor" href="#filtering-and-tabulating-annotated-variants"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="clinvar-and-its-limits">ClinVar and its limits<a class="anchor" aria-label="anchor" href="#clinvar-and-its-limits"></a></h2>
-<hr class="half-width"></section><section><h2 class="section-heading" id="annotation-caveats">Annotation caveats<a class="anchor" aria-label="anchor" href="#annotation-caveats"></a></h2>
+</section><section><h2 class="section-heading" id="step-1-submit-the-annotation-job">Step 1: Submit the annotation job<a class="anchor" aria-label="anchor" href="#step-1-submit-the-annotation-job"></a></h2>
+<hr class="half-width"><p>Annotation of the whole trio file takes a few minutes, so we submit
+it first and talk about what it does while it runs. This is
+<code>scripts/annotate.sh</code>:</p>
+<!-- kit: script annotate.sh -->
+<div class="codewrapper sourceCode" id="cb1">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1" aria-label="code-block-1-1"></a><span class="co">#!/bin/bash</span></span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1" aria-label="code-block-1-2"></a><span class="co">#SBATCH --nodes=1</span></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1" aria-label="code-block-1-3"></a><span class="co">#SBATCH --ntasks=1</span></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1" aria-label="code-block-1-4"></a><span class="co">#SBATCH --cpus-per-task=4</span></span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1" aria-label="code-block-1-5"></a><span class="co">#SBATCH --account=rcac</span></span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1" aria-label="code-block-1-6"></a><span class="co">#SBATCH --qos=standby</span></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1" aria-label="code-block-1-7"></a><span class="co">#SBATCH --partition=cpu</span></span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1" aria-label="code-block-1-8"></a><span class="co">#SBATCH --time=01:00:00</span></span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1" aria-label="code-block-1-9"></a><span class="co">#SBATCH --job-name=annotate</span></span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1" aria-label="code-block-1-10"></a><span class="co">#SBATCH --output=cluster-%x.%j.out</span></span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1" aria-label="code-block-1-11"></a><span class="co">#SBATCH --error=cluster-%x.%j.err</span></span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1" aria-label="code-block-1-12"></a></span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1" aria-label="code-block-1-13"></a><span class="ex">module</span> load biocontainers</span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1" aria-label="code-block-1-14"></a><span class="ex">module</span> load snpeff/5.3.0a</span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1" aria-label="code-block-1-15"></a><span class="ex">module</span> load bcftools/1.24</span>
+<span id="cb1-16"><a href="#cb1-16" tabindex="-1" aria-label="code-block-1-16"></a></span>
+<span id="cb1-17"><a href="#cb1-17" tabindex="-1" aria-label="code-block-1-17"></a><span class="va">WORK</span><span class="op">=</span><span class="va">$SCRATCH</span>/varcall-workshop</span>
+<span id="cb1-18"><a href="#cb1-18" tabindex="-1" aria-label="code-block-1-18"></a><span class="va">OUTDIR</span><span class="op">=</span><span class="va">$WORK</span>/results/annot</span>
+<span id="cb1-19"><a href="#cb1-19" tabindex="-1" aria-label="code-block-1-19"></a><span class="va">GNOMAD</span><span class="op">=</span><span class="va">$WORK</span>/resources/gnomad/gnomad.genomes.v4.1.chr20.af.vcf.gz</span>
+<span id="cb1-20"><a href="#cb1-20" tabindex="-1" aria-label="code-block-1-20"></a><span class="fu">mkdir</span> <span class="at">-p</span> <span class="va">$OUTDIR</span></span>
+<span id="cb1-21"><a href="#cb1-21" tabindex="-1" aria-label="code-block-1-21"></a></span>
+<span id="cb1-22"><a href="#cb1-22" tabindex="-1" aria-label="code-block-1-22"></a><span class="co"># 1. Predicted consequences with SnpEff (MANE transcripts, Ensembl IDs). The database is</span></span>
+<span id="cb1-23"><a href="#cb1-23" tabindex="-1" aria-label="code-block-1-23"></a><span class="co">#    already downloaded in ref/snpeff_data; -nodownload stops SnpEff from fetching it.</span></span>
+<span id="cb1-24"><a href="#cb1-24" tabindex="-1" aria-label="code-block-1-24"></a><span class="co">#    4 cores bring about 7.6 GB of memory, so the Java heap gets 6 GB.</span></span>
+<span id="cb1-25"><a href="#cb1-25" tabindex="-1" aria-label="code-block-1-25"></a><span class="ex">snpEff</span> <span class="at">-Xmx6g</span> ann <span class="at">-nodownload</span> <span class="dt">\</span></span>
+<span id="cb1-26"><a href="#cb1-26" tabindex="-1" aria-label="code-block-1-26"></a>    <span class="at">-dataDir</span> <span class="va">$WORK</span>/ref/snpeff_data <span class="dt">\</span></span>
+<span id="cb1-27"><a href="#cb1-27" tabindex="-1" aria-label="code-block-1-27"></a>    <span class="at">-stats</span> <span class="va">$OUTDIR</span>/snpEff_summary.html <span class="dt">\</span></span>
+<span id="cb1-28"><a href="#cb1-28" tabindex="-1" aria-label="code-block-1-28"></a>    <span class="at">-csvStats</span> <span class="va">$OUTDIR</span>/snpEff_summary.csv <span class="dt">\</span></span>
+<span id="cb1-29"><a href="#cb1-29" tabindex="-1" aria-label="code-block-1-29"></a>    GRCh38.mane.1.2.ensembl <span class="dt">\</span></span>
+<span id="cb1-30"><a href="#cb1-30" tabindex="-1" aria-label="code-block-1-30"></a>    <span class="va">$WORK</span>/results/vcf/trio.filtered.vcf.gz <span class="dt">\</span></span>
+<span id="cb1-31"><a href="#cb1-31" tabindex="-1" aria-label="code-block-1-31"></a>  <span class="kw">|</span> <span class="ex">bcftools</span> view <span class="at">-Oz</span> <span class="at">-W</span> <span class="at">-o</span> <span class="va">$OUTDIR</span>/trio.snpeff.vcf.gz</span>
+<span id="cb1-32"><a href="#cb1-32" tabindex="-1" aria-label="code-block-1-32"></a></span>
+<span id="cb1-33"><a href="#cb1-33" tabindex="-1" aria-label="code-block-1-33"></a><span class="co"># 2. Population allele frequencies from gnomAD v4.1 genomes, renamed so they do not clash</span></span>
+<span id="cb1-34"><a href="#cb1-34" tabindex="-1" aria-label="code-block-1-34"></a><span class="co">#    with the AC, AN and AF of our own three samples</span></span>
+<span id="cb1-35"><a href="#cb1-35" tabindex="-1" aria-label="code-block-1-35"></a><span class="ex">bcftools</span> annotate <span class="at">-a</span> <span class="va">$GNOMAD</span> <span class="dt">\</span></span>
+<span id="cb1-36"><a href="#cb1-36" tabindex="-1" aria-label="code-block-1-36"></a>    <span class="at">-c</span> INFO/gnomad_AF:=INFO/AF,INFO/gnomad_AC:=INFO/AC,INFO/gnomad_AN:=INFO/AN,INFO/gnomad_nhomalt:=INFO/nhomalt,INFO/gnomad_AF_asj:=INFO/AF_asj,INFO/gnomad_AC_asj:=INFO/AC_asj,INFO/gnomad_AN_asj:=INFO/AN_asj <span class="dt">\</span></span>
+<span id="cb1-37"><a href="#cb1-37" tabindex="-1" aria-label="code-block-1-37"></a>    <span class="at">-Oz</span> <span class="at">-W</span> <span class="at">-o</span> <span class="va">$OUTDIR</span>/trio.ann.vcf.gz <span class="dt">\</span></span>
+<span id="cb1-38"><a href="#cb1-38" tabindex="-1" aria-label="code-block-1-38"></a>    <span class="va">$OUTDIR</span>/trio.snpeff.vcf.gz</span></code></pre>
+</div>
+<p>Submit it:</p>
+<!-- kit: submit annotate.sh -->
+<div class="codewrapper sourceCode" id="cb2">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1" aria-label="code-block-2-1"></a><span class="bu">cd</span> <span class="va">$SCRATCH</span>/varcall-workshop/scripts</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1" aria-label="code-block-2-2"></a><span class="ex">sbatch</span> annotate.sh</span></code></pre>
+</div>
+<p>In the workshop’s test run the job ran for 102 seconds once it
+started (the reference runs took 86 to 98 seconds), plus the time
+waiting in the queue. Check on it with <code>squeue -u $USER</code>.</p>
+<div class="section level3">
+<h3 id="what-the-script-does">What the script does<a class="anchor" aria-label="anchor" href="#what-the-script-does"></a></h3>
+<p><strong>SnpEff</strong> (<a href="https://doi.org/10.4161/fly.19695" class="external-link">Cingolani et al. 2012</a>; <a href="https://pcingola.github.io/SnpEff/" class="external-link">SnpEff manual</a>) compares
+each variant with a database of gene models (exons, introns, coding
+sequence, untranslated regions) and writes its predictions into a new
+INFO field, <code>ANN</code>. The parts of the command:</p>
+<ul><li>
+<strong><code>ann</code></strong> annotates a VCF;
+<strong><code>GRCh38.mane.1.2.ensembl</code></strong> names the
+database: gene models for the GRCh38 reference, restricted to MANE
+transcripts (below), with Ensembl identifiers.</li>
+<li>
+<strong><code>-dataDir $WORK/ref/snpeff_data</code></strong> points
+SnpEff to the copy of that database prepared for the workshop (a link
+into the shared reference folder, like the FASTA), and
+<strong><code>-nodownload</code></strong> tells SnpEff not to download a
+database it cannot find. With both, every learner and every run uses the
+same database files, and a wrong path is an error instead of a silent
+download of whatever version the server holds that day.</li>
+<li>
+<strong><code>-Xmx6g</code></strong> sets the maximum Java heap.
+SnpEff runs in Java, and Java never uses more heap than
+<code>-Xmx</code> allows. A job on Negishi gets memory with its cores,
+about 1.96 GiB per core on the cpu nodes (recorded by the workshop’s run
+kit), so 4 cores give about 7.9 GiB: room for a 6 GB heap plus Java’s
+own overhead.</li>
+<li>
+<strong><code>-stats</code></strong> and
+<strong><code>-csvStats</code></strong> write a summary report (HTML for
+a browser, CSV for the command line).</li>
+<li>The output goes through a pipe to
+<strong><code>bcftools view -Oz -W</code></strong>, which compresses and
+indexes it.</li>
+</ul><p><strong><code>bcftools annotate -a</code></strong> then copies fields
+from a second VCF, the gnomAD subset, into our records where position,
+REF and ALT match. <code>-c NEW:=OLD</code> copies the gnomAD field
+<code>OLD</code> under the new name <code>NEW</code>: gnomAD’s
+<code>AF</code> becomes <code>gnomad_AF</code>. The renaming matters
+because our VCF already has <code>AC</code>, <code>AN</code> and
+<code>AF</code> fields, computed by <code>bcftools call</code> from our
+three samples; copying gnomAD’s <code>AF</code> under the same name
+would overwrite ours, and nobody reading the file could tell which was
+which.</p>
+</div>
+<div class="section level3">
+<h3 id="the-database-must-match-the-reference">The database must match the reference<a class="anchor" aria-label="anchor" href="#the-database-must-match-the-reference"></a></h3>
+<p>SnpEff places a variant by its chromosome name and position. Those
+only mean something together with the reference they were measured on
+(Episode 2): position 44,337,201 on chromosome 20 of GRCh38 and position
+44,337,201 of GRCh37 point to different places in the genome. A database
+built for another assembly would put variants into the wrong genes, or
+report positions that do not exist. The same goes for gnomAD: the staged
+subset
+(<code>resources/gnomad/gnomad.genomes.v4.1.chr20.af.vcf.gz</code>)
+comes from gnomAD v4.1 genomes on GRCh38 (<a href="https://gnomad.broadinstitute.org/news/2024-04-gnomad-v4-1/" class="external-link">gnomAD
+v4.1</a>), and <code>bcftools annotate</code> matches by chromosome
+name, position and alleles, so a <code>20</code> against
+<code>chr20</code> mismatch would add nothing at all, silently.</p>
+<div id="why-is-the-database-staged" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="why-is-the-database-staged" class="callout-inner">
+<h3 class="callout-title">Why is the database staged?</h3>
+<div class="callout-content">
+<p>On Negishi the compute nodes can reach the SnpEff download server:
+the workshop’s preparation runs downloaded databases from them. We stage
+the database anyway so that every learner annotates with the same files,
+a run next month gives the same result, and twenty learners do not each
+download the same database during the workshop. On your own cluster,
+check whether compute nodes have internet access before you rely on a
+download inside a job.</p>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="what-snpeff-predicts">What SnpEff predicts<a class="anchor" aria-label="anchor" href="#what-snpeff-predicts"></a></h2>
+<hr class="half-width"><div class="section level3">
+<h3 id="consequences-and-impact-classes">Consequences and impact classes<a class="anchor" aria-label="anchor" href="#consequences-and-impact-classes"></a></h3>
+<p>Each prediction names a <strong>consequence</strong> (SnpEff calls it
+the annotation or effect) with a term from the <strong>Sequence
+Ontology</strong> (<a href="https://github.com/The-Sequence-Ontology/SO-Ontologies" class="external-link">Sequence
+Ontology</a>), a shared vocabulary that tools use for the same idea:
+<code>missense_variant</code> (one amino acid changes to another),
+<code>synonymous_variant</code> (the codon changes, the amino acid does
+not), <code>stop_gained</code>, <code>frameshift_variant</code>,
+<code>splice_region_variant</code>, <code>intron_variant</code>,
+<code>upstream_gene_variant</code>, <code>intergenic_region</code> and
+so on.</p>
+<p>SnpEff groups the consequences into four <strong>impact
+classes</strong>. In the words of the <a href="https://pcingola.github.io/SnpEff/snpeff/inputoutput/" class="external-link">SnpEff
+manual</a>:</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Impact</th>
+<th>SnpEff’s description</th>
+<th>Examples</th>
+</tr></thead><tbody><tr><td><code>HIGH</code></td>
+<td>“high (disruptive) impact in the protein, probably causing protein
+truncation, loss of function”</td>
+<td>
+<code>stop_gained</code>, <code>frameshift_variant</code>, splice
+acceptor or donor</td>
+</tr><tr><td><code>MODERATE</code></td>
+<td>“A non-disruptive variant that might change protein
+effectiveness”</td>
+<td>
+<code>missense_variant</code>, in-frame insertion or deletion</td>
+</tr><tr><td><code>LOW</code></td>
+<td>“Assumed to be mostly harmless or unlikely to change protein
+behavior”</td>
+<td><code>synonymous_variant</code></td>
+</tr><tr><td><code>MODIFIER</code></td>
+<td>“Usually non-coding variants or variants affecting non-coding genes,
+where predictions are difficult”</td>
+<td>
+<code>intron_variant</code>, <code>upstream_gene_variant</code>,
+<code>intergenic_region</code>
+</td>
+</tr></tbody></table><p>The manual adds that “Impact categories must be used with care, they
+were created only to help and simplify the filtering process.”</p>
+</div>
+<div class="section level3">
+<h3 id="the-ann-field">The ANN field<a class="anchor" aria-label="anchor" href="#the-ann-field"></a></h3>
+<p><code>ANN</code> holds one or more predictions, separated by commas.
+Each prediction has 16 sub-fields separated by <code>|</code>; the
+header of the annotated file names them. The ones we use (<a href="https://pcingola.github.io/SnpEff/snpeff/inputoutput/" class="external-link">SnpEff
+manual</a>; <a href="https://pcingola.github.io/SnpEff/adds/VCFannotationformat_v1.0.pdf" class="external-link">ANN
+format specification</a>):</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Position</th>
+<th>Name in the header</th>
+<th>Meaning</th>
+</tr></thead><tbody><tr><td>1</td>
+<td><code>Allele</code></td>
+<td>the ALT allele this prediction is for</td>
+</tr><tr><td>2</td>
+<td><code>Annotation</code></td>
+<td>the consequence (Sequence Ontology term)</td>
+</tr><tr><td>3</td>
+<td><code>Annotation_Impact</code></td>
+<td>
+<code>HIGH</code>, <code>MODERATE</code>, <code>LOW</code> or
+<code>MODIFIER</code>
+</td>
+</tr><tr><td>4</td>
+<td><code>Gene_Name</code></td>
+<td>the gene symbol</td>
+</tr><tr><td>7</td>
+<td><code>Feature_ID</code></td>
+<td>the transcript</td>
+</tr><tr><td>10</td>
+<td><code>HGVS.c</code></td>
+<td>the change in transcript (coding DNA) coordinates, for example
+<code>c.44T&gt;G</code>
+</td>
+</tr><tr><td>11</td>
+<td><code>HGVS.p</code></td>
+<td>the change in the protein, for example <code>p.Phe15Cys</code>;
+empty for variants outside coding sequence</td>
+</tr></tbody></table><p>HGVS is the standard notation for describing sequence variants (<a href="https://hgvs-nomenclature.org/" class="external-link">HGVS nomenclature</a>).
+<code>c.</code> coordinates count along the coding sequence of one
+transcript, so the same genomic variant has a different <code>c.</code>
+name in each transcript it overlaps.</p>
+</div>
+<div class="section level3">
+<h3 id="one-variant-several-predictions">One variant, several predictions<a class="anchor" aria-label="anchor" href="#one-variant-several-predictions"></a></h3>
+<p>A variant can fall in several genes or transcripts at once: inside
+one gene and upstream of its neighbor, or in a region where two genes
+overlap. SnpEff writes one prediction for each, and the manual says a
+variant “can have (and usually has) more than one annotation”. It sorts
+them with the highest impact first.</p>
+<p>The number of transcripts per gene makes this much worse: many genes
+have dozens of annotated transcripts, and a variant in such a gene gets
+one prediction for each. <strong>MANE</strong> (Matched Annotation from
+NCBI and EMBL-EBI) chose one representative transcript per
+protein-coding gene, identical in the RefSeq and Ensembl annotations (<a href="https://doi.org/10.1038/s41586-022-04558-8" class="external-link">Morales et
+al. 2022</a>; <a href="https://www.ncbi.nlm.nih.gov/refseq/MANE/" class="external-link">MANE
+at NCBI</a>). Annotating against MANE transcripts only gives fewer, more
+readable predictions. It does not give exactly one per variant:
+neighboring and overlapping genes still each get their own, and a few
+genes have a second MANE transcript. It also hides consequences in the
+transcripts left out, which may matter in a tissue that uses another
+one.</p>
+</div>
+<div class="section level3">
+<h3 id="a-prediction-is-not-a-demonstrated-effect">A prediction is not a demonstrated effect<a class="anchor" aria-label="anchor" href="#a-prediction-is-not-a-demonstrated-effect"></a></h3>
+<p>SnpEff predicts consequences from the gene model and the genetic code
+alone. It does not know whether the transcript is expressed in a given
+tissue, whether the changed amino acid matters for the protein, or
+whether a predicted loss of function escapes some other way. The manual
+says so itself: “Proper wet-lab validation is required to infer ‘real’
+LOF”. A <code>HIGH</code> label means “this would truncate the protein
+if the gene model is right and the transcript is used”, not “this
+protein is broken”.</p>
+</div>
+</section><section><h2 class="section-heading" id="step-2-tables-by-impact-and-frequency">Step 2: Tables by impact and frequency<a class="anchor" aria-label="anchor" href="#step-2-tables-by-impact-and-frequency"></a></h2>
+<hr class="half-width"><p>When <code>squeue -u $USER</code> no longer lists
+<code>annotate</code>, start an interactive session and look at the new
+header lines:</p>
+<!-- kit: interactive 07-annotation-tables.sh -->
+<div class="codewrapper sourceCode" id="cb3">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1" aria-label="code-block-3-1"></a><span class="ex">sinteractive</span> <span class="at">-A</span> rcac <span class="at">-q</span> standby <span class="at">-p</span> cpu <span class="at">-N</span> 1 <span class="at">-n</span> 4 <span class="at">--time</span><span class="op">=</span>1:00:00</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1" aria-label="code-block-3-2"></a><span class="ex">module</span> load biocontainers</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1" aria-label="code-block-3-3"></a><span class="ex">module</span> load bcftools/1.24</span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1" aria-label="code-block-3-4"></a><span class="bu">cd</span> <span class="va">$SCRATCH</span>/varcall-workshop</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1" aria-label="code-block-3-5"></a><span class="va">ANN</span><span class="op">=</span>results/annot/trio.ann.vcf.gz</span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1" aria-label="code-block-3-6"></a><span class="ex">bcftools</span> view <span class="at">-h</span> <span class="va">$ANN</span> <span class="kw">|</span> <span class="fu">grep</span> <span class="at">-E</span> <span class="st">'^##INFO=&lt;ID=(ANN|gnomad_)'</span> <span class="kw">|</span> <span class="fu">cut</span> <span class="at">-c1-120</span></span></code></pre>
+</div>
+<div id="accordionSpoiler1" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler1" aria-expanded="false" aria-controls="collapseSpoiler1">
+  <h3 class="accordion-header" id="headingSpoiler1">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler1" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler1" aria-labelledby="headingSpoiler1">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code><span><span class="co">##INFO=&lt;ID=ANN,Number=.,Type=String,Description="Functional annotations: 'Allele | Annotation | Annotation_Impact | Gene</span></span>
+<span><span class="co">##INFO=&lt;ID=gnomad_AF,Number=A,Type=Float,Description="Alternate allele frequency"&gt;</span></span>
+<span><span class="co">##INFO=&lt;ID=gnomad_AC,Number=A,Type=Integer,Description="Alternate allele count"&gt;</span></span>
+<span><span class="co">##INFO=&lt;ID=gnomad_AN,Number=1,Type=Integer,Description="Total number of alleles"&gt;</span></span>
+<span><span class="co">##INFO=&lt;ID=gnomad_nhomalt,Number=A,Type=Integer,Description="Count of homozygous individuals"&gt;</span></span>
+<span><span class="co">##INFO=&lt;ID=gnomad_AF_asj,Number=A,Type=Float,Description="Alternate allele frequency in samples in the Ashkenazi Jewish</span></span>
+<span><span class="co">##INFO=&lt;ID=gnomad_AC_asj,Number=A,Type=Integer,Description="Alternate allele count for samples in the Ashkenazi Jewish g</span></span>
+<span><span class="co">##INFO=&lt;ID=gnomad_AN_asj,Number=1,Type=Integer,Description="Total number of alleles in samples in the Ashkenazi Jewish g</span></span></code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>The outputs in this episode leave out the
+<code>[W::bcf_hdr_check_sanity] MQ should be declared as Type=Float</code>
+lines that bcftools prints before them; the Episode 5A callout “MQ
+should be declared as Type=Float” explains them.
+<code>cut -c1-120</code> keeps each line to 120 characters; the
+<code>ANN</code> line goes on to list all 16 sub-fields. The
+<code>gnomad_</code> lines are the fields <code>annotate.sh</code>
+copied, with the descriptions gnomAD wrote for them.</p>
+<p>SnpEff’s summary file records what it processed:</p>
+<!-- kit: extra 07-annotation-tables.sh -->
+<div class="codewrapper sourceCode" id="cb5">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" tabindex="-1" aria-label="code-block-5-1"></a><span class="fu">grep</span> <span class="at">-E</span> <span class="st">'^(Genome|Number_of_variants_processed|Number_of_effects|Warnings|Errors) '</span> results/annot/snpEff_summary.csv</span></code></pre>
+</div>
+<div id="accordionSpoiler2" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler2" aria-expanded="false" aria-controls="collapseSpoiler2">
+  <h3 class="accordion-header" id="headingSpoiler2">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler2" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler2" aria-labelledby="headingSpoiler2">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>Genome , GRCh38.mane.1.2.ensembl
+Warnings , 6682
+Number_of_variants_processed , 185914
+Number_of_effects , 198497</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>All 185,914 records of the filtered file were processed, filtered or
+not; annotation does not look at FILTER.
+<code>snpEff_summary.html</code> holds the same summary with plots; copy
+it to your computer to open it in a browser.</p>
+<div class="section level3">
+<h3 id="hg002s-variants">HG002’s variants<a class="anchor" aria-label="anchor" href="#hg002s-variants"></a></h3>
+<p>The trio file has a record wherever any of the three people has a
+variant. For one person’s variants, keep that person’s column and the
+sites where they carry an ALT allele (as in Episode 6), and keep only
+records that PASS:</p>
+<!-- kit: interactive 07-annotation-tables.sh -->
+<div class="codewrapper sourceCode" id="cb7">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" tabindex="-1" aria-label="code-block-7-1"></a><span class="co"># HG002's variants: PASS sites where the child carries an ALT allele</span></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1" aria-label="code-block-7-2"></a><span class="ex">bcftools</span> view <span class="at">-f</span> PASS <span class="at">-s</span> HG002 <span class="at">-c</span> 1 <span class="at">-Oz</span> <span class="at">-W</span> <span class="at">-o</span> results/annot/HG002.ann.vcf.gz <span class="va">$ANN</span></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1" aria-label="code-block-7-3"></a><span class="ex">bcftools</span> view <span class="at">-H</span> results/annot/HG002.ann.vcf.gz <span class="kw">|</span> <span class="fu">wc</span> <span class="at">-l</span></span></code></pre>
+</div>
+<div id="accordionSpoiler3" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler3" aria-expanded="false" aria-controls="collapseSpoiler3">
+  <h3 class="accordion-header" id="headingSpoiler3">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler3" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler3" aria-labelledby="headingSpoiler3">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code><span><span class="fl">115059</span></span></code></pre>
+</div>
+<p>HG002 has 115,059 PASS variants on chromosome 20.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="section level3">
+<h3 id="the-flood-of-modifier-annotations">The flood of MODIFIER annotations<a class="anchor" aria-label="anchor" href="#the-flood-of-modifier-annotations"></a></h3>
+<p>Count the most severe prediction of each of HG002’s variants.
+<code>bcftools +split-vep</code> reads the <code>ANN</code> field (<a href="https://samtools.github.io/bcftools/howtos/plugin.split-vep.html" class="external-link">split-vep
+documentation</a>): <code>-a ANN</code> names the field,
+<code>-s worst</code> keeps only the most severe prediction per variant,
+and <code>-f</code> prints sub-fields by the names in the header:</p>
+<!-- kit: extra 07-annotation-tables.sh -->
+<div class="codewrapper sourceCode" id="cb9">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" tabindex="-1" aria-label="code-block-9-1"></a><span class="ex">bcftools</span> +split-vep <span class="at">-a</span> ANN <span class="at">-s</span> worst <span class="at">-f</span> <span class="st">'%Annotation_Impact\n'</span> results/annot/HG002.ann.vcf.gz <span class="kw">|</span> <span class="fu">sort</span> <span class="kw">|</span> <span class="fu">uniq</span> <span class="at">-c</span></span></code></pre>
+</div>
+<div id="accordionSpoiler4" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler4" aria-expanded="false" aria-controls="collapseSpoiler4">
+  <h3 class="accordion-header" id="headingSpoiler4">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler4" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler4" aria-labelledby="headingSpoiler4">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>      3 HIGH
+    387 LOW
+    237 MODERATE
+ 114432 MODIFIER</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Almost every variant’s most severe prediction is
+<code>MODIFIER</code>: intronic, intergenic, upstream or downstream of a
+gene. Coding sequence is a small part of chromosome 20, and most
+variation in any genome lies outside it. Across the whole trio file,
+SnpEff wrote 198,497 predictions: 10 <code>HIGH</code>, 348
+<code>MODERATE</code>, 542 <code>LOW</code> and 197,597
+<code>MODIFIER</code> (<code>snpEff_summary.csv</code>; these count
+predictions, not variants). A table of every prediction is therefore
+almost all <code>MODIFIER</code>. To find the variants that might change
+a protein, select on impact first and look at the rest only when you
+have a reason to.</p>
+<p>Before filtering, see how many predictions each variant carries:</p>
+<!-- kit: extra 07-annotation-tables.sh -->
+<div class="codewrapper sourceCode" id="cb11">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" tabindex="-1" aria-label="code-block-11-1"></a><span class="ex">bcftools</span> query <span class="at">-f</span> <span class="st">'%INFO/ANN\n'</span> results/annot/HG002.ann.vcf.gz <span class="kw">|</span> <span class="fu">awk</span> <span class="at">-F,</span> <span class="st">'{ print NF }'</span> <span class="kw">|</span> <span class="fu">sort</span> <span class="at">-n</span> <span class="kw">|</span> <span class="fu">uniq</span> <span class="at">-c</span></span></code></pre>
+</div>
+<div id="accordionSpoiler5" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler5" aria-expanded="false" aria-controls="collapseSpoiler5">
+  <h3 class="accordion-header" id="headingSpoiler5">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler5" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler5" aria-labelledby="headingSpoiler5">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code> 107532 1
+   6800 2
+    691 3
+     32 4
+      4 5</code></pre>
+</div>
+<p>The first column is the number of variants, the second the number of
+predictions each carries (comma-separated entries in <code>ANN</code>).
+Even with one MANE transcript per gene, many variants carry more than
+one.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="section level3">
+<h3 id="high-and-moderate-predictions">HIGH and MODERATE predictions<a class="anchor" aria-label="anchor" href="#high-and-moderate-predictions"></a></h3>
+<p>Count the variants with at least one <code>HIGH</code> and at least
+one <code>MODERATE</code> prediction. The pattern
+<code>[|]HIGH[|]</code> matches <code>HIGH</code> between two
+<code>|</code> characters, so it matches the impact sub-field and not,
+for example, a gene name that contains the letters HIGH:</p>
+<!-- kit: interactive 07-annotation-tables.sh -->
+<div class="codewrapper sourceCode" id="cb13">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb13-1"><a href="#cb13-1" tabindex="-1" aria-label="code-block-13-1"></a><span class="co"># How many carry at least one HIGH or MODERATE prediction</span></span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1" aria-label="code-block-13-2"></a><span class="ex">bcftools</span> view <span class="at">-H</span> <span class="at">-i</span> <span class="st">'INFO/ANN~"[|]HIGH[|]"'</span> results/annot/HG002.ann.vcf.gz <span class="kw">|</span> <span class="fu">wc</span> <span class="at">-l</span></span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1" aria-label="code-block-13-3"></a><span class="ex">bcftools</span> view <span class="at">-H</span> <span class="at">-i</span> <span class="st">'INFO/ANN~"[|]MODERATE[|]"'</span> results/annot/HG002.ann.vcf.gz <span class="kw">|</span> <span class="fu">wc</span> <span class="at">-l</span></span></code></pre>
+</div>
+<div id="accordionSpoiler6" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler6" aria-expanded="false" aria-controls="collapseSpoiler6">
+  <h3 class="accordion-header" id="headingSpoiler6">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler6" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler6" aria-labelledby="headingSpoiler6">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code><span><span class="fl">3</span></span>
+<span><span class="fl">237</span></span></code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>The two counts can overlap: a variant with a <code>HIGH</code>
+prediction in one gene and a <code>MODERATE</code> one in another is
+counted in both. Now write one row per variant, with its most severe
+prediction and the gnomAD frequencies, for the variants whose most
+severe prediction is <code>HIGH</code> or <code>MODERATE</code>:</p>
+<!-- kit: interactive 07-annotation-tables.sh -->
+<div class="codewrapper sourceCode" id="cb15">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" tabindex="-1" aria-label="code-block-15-1"></a><span class="co"># One row per variant: the most severe consequence, with gnomAD frequencies</span></span>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1" aria-label="code-block-15-2"></a><span class="ex">bcftools</span> +split-vep <span class="at">-a</span> ANN <span class="at">-s</span> worst <span class="dt">\</span></span>
+<span id="cb15-3"><a href="#cb15-3" tabindex="-1" aria-label="code-block-15-3"></a>    <span class="at">-f</span> <span class="st">'%CHROM\t%POS\t%REF\t%ALT\t%Gene_Name\t%Annotation\t%Annotation_Impact\t%HGVS.p\t%INFO/gnomad_AF\t%INFO/gnomad_AF_asj\n'</span> <span class="dt">\</span></span>
+<span id="cb15-4"><a href="#cb15-4" tabindex="-1" aria-label="code-block-15-4"></a>    <span class="at">-i</span> <span class="st">'Annotation_Impact="HIGH" || Annotation_Impact="MODERATE"'</span> <span class="dt">\</span></span>
+<span id="cb15-5"><a href="#cb15-5" tabindex="-1" aria-label="code-block-15-5"></a>    results/annot/HG002.ann.vcf.gz <span class="op">&gt;</span> results/annot/HG002.protein_altering.tsv</span>
+<span id="cb15-6"><a href="#cb15-6" tabindex="-1" aria-label="code-block-15-6"></a><span class="fu">wc</span> <span class="at">-l</span> results/annot/HG002.protein_altering.tsv</span></code></pre>
+</div>
+<div id="accordionSpoiler7" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler7" aria-expanded="false" aria-controls="collapseSpoiler7">
+  <h3 class="accordion-header" id="headingSpoiler7">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler7" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler7" aria-labelledby="headingSpoiler7">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>240 results/annot/HG002.protein_altering.tsv</code></pre>
+</div>
+<p>240 of HG002’s variants have a <code>HIGH</code> or
+<code>MODERATE</code> most severe prediction (3 <code>HIGH</code>, 237
+<code>MODERATE</code>): about 0.2% of its 115,059 variants.</p>
+</div>
+</div>
+</div>
+</div>
+<p><code>-i</code> with <code>Annotation_Impact</code> filters on the
+sub-field after <code>-s worst</code> has chosen the prediction, so each
+variant appears at most once. The table has no header line; its columns
+are the fields of <code>-f</code>, in order. A <code>.</code> in the
+last two columns means gnomAD has no record of that allele.</p>
+<div id="challenge-how-many-high-impact-variants" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-how-many-high-impact-variants" class="callout-inner">
+<h3 class="callout-title">Challenge: how many HIGH-impact variants?</h3>
+<div class="callout-content">
+<ol style="list-style-type: decimal"><li>How many of HG002’s variants have a <code>HIGH</code> most severe
+prediction? Use the table you just wrote, or <code>-i</code> with
+<code>split-vep</code>.</li>
+<li>Which consequence types are they? Count them without printing gene
+names:</li>
+</ol><!-- kit: extra 07-annotation-tables.sh --><div class="codewrapper sourceCode" id="cb17">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb17-1"><a href="#cb17-1" tabindex="-1" aria-label="code-block-17-1"></a><span class="ex">bcftools</span> +split-vep <span class="at">-a</span> ANN <span class="at">-s</span> worst <span class="at">-f</span> <span class="st">'%Annotation_Impact\t%Annotation\n'</span> <span class="at">-i</span> <span class="st">'Annotation_Impact="HIGH"'</span> results/annot/HG002.ann.vcf.gz <span class="kw">|</span> <span class="fu">sort</span> <span class="kw">|</span> <span class="fu">uniq</span> <span class="at">-c</span></span></code></pre>
+</div>
+<ol start="3" style="list-style-type: decimal"><li>Is a <code>HIGH</code>-impact variant in a healthy person
+surprising?</li>
+</ol></div>
+</div>
+</div>
+<div id="accordionSolution1" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution1" aria-expanded="false" aria-controls="collapseSolution1">
+  <h4 class="accordion-header" id="headingSolution1"> Show me the solution </h4>
+</button>
+<div id="collapseSolution1" class="accordion-collapse collapse" data-bs-parent="#accordionSolution1" aria-labelledby="headingSolution1">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>      1 HIGH	frameshift_variant
+      2 HIGH	splice_acceptor_variant&amp;intron_variant</code></pre>
+</div>
+<ol style="list-style-type: decimal"><li>Three (count the lines above, or
+<code>awk -F'\t' '$7 == "HIGH"' results/annot/HG002.protein_altering.tsv | wc -l</code>).</li>
+<li>The consequence types and their counts are in the output above.</li>
+<li>No. Healthy people carry about 100 predicted loss-of-function
+variants each across the whole genome, about 20 of them with both copies
+affected (<a href="https://doi.org/10.1126/science.1215040" class="external-link">MacArthur et
+al. 2012</a>). A few on one chromosome are expected. Episode 8 returns
+to this.</li>
+</ol></div>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="step-3-population-frequencies-and-ancestry">Step 3: Population frequencies and ancestry<a class="anchor" aria-label="anchor" href="#step-3-population-frequencies-and-ancestry"></a></h2>
+<hr class="half-width"><p><strong>gnomAD</strong>, the Genome Aggregation Database, collects
+sequencing data of hundreds of thousands of people and publishes how
+often each allele is seen (<a href="https://doi.org/10.1038/s41586-020-2308-7" class="external-link">Karczewski et
+al. 2020</a>; <a href="https://gnomad.broadinstitute.org/news/2024-04-gnomad-v4-1/" class="external-link">gnomAD
+v4.1</a>). <code>gnomad_AF</code> is the allele frequency over all
+gnomAD v4.1 genomes. gnomAD also reports frequencies within
+<strong>genetic ancestry groups</strong>, which it assigns from the
+genetic data by comparing each sample with samples of known ancestry;
+one of them is Ashkenazi Jewish, <code>asj</code> (<a href="https://gnomad.broadinstitute.org/help/ancestry" class="external-link">gnomAD help:
+genetic ancestry</a>). <code>annotate.sh</code> copied that group’s
+frequency as <code>gnomad_AF_asj</code>.</p>
+<p>Why does the group matter here? HG002, HG003 and HG004 are an
+Ashkenazi Jewish family (the GIAB Ashkenazi trio). The Ashkenazi Jewish
+population went through a recent bottleneck of about 350 individuals (<a href="https://doi.org/10.1038/ncomms5835" class="external-link">Carmi et al. 2014</a>).
+Variants carried by those founders can be common among their descendants
+and rare everywhere else. Against the global frequency, such a
+<strong>founder variant</strong> looks rare, and a rare-variant filter
+would keep it as interesting. Carmi et al. found that an Ashkenazi
+reference panel was eightfold more effective than a European one at
+filtering benign variants out of Ashkenazi clinical genomes.</p>
+<p>Count HG002’s protein-altering variants that look rare (below 1%, or
+absent from gnomAD), first with the global frequency (column 9), then
+with the Ashkenazi group (column 10):</p>
+<!-- kit: interactive 07-annotation-tables.sh -->
+<div class="codewrapper sourceCode" id="cb19">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb19-1"><a href="#cb19-1" tabindex="-1" aria-label="code-block-19-1"></a><span class="co"># Rare: below 1% in gnomAD overall, or absent from gnomAD; then the same with the Ashkenazi group</span></span>
+<span id="cb19-2"><a href="#cb19-2" tabindex="-1" aria-label="code-block-19-2"></a><span class="fu">awk</span> <span class="at">-F</span><span class="st">'\t'</span> <span class="st">'$9 == "." || $9 &lt; 0.01'</span> results/annot/HG002.protein_altering.tsv <span class="kw">|</span> <span class="fu">wc</span> <span class="at">-l</span></span>
+<span id="cb19-3"><a href="#cb19-3" tabindex="-1" aria-label="code-block-19-3"></a><span class="fu">awk</span> <span class="at">-F</span><span class="st">'\t'</span> <span class="st">'$10 == "." || $10 &lt; 0.01'</span> results/annot/HG002.protein_altering.tsv <span class="kw">|</span> <span class="fu">wc</span> <span class="at">-l</span></span></code></pre>
+</div>
+<div id="accordionSpoiler8" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler8" aria-expanded="false" aria-controls="collapseSpoiler8">
+  <h3 class="accordion-header" id="headingSpoiler8">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler8" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler8" aria-labelledby="headingSpoiler8">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code><span><span class="fl">20</span></span>
+<span><span class="fl">12</span></span></code></pre>
+</div>
+<p>20 variants are rare by the global frequency, 12 by the Ashkenazi
+frequency. 8 variants that look rare in gnomAD as a whole are seen at 1%
+or more in the Ashkenazi group.</p>
+</div>
+</div>
+</div>
+</div>
+<p>The ancestry-matched frequency removed 8 of 20 apparently rare
+candidates. In Episode 8 the frequency filter requires both: below 1%
+globally <em>and</em> in the Ashkenazi group.</p>
+<div class="section level3">
+<h3 id="using-ancestry-labels-with-care">Using ancestry labels with care<a class="anchor" aria-label="anchor" href="#using-ancestry-labels-with-care"></a></h3>
+<p>Ancestry groups in a database are statistical clusters built for one
+purpose, frequency estimates, from the samples that database happens to
+hold. They are not fixed biological categories, and a person’s
+self-description, the database’s group and their genetic ancestry need
+not agree. The US National Academies recommend describing such groups by
+how they were defined, and using them only where they help answer the
+question (<a href="https://doi.org/10.17226/26902" class="external-link">NASEM 2023</a>). Here
+the question is “is this allele common among people whose genomes
+resemble HG002’s?”, and the <code>asj</code> group is the best match
+gnomAD offers. For a person of mixed or unlisted ancestry, the honest
+answer may be that no group fits, and one conservative choice is the
+highest frequency in any group.</p>
+</div>
+<div class="section level3">
+<h3 id="one-missense-variant">One missense variant<a class="anchor" aria-label="anchor" href="#one-missense-variant"></a></h3>
+<p>HG002 carries a missense variant at chr20:44,337,201 (T&gt;G), in the
+gene <em>R3HDML</em>. Look at its row, its genotype, and every
+prediction SnpEff made for it:</p>
+<!-- kit: extra 07-annotation-tables.sh -->
+<div class="codewrapper sourceCode" id="cb21">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb21-1"><a href="#cb21-1" tabindex="-1" aria-label="code-block-21-1"></a><span class="fu">awk</span> <span class="at">-F</span><span class="st">'\t'</span> <span class="st">'$2 == 44337201'</span> results/annot/HG002.protein_altering.tsv</span>
+<span id="cb21-2"><a href="#cb21-2" tabindex="-1" aria-label="code-block-21-2"></a><span class="ex">bcftools</span> query <span class="at">-r</span> chr20:44337201 <span class="at">-f</span> <span class="st">'[%SAMPLE\t%GT\t%AD]\n'</span> results/annot/HG002.ann.vcf.gz</span>
+<span id="cb21-3"><a href="#cb21-3" tabindex="-1" aria-label="code-block-21-3"></a><span class="ex">bcftools</span> query <span class="at">-r</span> chr20:44337201 <span class="at">-f</span> <span class="st">'%INFO/ANN\n'</span> results/annot/HG002.ann.vcf.gz <span class="kw">|</span> <span class="fu">tr</span> <span class="st">','</span> <span class="st">'\n'</span></span></code></pre>
+</div>
+<div id="accordionSpoiler9" class="accordion spoiler-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button spoiler-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSpoiler9" aria-expanded="false" aria-controls="collapseSpoiler9">
+  <h3 class="accordion-header" id="headingSpoiler9">  <div class="note-square"><i aria-hidden="true" class="callout-icon" data-feather="eye"></i></div> What does the output look like? </h3>
+</button>
+<div id="collapseSpoiler9" class="accordion-collapse collapse" data-bs-parent="#accordionSpoiler9" aria-labelledby="headingSpoiler9">
+<div class="accordion-body">
+<div class="codewrapper">
+<h3 class="code-label">OUTPUT<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="output" tabindex="0"><code>chr20	44337201	T	G	R3HDML	missense_variant	MODERATE	p.Phe15Cys	0.100238	0.196542
+HG002	0/1	23,14
+G|missense_variant|MODERATE|R3HDML|ENSG00000101074.5|transcript|ENST00000217043.4|protein_coding|1/5|c.44T&gt;G|p.Phe15Cys|159/1323|44/762|15/253||</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p><code>tr ',' '\n'</code> puts each prediction on its own line.</p>
+<div id="challenge-one-missense-variant-two-frequencies" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-one-missense-variant-two-frequencies" class="callout-inner">
+<h3 class="callout-title">Challenge: one missense variant, two
+frequencies</h3>
+<div class="callout-content">
+<p>Use the row above.</p>
+<ol style="list-style-type: decimal"><li>What does SnpEff predict for this variant, in which impact class?
+What does <code>HGVS.p</code> say?</li>
+<li>How common is the ALT allele in gnomAD overall, and in the Ashkenazi
+group? Roughly how many people in a hundred carry it, in each?</li>
+<li>Would the rare-variant filter of Episode 8 keep it? Would it keep it
+if it used the global frequency only?</li>
+<li>What can you conclude about this variant from the annotation, and
+what not?</li>
+</ol></div>
+</div>
+</div>
+<div id="accordionSolution2" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution2" aria-expanded="false" aria-controls="collapseSolution2">
+  <h4 class="accordion-header" id="headingSolution2"> Show me the solution </h4>
+</button>
+<div id="collapseSolution2" class="accordion-collapse collapse" data-bs-parent="#accordionSolution2" aria-labelledby="headingSolution2">
+<div class="accordion-body">
+<ol style="list-style-type: decimal"><li>A <code>missense_variant</code>, impact <code>MODERATE</code>: one
+amino acid is predicted to change to another (<code>HGVS.p</code> names
+both and the position). HG002’s genotype is in the second line of the
+output: <code>0/1</code>, with <code>AD</code> 23,14 (REF and ALT
+reads).</li>
+<li>Overall allele frequency 0.100238 (10.0%); in the Ashkenazi group
+0.196542 (19.7%). An allele frequency counts chromosomes, not people:
+with frequency <em>p</em>, the share of people with at least one copy is
+1 - (1 - <em>p</em>)^2, about 2<em>p</em> when <em>p</em> is small.</li>
+<li>No in both cases: the allele is far above 1% globally and in the
+Ashkenazi group. This variant shows the opposite case to a founder
+variant: it is common everywhere, more common in the Ashkenazi
+group.</li>
+<li>A common missense variant is, by its frequency alone, unlikely to
+cause a rare, severe condition: too many healthy people carry it. The
+annotation predicts a change in the protein; it says nothing about
+whether the change matters. In ClinVar (next section) this variant had
+no record when the workshop checked (2026-10-14).</li>
+</ol></div>
+</div>
+</div>
+</div>
+<div id="challenge-predict-then-check-ann-entries" class="callout challenge">
+<div class="callout-square">
+<i class="callout-icon" data-feather="zap"></i>
+</div>
+<span class="callout-header">Challenge</span>
+<div id="challenge-predict-then-check-ann-entries" class="callout-inner">
+<h3 class="callout-title">Challenge: predict, then check: ANN
+entries</h3>
+<div class="callout-content">
+<p>Before you look at the third command’s output above: how many entries
+will <code>ANN</code> hold for the missense variant, given one MANE
+transcript per gene? In which order will they come, and which sub-fields
+will be empty in an entry for a neighboring gene?</p>
+</div>
+</div>
+</div>
+<div id="accordionSolution3" class="accordion challenge-accordion accordion-flush">
+<div class="accordion-item">
+<button class="accordion-button solution-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSolution3" aria-expanded="false" aria-controls="collapseSolution3">
+  <h4 class="accordion-header" id="headingSolution3"> Show me the solution </h4>
+</button>
+<div id="collapseSolution3" class="accordion-collapse collapse" data-bs-parent="#accordionSolution3" aria-labelledby="headingSolution3">
+<div class="accordion-body">
+<p>Count the lines of the third command’s output: each line is one
+prediction. SnpEff lists the highest impact first, so the
+<code>missense_variant</code> entry comes first. Any further entries
+belong to other genes or transcripts near the variant (for example
+<code>upstream_gene_variant</code> or
+<code>downstream_gene_variant</code>, impact <code>MODIFIER</code>); for
+those, <code>HGVS.p</code> is empty, because the variant is not in that
+gene’s coding sequence, and the last sub-fields give the distance to the
+gene. One transcript per gene reduces the number of entries; it does not
+reduce it to one.</p>
+</div>
+</div>
+</div>
+</div>
+<p>Type <code>exit</code> to leave the interactive session.</p>
+<div id="short-on-time" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="short-on-time" class="callout-inner">
+<h3 class="callout-title">Short on time?</h3>
+<div class="callout-content">
+<p>If <code>annotate.sh</code> did not finish, copy the annotated trio
+file and its index from the results copy, then run Step 2:</p>
+<!-- kit: not-run fallback -->
+<div class="codewrapper sourceCode" id="cb23">
+<h3 class="code-label">BASH<i aria-hidden="true" data-feather="chevron-left"></i><i aria-hidden="true" data-feather="chevron-right"></i>
+</h3>
+<pre class="sourceCode bash" tabindex="0"><code class="sourceCode bash"><span id="cb23-1"><a href="#cb23-1" tabindex="-1" aria-label="code-block-23-1"></a><span class="fu">cp</span> /depot/workshop/data/varcall-workshop_results/results/annot/trio.ann.vcf.gz<span class="pp">*</span> <span class="va">$SCRATCH</span>/varcall-workshop/results/annot/</span></code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="clinvar-and-its-limits">ClinVar and its limits<a class="anchor" aria-label="anchor" href="#clinvar-and-its-limits"></a></h2>
+<hr class="half-width"><div id="what-clinvar-is-for" class="callout">
+<div class="callout-square">
+<i class="callout-icon" data-feather="bell"></i>
+</div>
+<span class="callout-header">Callout</span>
+<div id="what-clinvar-is-for" class="callout-inner">
+<h3 class="callout-title">What ClinVar is for</h3>
+<div class="callout-content">
+<p><strong>ClinVar</strong> is a public archive at NCBI where clinical
+laboratories, researchers and expert panels submit their interpretations
+of variants, for example “pathogenic”, “benign” or “uncertain
+significance”, for a stated condition (<a href="https://www.ncbi.nlm.nih.gov/clinvar/" class="external-link">ClinVar</a>; <a href="https://doi.org/10.1093/nar/gkx1153" class="external-link">Landrum et al. 2018</a>). It
+is useful for finding out whether anyone has seen a variant before and
+what they concluded.</p>
+<p>Its limits:</p>
+<ul><li>ClinVar holds <strong>submitted interpretations</strong>, not proof.
+Submitters can disagree, and ClinVar shows conflicts instead of
+resolving them. The <strong>review status</strong> (stars) says how much
+review stands behind a record (<a href="https://www.ncbi.nlm.nih.gov/clinvar/docs/review_status/" class="external-link">ClinVar
+review status</a>).</li>
+<li>Most variants have no record at all. Absence means nobody has
+submitted one, not that the variant is harmless.</li>
+<li>Interpretations change as evidence accumulates; record the date you
+checked.</li>
+<li>An interpretation is made for a condition and a context. It is not a
+statement about a particular person.</li>
+</ul><p>The workshop does not annotate with ClinVar, and does not interpret
+any variant of HG002 for health. The one variant we looked up,
+chr20:44,337,201 T&gt;G, had no ClinVar record on 2026-10-14.</p>
+</div>
+</div>
+</div>
+</section><section><h2 class="section-heading" id="common-problems">Common problems<a class="anchor" aria-label="anchor" href="#common-problems"></a></h2>
+<hr class="half-width"><table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Symptom</th>
+<th>Likely cause</th>
+<th>Fix</th>
+</tr></thead><tbody><tr><td>SnpEff stops: database not found</td>
+<td>wrong <code>-dataDir</code>, or a database name that is not in
+it</td>
+<td>check the path and the name; with <code>-nodownload</code> SnpEff
+never fetches a missing database</td>
+</tr><tr><td>every variant is <code>intergenic_region</code>, or errors about
+missing chromosomes</td>
+<td>database for another build, or chromosome names that do not
+match</td>
+<td>use a database for the reference you aligned to; check
+<code>chr20</code> against <code>20</code>
+</td>
+</tr><tr><td>
+<code>java.lang.OutOfMemoryError</code> in the job’s error file</td>
+<td>Java heap (<code>-Xmx</code>) too small for the database, or larger
+than the job’s memory</td>
+<td>raise <code>-Xmx</code> and request more cores (about 1.96 GiB each
+on Negishi), keeping <code>-Xmx</code> below what the cores provide</td>
+</tr><tr><td>
+<code>gnomad_AF</code> is <code>.</code> everywhere</td>
+<td>contig names or build differ between the VCF and the gnomAD
+file</td>
+<td>annotate with a gnomAD file on the same build and contig names</td>
+</tr><tr><td>our own <code>AF</code> changed after annotation</td>
+<td>gnomAD fields copied without renaming</td>
+<td>rename with <code>-c INFO/gnomad_AF:=INFO/AF</code>
+</td>
+</tr><tr><td>a table of thousands of <code>MODIFIER</code> rows</td>
+<td>every prediction printed</td>
+<td>filter on impact (<code>-i</code>), and use <code>-s worst</code>
+for one row per variant</td>
+</tr><tr><td>one variant appears on several rows</td>
+<td>several predictions per variant</td>
+<td>
+<code>-s worst</code>, or count unique positions</td>
+</tr><tr><td>“rare” variants that are common in the person’s population</td>
+<td>global frequency only</td>
+<td>use an ancestry-matched group as well (<code>gnomad_AF_asj</code>
+here)</td>
+</tr></tbody></table><p>In the workshop’s test run, <code>annotate.sh</code> used at most
+2.60 GiB of the 7.9 GiB that 4 cores provide (SLURM’s MaxRSS).</p>
+</section><section><h2 class="section-heading" id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a></h2>
 <hr class="half-width"><div id="keypoints1" class="callout keypoints">
 <div class="callout-square">
 <i class="callout-icon" data-feather="key"></i>
@@ -423,7 +1320,22 @@ HGVS).</li>
 <span class="callout-header">Key Points</span>
 <div class="callout-inner">
 <div class="callout-content">
-<ul><li>TBD(P6)</li>
+<ul><li>SnpEff predicts each variant’s consequence from gene models: a
+Sequence Ontology term, an impact class, the gene, the transcript and
+HGVS names, in the <code>ANN</code> field.</li>
+<li>The database must match the reference build and its chromosome
+names; stage it and use <code>-nodownload</code> so every run uses the
+same files.</li>
+<li>One variant can have several predictions; MANE transcripts reduce,
+but do not remove, them. <code>split-vep -s worst</code> gives one row
+per variant.</li>
+<li>Almost all predictions are <code>MODIFIER</code>: filter on impact
+before you read.</li>
+<li>gnomAD frequencies need the ancestry-matched group as well as the
+global one: founder variants can look rare globally.</li>
+<li>A predicted effect, a frequency and a ClinVar record are evidence of
+different kinds; none of them shows what a variant does in a
+person.</li>
 </ul></div>
 </div>
 </div>
@@ -491,8 +1403,8 @@ any links that you are not going to use.
   "url": "https://rcac-bioinformatics.github.io/variant-calling/instructor/07-annotation.html",
   "identifier": "https://rcac-bioinformatics.github.io/variant-calling/instructor/07-annotation.html",
   "dateCreated": "2026-10-09",
-  "dateModified": "2026-10-14",
-  "datePublished": "2026-10-14"
+  "dateModified": "2026-10-15",
+  "datePublished": "2026-10-15"
 }
 
   </script><script>

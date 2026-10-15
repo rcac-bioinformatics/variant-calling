@@ -329,7 +329,7 @@
       </div>
       <hr></nav><main id="main-content" class="main-content"><div class="container lesson-content">
         <h1>Reference</h1>
-        <p>Last updated on 2026-10-14 |
+        <p>Last updated on 2026-10-15 |
 
         <a href="https://github.com/rcac-bioinformatics/variant-calling/edit/main/learners/reference.md" class="external-link">Edit this page <i aria-hidden="true" data-feather="edit"></i></a></p>
 
@@ -460,6 +460,22 @@
 <li>MANE transcript</li>
 <li>Sequence Ontology term</li>
 <li>Transcript</li>
+<li>Founder variant</li>
+<li>Genetic ancestry group</li>
+<li>Loss-of-function variant</li>
+<li>Predicted effect (as opposed to a demonstrated function)</li>
+</ul></div>
+<div class="section level3">
+<h3 id="family-trio-analysis">Family (trio) analysis<a class="anchor" aria-label="anchor" href="#family-trio-analysis"></a></h3>
+<ul><li>Cell-line mutation (clonal and subclonal)</li>
+<li>Compound heterozygote</li>
+<li>De novo candidate</li>
+<li>Filtering funnel</li>
+<li>Mendelian consistency rate</li>
+<li>Parental mosaicism</li>
+<li>PED file (pedigree)</li>
+<li>Recessive model</li>
+<li>Opposite homozygotes</li>
 </ul></div>
 <div class="section level3">
 <h3 id="running-jobs-on-the-cluster">Running jobs on the cluster<a class="anchor" aria-label="anchor" href="#running-jobs-on-the-cluster"></a></h3>
@@ -550,10 +566,76 @@ UNK, ROC tables): <a href="https://github.com/Illumina/hap.py/blob/master/doc/ha
 <li>FastQC program options (<code>--nogroup</code>): <a href="https://github.com/s-andrews/FastQC/blob/master/fastqc" class="external-link uri">https://github.com/s-andrews/FastQC/blob/master/fastqc</a>;
 adapter list, including the poly-A and poly-G series: <a href="https://github.com/s-andrews/FastQC/blob/master/Configuration/adapter_list.txt" class="external-link uri">https://github.com/s-andrews/FastQC/blob/master/Configuration/adapter_list.txt</a>
 </li>
+</ul></div>
+<div class="section level3">
+<h3 id="sources-cited-in-episodes-7-and-8">Sources cited in Episodes 7 and 8<a class="anchor" aria-label="anchor" href="#sources-cited-in-episodes-7-and-8"></a></h3>
+<p>Annotation:</p>
+<ul><li>Cingolani P. et al. (2012). A program for annotating and predicting
+the effects of single nucleotide polymorphisms, SnpEff. Fly 6(2): 80-92.
+<a href="https://doi.org/10.4161/fly.19695" class="external-link uri">https://doi.org/10.4161/fly.19695</a>
+</li>
+<li>SnpEff manual: <a href="https://pcingola.github.io/SnpEff/" class="external-link uri">https://pcingola.github.io/SnpEff/</a>; input and output,
+the ANN field and the impact classes: <a href="https://pcingola.github.io/SnpEff/snpeff/inputoutput/" class="external-link uri">https://pcingola.github.io/SnpEff/snpeff/inputoutput/</a>;
+the ANN format specification: <a href="https://pcingola.github.io/SnpEff/adds/VCFannotationformat_v1.0.pdf" class="external-link uri">https://pcingola.github.io/SnpEff/adds/VCFannotationformat_v1.0.pdf</a>
+</li>
+<li>Sequence Ontology (the ontology files and their documentation): <a href="https://github.com/The-Sequence-Ontology/SO-Ontologies" class="external-link uri">https://github.com/The-Sequence-Ontology/SO-Ontologies</a>
+</li>
+<li>HGVS nomenclature: <a href="https://hgvs-nomenclature.org/" class="external-link uri">https://hgvs-nomenclature.org/</a>
+</li>
+<li>Morales J. et al. (2022). A joint NCBI and EMBL-EBI transcript set
+for clinical genomics and research. Nature 604: 310-315. <a href="https://doi.org/10.1038/s41586-022-04558-8" class="external-link uri">https://doi.org/10.1038/s41586-022-04558-8</a>; MANE at
+NCBI: <a href="https://www.ncbi.nlm.nih.gov/refseq/MANE/" class="external-link uri">https://www.ncbi.nlm.nih.gov/refseq/MANE/</a>
+</li>
+<li>bcftools <code>+split-vep</code>: <a href="https://samtools.github.io/bcftools/howtos/plugin.split-vep.html" class="external-link uri">https://samtools.github.io/bcftools/howtos/plugin.split-vep.html</a>
+</li>
+</ul><p>Population frequencies and ancestry:</p>
+<ul><li>Karczewski K. J. et al. (2020). The mutational constraint spectrum
+quantified from variation in 141,456 humans. Nature 581: 434-443. <a href="https://doi.org/10.1038/s41586-020-2308-7" class="external-link uri">https://doi.org/10.1038/s41586-020-2308-7</a>
+</li>
+<li>gnomAD v4.1 release: <a href="https://gnomad.broadinstitute.org/news/2024-04-gnomad-v4-1/" class="external-link uri">https://gnomad.broadinstitute.org/news/2024-04-gnomad-v4-1/</a>;
+genetic ancestry groups in gnomAD: <a href="https://gnomad.broadinstitute.org/help/ancestry" class="external-link uri">https://gnomad.broadinstitute.org/help/ancestry</a>
+</li>
+<li>Carmi S. et al. (2014). Sequencing an Ashkenazi reference panel
+supports population-targeted personal genomics and illuminates Jewish
+and European origins. Nature Communications 5: 4835. <a href="https://doi.org/10.1038/ncomms5835" class="external-link uri">https://doi.org/10.1038/ncomms5835</a>
+</li>
+<li>National Academies of Sciences, Engineering, and Medicine (2023).
+Using Population Descriptors in Genetics and Genomics Research. The
+National Academies Press. <a href="https://doi.org/10.17226/26902" class="external-link uri">https://doi.org/10.17226/26902</a>
+</li>
+</ul><p>Clinical interpretation databases:</p>
+<ul><li>ClinVar: <a href="https://www.ncbi.nlm.nih.gov/clinvar/" class="external-link uri">https://www.ncbi.nlm.nih.gov/clinvar/</a>; review status: <a href="https://www.ncbi.nlm.nih.gov/clinvar/docs/review_status/" class="external-link uri">https://www.ncbi.nlm.nih.gov/clinvar/docs/review_status/</a>
+</li>
+<li>Landrum M. J. et al. (2018). ClinVar: improving access to variant
+interpretations and supporting evidence. Nucleic Acids Research 46(D1):
+D1062-D1067. <a href="https://doi.org/10.1093/nar/gkx1153" class="external-link uri">https://doi.org/10.1093/nar/gkx1153</a>
+</li>
+</ul><p>Trio analysis:</p>
+<ul><li>bcftools manual: <a href="https://samtools.github.io/bcftools/bcftools.html#expressions" class="external-link">expressions</a>,
+<a href="https://samtools.github.io/bcftools/bcftools.html#gtcheck" class="external-link"><code>gtcheck</code></a>;
+bcftools plugins, including <code>+mendelian2</code>: <a href="https://samtools.github.io/bcftools/howtos/plugins.html" class="external-link uri">https://samtools.github.io/bcftools/howtos/plugins.html</a>
+</li>
+<li>Kong A. et al. (2012). Rate of de novo mutations and the importance
+of father’s age to disease risk. Nature 488: 471-475. <a href="https://doi.org/10.1038/nature11396" class="external-link uri">https://doi.org/10.1038/nature11396</a>
+</li>
+<li>MacArthur D. G. et al. (2012). A systematic survey of
+loss-of-function variants in human protein-coding genes. Science 335:
+823-828. <a href="https://doi.org/10.1126/science.1215040" class="external-link uri">https://doi.org/10.1126/science.1215040</a>
+</li>
+<li>Daniels C. et al. (2024). A robust benchmark for detecting
+low-frequency variants in the HG002 Genome In A Bottle NIST reference
+material. bioRxiv 2024.12.02.625685. <a href="https://doi.org/10.1101/2024.12.02.625685" class="external-link uri">https://doi.org/10.1101/2024.12.02.625685</a>
+</li>
+<li>IGV desktop: <a href="https://igv.org/doc/desktop/" class="external-link uri">https://igv.org/doc/desktop/</a>; batch commands: <a href="https://igv.org/doc/desktop/UserGuide/tools/batch/" class="external-link uri">https://igv.org/doc/desktop/UserGuide/tools/batch/</a>
+</li>
 </ul><p>Figures:</p>
 <ul><li>The precision-recall figure in Episode 6 is drawn by the workshop’s
 run kit (<code>negishi-run/pr_figure.py</code>) from the hap.py ROC
 tables of a test run.</li>
+<li>The two IGV figures in Episode 8 are IGV 2.19.2 snapshots (module
+igv/2.19.1 on Negishi) of a test run’s BAM files, filtered calls and
+trio benchmark regions, made with the run kit’s IGV batch script in a
+Gateway desktop session.</li>
 <li>The FastQC contrast cartoons in Episode 3 are by Zandra Selina, CC
 BY 4.0, reused from the <a href="https://github.com/rcac-bioinformatics/rnaseq-analysis" class="external-link">RCAC
 RNA-seq workshop</a>.</li>
@@ -616,8 +698,8 @@ any links that you are not going to use.
   "url": "https://rcac-bioinformatics.github.io/variant-calling/instructor/reference.html",
   "identifier": "https://rcac-bioinformatics.github.io/variant-calling/instructor/reference.html",
   "dateCreated": "2026-10-09",
-  "dateModified": "2026-10-14",
-  "datePublished": "2026-10-14"
+  "dateModified": "2026-10-15",
+  "datePublished": "2026-10-15"
 }
 
   </script><script>
