@@ -675,7 +675,7 @@ The first three lines are a position ruler, the reference sequence, and a consen
 
 ::::::::::::::::::::::::::::::::::::: instructor
 
-Graphical viewing is decided in P6 (IGV through a graphical session, or prepared snapshots). Until then, `samtools tview -d T` is the locus view for this episode. Learners can also run `samtools tview` without `-d T` for the interactive viewer (`?` for help, `q` to quit).
+`samtools tview -d T` is the locus view for this episode; Episode 8 shows IGV snapshots of two sites and, self-paced, how to open IGV in a graphical desktop session. Learners can also run `samtools tview` without `-d T` for the interactive viewer (`?` for help, `q` to quit).
 
 :::::::::::::::::::::::::::::::::::::::::::::::::
 

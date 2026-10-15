@@ -69,7 +69,7 @@ Every tool is loaded with `module load biocontainers` followed by the tool modul
 | Variant calling | bcftools/1.24 | Negishi, SLURM array job and interactive job | 5A |
 | Filtering and evaluation | bcftools/1.24, hap.py/0.3.9 (vcfeval engine) | Negishi, interactive job and SLURM array job | 6 |
 | Annotation | snpeff/5.3.0a, bcftools/1.24 | Negishi, SLURM batch job and interactive job | 7 |
-| Trio analysis | bcftools/1.24 | Negishi, interactive job | 8 |
+| Trio analysis | bcftools/1.24, samtools/1.22.1 (igv/2.19.1 for the self-paced IGV view) | Negishi, interactive job (IGV: a graphical desktop session) | 8 |
 
 ### What you will be able to do
 
